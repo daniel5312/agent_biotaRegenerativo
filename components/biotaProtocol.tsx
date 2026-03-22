@@ -33,8 +33,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
+import ChatInterface from "@/components/chatInterface";
 
-type TabType = "dashboard" | "recetario" | "escaner" | "tesoreria";
+type TabType = "dashboard" | "recetario" | "escaner" | "tesoreria" | "chat";
 
 export default function BiotaProtocol() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -70,6 +71,21 @@ export default function BiotaProtocol() {
         )}
         {activeTab === "escaner" && <EscanerView />}
         {activeTab === "tesoreria" && <TesoreriaView />}
+
+        {/* NUEVA VISTA DE CHAT */}
+        {activeTab === "chat" && (
+          <div className="px-5 pt-14 pb-10">
+            <header className="mb-6">
+              <p className="text-emerald-400/80 text-sm font-medium tracking-wide">
+                Inteligencia Biota
+              </p>
+              <h1 className="text-2xl font-bold text-white mt-1">
+                Asesor Multi-Agente
+              </h1>
+            </header>
+            <ChatInterface />
+          </div>
+        )}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 max-w-107.5 mx-auto bg-linear-to-t from-[#0a1510]/98 via-[#0a1510]/95 to-transparent backdrop-blur-2xl border-t border-white/5 pb-safe">
@@ -85,6 +101,18 @@ export default function BiotaProtocol() {
             label="Plan"
             active={activeTab === "recetario"}
             onClick={() => setActiveTab("recetario")}
+          />
+          {/* BOTÓN CENTRAL DE IA */}
+          <NavButton
+            icon={
+              <Sparkles
+                size={24}
+                className={activeTab === "chat" ? "text-emerald-400" : ""}
+              />
+            }
+            label="IA"
+            active={activeTab === "chat"}
+            onClick={() => setActiveTab("chat")}
           />
           <NavButton
             icon={<Camera className="size-6" />}

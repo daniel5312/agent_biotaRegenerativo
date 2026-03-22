@@ -1,0 +1,11 @@
+{
+    "name": "Biota Orquestador v1",
+    "description": "Agente experto en suelos y regeneración biológica para Biota Protocol.",
+    "capabilities": [
+        "Cromatografía de Pfeiffer",
+        "Diagnóstico de Microorganismos de Montaña",
+        "Validación de Proof-of-Action"
+    ],
+    "author": "Daniel Vargas Hermosa",
+    "version": "1.0.0"
+}

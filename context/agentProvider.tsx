@@ -2,71 +2,83 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 
-// 1. Definimos la estructura de la memoria del Agente
 type Message = {
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant"; // El 'system' lo manejamos en el servidor por seguridad
   content: string;
 };
 
+// 1. Actualiza la interface
 interface AgentContextType {
   messages: Message[];
   isLoading: boolean;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, agentRole?: string) => Promise<void>; // Agregado agentRole
   analizarCroma: (imagenBase64: string) => Promise<void>;
 }
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
 
-// 2. Aquí inyectaremos TU CONOCIMIENTO EXCLUSIVO
-const CONOCIMIENTO_EXCLUSIVO = `
-Eres el Agente de Inteligencia Agrícola de Biota Protocol que opera en Telegram.
-Fuiste entrenado con el conocimiento técnico exclusivo de tu creador.
-Tus funciones son:
-1. Diagnosticar suelos basándote en observaciones del campesino o cromatogramas.
-2. Dar recetas precisas de agricultura de procesos (como Microorganismos de Montaña - MM).
-3. NUNCA dar consejos químicos tradicionales, tu enfoque es 100% regenerativo.
-`;
+/*Asegúrate de que en tu AgentProvider.tsx la exportación sea consistente. Si lo importas como import { AgentProvider }, el archivo debe tener:
+export function AgentProvider(...)
+Y si usas import AgentProvider (sin llaves), debe tener:
+export default function AgentProvider(...)*/
 
 export function AgentProvider({ children }: { children: ReactNode }) {
-  // Inicializamos el chat con tu conocimiento base
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "system", content: CONOCIMIENTO_EXCLUSIVO },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Función para hablar con el agente
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (text: string, agentRole?: string) => {
     try {
       setIsLoading(true);
-      const newMessages = [
+      // Actualizamos UI inmediatamente con el mensaje del usuario
+      // Agregamos el mensaje del usuario a la lista
+      const updatedMessages = [
         ...messages,
         { role: "user" as const, content: text },
       ];
-      setMessages(newMessages);
+      setMessages(updatedMessages);
 
-      // Aquí conectaremos con la API real de IA (OpenAI, Gemini, etc.)
-      // Por ahora simulamos la respuesta para conectar la interfaz
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content:
-              "Entendido. Según nuestros protocolos regenerativos, ¿qué insumos tienes a la mano para iniciar el tratamiento?",
-          },
-        ]);
-        setIsLoading(false);
-      }, 1500);
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: updatedMessages,
+          agentRole, // Enviamos el rol al servidor
+        }),
+      });
+      const data = await response.json();
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.text },
+      ]);
     } catch (error) {
-      console.error("Error en el Agente:", error);
+      console.error("Error:", error);
+    } finally {
       setIsLoading(false);
     }
   };
 
-  // Función específica para analizar cromas
   const analizarCroma = async (imagenBase64: string) => {
-    // Aquí irá la lógica de visión artificial configurada con tus parámetros
-    console.log("Analizando croma...");
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: imagenBase64,
+          type: "croma",
+        }),
+      });
+
+      const data = await response.json();
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.text },
+      ]);
+    } catch (error) {
+      console.error("Error analizando croma:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -78,11 +90,9 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Hook personalizado para usar el Agente en cualquier parte de la App
 export function useAgent() {
   const context = useContext(AgentContext);
-  if (context === undefined) {
+  if (!context)
     throw new Error("useAgent debe usarse dentro de un AgentProvider");
-  }
   return context;
 }

@@ -16,6 +16,7 @@ import {
   Sprout,
 } from "lucide-react";
 import BiotaProtocol from "@/components/biotaProtocol";
+//import ChatInterface from "@/components/chatInterface";
 
 const translations = {
   es: {
