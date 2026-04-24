@@ -100,6 +100,18 @@ export interface LoteData {
   esVerificado: boolean;
 }
 
+export interface MintParams {
+  recipient: `0x${string}`;
+  tokenURI: string;
+  ubicacionGeografica: string;
+  areaM2: bigint;
+  cmSueloRecuperado: bigint;
+  estadoBiologico: string;
+  hashAnalisisLab: string;
+  ingredientesHash: string;
+  metodosAgricolas: string;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 export function formatCUSD(raw: bigint): string {
   const whole = raw / 10n ** 18n;

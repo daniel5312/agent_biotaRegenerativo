@@ -1,26 +1,29 @@
 // lib/privy.config.ts
 import type { PrivyClientConfig } from '@privy-io/react-auth'
-import { celoAlfajores } from '@/lib/contracts'
+import { celo, celoSepolia } from '@wagmi/core/chains'
+
+const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 42220);
+const activeChain = chainId === 42220 ? celo : celoSepolia;
 
 export const privyConfig: PrivyClientConfig = {
   loginMethods: ['email', 'sms', 'wallet', 'telegram'],
   embeddedWallets: {
-    createOnLogin:               'users-without-wallets',
-    requireUserPasswordOnCreate: false,
-    noPromptOnSignature:         true,
+    ethereum: {
+      createOnLogin: 'users-without-wallets',
+    },
   },
-  defaultChain:    celoAlfajores,
-  supportedChains: [celoAlfajores],
+  defaultChain: activeChain,
+  supportedChains: [celo, celoSepolia],
   appearance: {
-    theme:                'dark',
-    accentColor:          '#10b981',
-    landingHeader:        'Biota Protocol',
-    loginMessage:         'Accede con tu correo o Telegram para gestionar tu pasaporte biológico',
+    theme: 'dark',
+    accentColor: '#10b981',
+    landingHeader: 'Biota Protocol',
+    logo: 'https://biota.protocol/logo.png',
+    loginMessage: 'Accede para gestionar tu pasaporte biológico y regenerativo',
     showWalletLoginFirst: false,
-    walletList:           ['metamask', 'wallet_connect'],
   },
   legal: {
     termsAndConditionsUrl: 'https://biota.protocol/terms',
-    privacyPolicyUrl:      'https://biota.protocol/privacy',
+    privacyPolicyUrl: 'https://biota.protocol/privacy',
   },
 }

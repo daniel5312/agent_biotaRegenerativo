@@ -1,5 +1,3 @@
-// hooks/usePoA.ts
-// actualizarEvidencia() = el Proof of Application on-chain
 'use client'
 
 import { useState, useCallback } from 'react'
@@ -85,7 +83,7 @@ export function usePoA(): PoAState {
         : params.nuevoEstado
 
       await writeContractAsync({
-        address:      ADDRESSES.BIOTA_PASSPORT,
+        address:      ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
         abi:          BIOTA_PASSPORT_ABI,
         functionName: 'actualizarEvidencia',
         args: [params.tokenId, params.nuevoCmSuelo, estadoConGPS, cid, params.nuevosMetodos],

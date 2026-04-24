@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 
 // Inicializa el nuevo SDK usando tu variable de entorno
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 const AGENTES = {
     // 1. EL ONBOARDING: CREA EL "PASAPORTE DE LA FINCA"
@@ -38,11 +38,13 @@ export async function POST(req: Request) {
         const { messages, agentRole = "CAPATAZ" } = await req.json();
         const systemInstruction = AGENTES[agentRole as keyof typeof AGENTES] || AGENTES.CAPATAZ;
 
-        // El nuevo SDK necesita que el historial se pase en la propiedad "contents"
-        const formattedHistory = messages.map((m: any) => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }],
-        }));
+        // Filtramos mensajes vacíos para evitar error 400 de la API
+        const formattedHistory = messages
+            .filter((m: any) => m.content && m.content.trim() !== "")
+            .map((m: any) => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: [{ text: m.content }],
+            }));
 
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",

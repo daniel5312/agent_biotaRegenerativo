@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { 
   ShoppingCart, 
   Plus, 
@@ -20,7 +20,13 @@ import {
   ShieldCheck,
   Loader2
 } from "lucide-react"
-import { useAccount, useWriteContract, useSendTransaction } from "wagmi"
+import { 
+  useAccount, 
+  useWriteContract, 
+  useSendTransaction, 
+  useReadContract, 
+  useWaitForTransactionReceipt 
+} from "wagmi"
 import { ADDRESSES, ERC20_ABI, BIOTA_SPLITTER_ABI, formatCUSD } from "@/lib/contracts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -46,14 +52,36 @@ const currencies = [
 
 export function MercadoView() {
   const { address } = useAccount()
-  const { writeContract, isPending: isTokenPaying } = useWriteContract()
-  const { sendTransaction, isPending: isNativePaying } = useSendTransaction()
-  
   const [cart, setCart] = useState<Record<number, number>>({})
   const [selectedCurrency, setSelectedCurrency] = useState('cUSD')
   const [paid, setPaid] = useState(false)
 
-  const isPaying = isTokenPaying || isNativePaying
+  // 1. Configuración de Pago (Wagmi Hooks)
+  const { writeContract: writeSplitter, isPending: isTokenPaying, data: payHash } = useWriteContract()
+  const { sendTransaction, isPending: isNativePaying, data: nativeHash } = useSendTransaction()
+  const { writeContract: writeApprove, isPending: isApprovePending, data: approveHash } = useWriteContract()
+
+  // 2. Esperar Recibos (UX Mejorada)
+  const { isLoading: isConfirmingApprove, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash })
+  const { isLoading: isConfirmingPay, isSuccess: isPaySuccess } = useWaitForTransactionReceipt({ hash: payHash || nativeHash })
+
+  // 3. Lógica de Allowance (Permisos de Gasto)
+  const tokenAddress = selectedCurrency === 'CELO' ? undefined : ADDRESSES[selectedCurrency as keyof typeof ADDRESSES] as `0x${string}`
+  
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: tokenAddress,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: [address!, ADDRESSES.BIOTA_SPLITTER],
+    query: { enabled: !!address && !!tokenAddress && selectedCurrency !== 'CELO' }
+  })
+
+  // Refrescar permiso tras transacción exitosa
+  useEffect(() => {
+    if (isApproveSuccess) refetchAllowance()
+  }, [isApproveSuccess, refetchAllowance])
+
+  const isPaying = isTokenPaying || isNativePaying || isApprovePending || isConfirmingApprove || isConfirmingPay
 
   const addToCart = (id: number) => setCart((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }))
   const removeFromCart = (id: number) => {
@@ -76,33 +104,35 @@ export function MercadoView() {
   const COLLECTIVE_MUJERES = ADDRESSES.COLLECTIVE_MUJERES as `0x${string}`
   const BIOTA_POOL = ADDRESSES.BIOTA_POOL as `0x${string}`
 
-  const handlePay = async () => {
+  const totalAmount = BigInt(cartTotal) * BigInt(10**15)
+  const needsApproval = selectedCurrency !== 'CELO' && (allowance === undefined || allowance < totalAmount)
+
+  const handleAction = async () => {
     if (!address) return;
 
-    // Cálculo del Split (4% total)
-    const totalAmount = BigInt(cartTotal) * BigInt(10**15)
-    const collectivePart = totalAmount * BigInt(2) / BigInt(100) // 2%
-    const poolPart = totalAmount * BigInt(2) / BigInt(100)       // 2%
-    const merchantPart = totalAmount - collectivePart - poolPart // 96%
+    if (needsApproval && tokenAddress) {
+      writeApprove({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [ADDRESSES.BIOTA_SPLITTER, totalAmount * BigInt(10)], // Aprobamos 10x para evitar re-aprobación constante
+      })
+      return
+    }
 
     try {
       if (selectedCurrency === 'CELO') {
-        // CELO Nativo: Enviamos el total al merchant (Para split en CELO se requiere otra función en el contrato)
         sendTransaction({
           to: MERCHANT_ADDRESS as `0x${string}`,
           value: totalAmount,
         })
       } else {
-        const tokenAddress = ADDRESSES[selectedCurrency as keyof typeof ADDRESSES] as `0x${string}`
-        
-        // --- LOGICA PROFESIONAL: BIOTA SPLITTER ---
-        // 1. Reparto atómico 96/2/2 en una sola firma (si ya hay allowance)
-        writeContract({
+        writeSplitter({
           address: ADDRESSES.BIOTA_SPLITTER as `0x${string}`,
           abi: BIOTA_SPLITTER_ABI,
           functionName: "payWithSplit",
           args: [
-            tokenAddress,
+            tokenAddress as `0x${string}`,
             totalAmount,
             MERCHANT_ADDRESS as `0x${string}`,
             COLLECTIVE_MUJERES as `0x${string}`,
@@ -110,14 +140,21 @@ export function MercadoView() {
           ],
         })
       }
-      
-      // Simulación de éxito tras envío
-      setPaid(true)
-      setTimeout(() => { setPaid(false); setCart({}) }, 3000)
     } catch (error) {
-      console.error("Error en el pago:", error)
+      console.error("Error en la transacción:", error)
     }
   }
+
+  // Limpiar carrito y mostrar éxito tras confirmación en blockchain
+  useEffect(() => {
+    if (isPaySuccess) {
+      setPaid(true)
+      setTimeout(() => { 
+        setPaid(false)
+        setCart({}) 
+      }, 3000)
+    }
+  }, [isPaySuccess])
 
   return (
     <div className="px-4 py-4 space-y-4 mb-nav">
@@ -245,14 +282,18 @@ export function MercadoView() {
               </div>
               
               <Button
-                onClick={handlePay}
+                onClick={handleAction}
                 disabled={isPaying || paid}
                 className="w-full h-11 bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 text-white font-bold shadow-lg cyber-btn"
               >
                 {paid ? (
                   <><Check className="w-4 h-4 mr-2" /> Pago Realizado</>
-                ) : isPaying ? (
-                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" /> Procesando...</>
+                ) : isConfirmingApprove || isConfirmingPay ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Confirmando en Red...</>
+                ) : isApprovePending || isTokenPaying || isNativePaying ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Firma en Billetera...</>
+                ) : needsApproval ? (
+                  <><ShieldCheck className="w-4 h-4 mr-2" /> Aprobar {selectedCurrency}</>
                 ) : (
                   <><Wallet className="w-4 h-4 mr-2" /> Pagar con {selectedCurrency}</>
                 )}

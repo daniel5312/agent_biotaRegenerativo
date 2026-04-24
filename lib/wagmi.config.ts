@@ -1,10 +1,6 @@
-// lib/wagmi.config.ts
 import { createConfig, http } from 'wagmi'
-import { celoAlfajores } from '@/lib/contracts'
-import { injected, walletConnect, metaMask } from 'wagmi/connectors'
-
-const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? ''
-const CELO_RPC = process.env.NEXT_PUBLIC_CELO_RPC_URL ?? 'https://alfajores-forno.celo-testnet.org'
+import { injected } from 'wagmi/connectors'
+import { celoSepolia, celoMainnet } from '@/lib/contracts'
 
 // Conector MiniPay: detecta window.ethereum.isMiniPay
 const miniPayConnector = injected({
@@ -18,25 +14,12 @@ const miniPayConnector = injected({
 })
 
 export const wagmiConfig = createConfig({
-  chains: [celoAlfajores],
+  chains: [celoMainnet, celoSepolia],
   transports: {
-    [celoAlfajores.id]: http(CELO_RPC, {
-      batch: { batchSize: 512 },
-      retryCount: 3,
-    }),
+    [celoMainnet.id]: http('https://forno.celo.org'),
+    [celoSepolia.id]: http('https://forno.celo-sepolia.celo-testnet.org'),
   },
   connectors: [
-    metaMask(),
-    walletConnect({
-      projectId: WC_PROJECT_ID || "14a2dd0ed7b26291d999ac751ebbb539",
-      metadata: {
-        name: 'Biota Protocol',
-        description: 'Suelo Vivo — Agricultura de Procesos',
-        url: 'https://biota.protocol',
-        icons: ['https://biota.protocol/icon.png'],
-      },
-      showQrModal: true,
-    }),
     miniPayConnector,
     injected({ shimDisconnect: true }),
   ],

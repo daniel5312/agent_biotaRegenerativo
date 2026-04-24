@@ -63,6 +63,23 @@ export const BIOTA_PASSPORT_ABI = [
     "outputs": [{ "name": "", "type": "uint256" }]
   },
   {
+    "name": "isVerificador",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [{ "name": "account", "type": "address" }],
+    "outputs": [{ "name": "", "type": "bool" }]
+  },
+  {
+    "name": "gestionarVerificador",
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      { "name": "cuenta", "type": "address" },
+      { "name": "estado", "type": "bool" }
+    ],
+    "outputs": []
+  },
+  {
     "name": "PassportMinted",
     "type": "event",
     "inputs": [

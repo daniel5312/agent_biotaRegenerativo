@@ -1,0 +1,19 @@
+[profile.default]
+src = "contracts/src"
+out = "contracts/out"
+libs = ["contracts/lib"]
+script = "contracts/script"
+test = "contracts/test"
+solc_version = "0.8.28"
+optimizer = true
+optimizer_runs = 200
+via_ir = true
+evm_version = "cancun"
+
+[rpc_endpoints]
+celo = "https://forno.celo.org"
+celo_sepolia = "https://forno.celo-sepolia.celo-testnet.org" 
+
+[etherscan]
+celo = { key = "${ETHERSCAN_API_KEY}", url = "https://api.celoscan.io/api" }
+celo_sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.celoscan.io/api" }

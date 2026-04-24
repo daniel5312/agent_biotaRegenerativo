@@ -1,4 +1,3 @@
-// hooks/useBiotaPass.ts
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -48,7 +47,7 @@ export function useBiotaPass(): BiotaPassState {
 
   // Escuchar PassportMinted para capturar tokenId automáticamente
   useWatchContractEvent({
-    address:   ADDRESSES.BIOTA_PASSPORT,
+    address:   ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
     abi:       BIOTA_PASSPORT_ABI,
     eventName: 'PassportMinted',
     onLogs(logs) {
@@ -63,7 +62,7 @@ export function useBiotaPass(): BiotaPassState {
   })
 
   const { data: balance, isLoading: loadingBalance } = useReadContract({
-    address:      ADDRESSES.BIOTA_PASSPORT,
+    address:      ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
     abi:          BIOTA_PASSPORT_ABI,
     functionName: 'balanceOf',
     args:         [address!],
@@ -73,14 +72,14 @@ export function useBiotaPass(): BiotaPassState {
   const hasPassport = !!balance && (balance as bigint) > 0n
 
   const { data: rawLote, isLoading: loadingLote } = useReadContract({
-    address:      ADDRESSES.BIOTA_PASSPORT,
+    address:      ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
     abi:          BIOTA_PASSPORT_ABI,
     functionName: 'lotePasaporte',
     args:         [tokenId!],
     query:        { enabled: !!tokenId, refetchInterval: 30_000 },
   })
 
-  const loteData = (rawLote as LoteData | null) ?? null
+  const loteData = (rawLote as any) ?? null
 
   const {
     writeContract,
@@ -97,7 +96,7 @@ export function useBiotaPass(): BiotaPassState {
   const mintPassport = (params: Omit<MintParams, 'recipient'>) => {
     if (!address || !authenticated) return
     writeContract({
-      address:      ADDRESSES.BIOTA_PASSPORT,
+      address:      ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
       abi:          BIOTA_PASSPORT_ABI,
       functionName: 'mintPasaporte',
       args: [
@@ -114,11 +113,11 @@ export function useBiotaPass(): BiotaPassState {
     })
   }
 
-  const cm = loteData?.cmSueloRecuperado ?? 0n
+  const cm = (loteData as LoteData)?.cmSueloRecuperado ?? 0n
 
   return {
     tokenId,
-    loteData,
+    loteData:        loteData as LoteData,
     bioScore:        cmToScore(cm),
     hasPassport,
     isLoading:       loadingBalance || loadingLote,
@@ -127,9 +126,9 @@ export function useBiotaPass(): BiotaPassState {
     mintTxHash,
     mintConfirmed,
     mintError:       mintWriteError?.message?.slice(0, 100) ?? null,
-    fechaRegistro:   loteData ? formatFecha(loteData.fechaRegistro) : '—',
-    estadoBiologico: loteData?.estadoBiologico ?? 'Sin diagnóstico',
+    fechaRegistro:   loteData ? formatFecha((loteData as LoteData).fechaRegistro) : '—',
+    estadoBiologico: (loteData as LoteData)?.estadoBiologico ?? 'Sin diagnóstico',
     cmRecuperados:   Number(cm),
-    esVerificado:    loteData?.esVerificado ?? false,
+    esVerificado:    (loteData as LoteData)?.esVerificado ?? false,
   }
 }
