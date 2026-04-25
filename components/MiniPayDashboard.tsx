@@ -2,7 +2,7 @@
 
 import React, { useMemo, useCallback, useEffect, useState } from "react";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { useAccount, useWriteContract, useReadContract } from "wagmi";
+import { useConnection, useWriteContract, useReadContract } from "wagmi";
 import { ADDRESSES, BIOTA_SCROW_ABI, ERC20_ABI, formatCUSD } from "@/lib/contracts";
 import { useAgent } from "@/context/agentProvider";
 import {
@@ -16,7 +16,7 @@ import {
 
 export default function MiniPayDashboard() {
   const { authenticated } = usePrivy();
-  const { address } = useAccount();
+  const { address } = useConnection();
   const { wallets } = useWallets();
   const { messages, isLoading: isAgentLoading } = useAgent();
 

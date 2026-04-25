@@ -11,7 +11,8 @@ type Message = {
 interface AgentContextType {
   messages: Message[];
   isLoading: boolean;
-  sendMessage: (text: string, agentRole?: string) => Promise<void>; // Agregado agentRole
+  agentAction: { isMinting: boolean; txHash?: string } | null;
+  sendMessage: (text: string, agentRole?: string) => Promise<void>;
   analizarCroma: (imagenBase64: string) => Promise<void>;
 }
 
@@ -25,12 +26,11 @@ export default function AgentProvider(...)*/
 export function AgentProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [agentAction, setAgentAction] = useState<{ isMinting: boolean; txHash?: string } | null>(null);
 
   const sendMessage = async (text: string, agentRole?: string) => {
     try {
       setIsLoading(true);
-      // Actualizamos UI inmediatamente con el mensaje del usuario
-      // Agregamos el mensaje del usuario a la lista
       const updatedMessages = [
         ...messages,
         { role: "user" as const, content: text },
@@ -42,10 +42,15 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: updatedMessages,
-          agentRole, // Enviamos el rol al servidor
+          agentRole,
         }),
       });
       const data = await response.json();
+      
+      if (data.actionExecuted && data.txHash) {
+        setAgentAction({ isMinting: true, txHash: data.txHash });
+      }
+
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.text },
@@ -83,7 +88,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   return (
     <AgentContext.Provider
-      value={{ messages, isLoading, sendMessage, analizarCroma }}
+      value={{ messages, isLoading, agentAction, sendMessage, analizarCroma }}
     >
       {children}
     </AgentContext.Provider>

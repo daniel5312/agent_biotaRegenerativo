@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "forge-std/Script.sol";
-import "../src/BiotaSplitter.sol";
+import {Script, console} from "forge-std/Script.sol";
+import {BiotaSplitter} from "../src/BiotaSplitter.sol";
 
 /**
  * @title DeploySplitter - Automatización de Despliegue Biota

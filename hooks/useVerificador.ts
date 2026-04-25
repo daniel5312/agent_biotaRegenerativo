@@ -2,7 +2,7 @@
 // Para técnicos verificadores de Biota Protocol
 'use client'
 
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useConnection, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { ADDRESSES, BIOTA_PASSPORT_ABI } from '@/lib/contracts'
 
 export interface VerificadorState {
@@ -19,7 +19,7 @@ export interface VerificadorState {
 }
 
 export function useVerificador(): VerificadorState {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useConnection()
 
   const { data: isVerif, isLoading: isLoadingRole } = useReadContract({
     address:      ADDRESSES.BIOTA_PASSPORT,

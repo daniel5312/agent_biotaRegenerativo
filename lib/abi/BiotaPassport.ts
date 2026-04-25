@@ -1,91 +1,84 @@
 export const BIOTA_PASSPORT_ABI = [
   {
+    "type": "constructor",
+    "inputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "mintPasaporte",
-    "type": "function",
-    "stateMutability": "nonpayable",
     "inputs": [
-      { "name": "recipient", "type": "address" },
-      { "name": "tokenURI", "type": "string" },
-      { "name": "_ubicacionGeografica", "type": "string" },
-      { "name": "_areaM2", "type": "uint256" },
-      { "name": "_cmSueloRecuperado", "type": "uint256" },
-      { "name": "_estadoBiologico", "type": "string" },
-      { "name": "_hashAnalisisLab", "type": "string" },
-      { "name": "_ingredientesHash", "type": "string" },
-      { "name": "_metodosAgricolas", "type": "string" }
+      { "name": "recipient", "type": "address", "internalType": "address" },
+      { "name": "tokenURI", "type": "string", "internalType": "string" },
+      { "name": "_ubicacionGeografica", "type": "string", "internalType": "string" },
+      { "name": "_areaM2", "type": "uint32", "internalType": "uint32" },
+      { "name": "_cmSueloRecuperado", "type": "uint32", "internalType": "uint32" },
+      { "name": "_estadoBiologico", "type": "string", "internalType": "string" },
+      { "name": "_hashAnalisisLab", "type": "string", "internalType": "string" },
+      { "name": "_ingredientesHash", "type": "string", "internalType": "string" },
+      { "name": "_metodosAgricolas", "type": "string", "internalType": "string" }
     ],
-    "outputs": [{ "name": "tokenId", "type": "uint256" }]
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
     "name": "actualizarEvidencia",
-    "type": "function",
-    "stateMutability": "nonpayable",
     "inputs": [
-      { "name": "tokenId", "type": "uint256" },
-      { "name": "_nuevoCmSuelo", "type": "uint256" },
-      { "name": "_nuevoEstado", "type": "string" },
-      { "name": "_nuevoHashLab", "type": "string" },
-      { "name": "_nuevosMetodos", "type": "string" }
+      { "name": "tokenId", "type": "uint256", "internalType": "uint256" },
+      { "name": "_nuevoCmSuelo", "type": "uint32", "internalType": "uint32" },
+      { "name": "_nuevoEstado", "type": "string", "internalType": "string" },
+      { "name": "_nuevoHashLab", "type": "string", "internalType": "string" },
+      { "name": "_nuevosMetodos", "type": "string", "internalType": "string" }
     ],
-    "outputs": []
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
     "name": "validarImpacto",
-    "type": "function",
-    "stateMutability": "nonpayable",
-    "inputs": [{ "name": "tokenId", "type": "uint256" }],
-    "outputs": []
-  },
-  {
-    "name": "lotePasaporte",
-    "type": "function",
-    "stateMutability": "view",
-    "inputs": [{ "name": "tokenId", "type": "uint256" }],
-    "outputs": [
-      { "name": "fechaRegistro", "type": "uint256" },
-      { "name": "ultimaActualizacion", "type": "uint256" },
-      { "name": "ubicacionGeografica", "type": "string" },
-      { "name": "areaM2", "type": "uint256" },
-      { "name": "cmSueloRecuperado", "type": "uint256" },
-      { "name": "estadoBiologico", "type": "string" },
-      { "name": "hashAnalisisLab", "type": "string" },
-      { "name": "ingredientesHash", "type": "string" },
-      { "name": "metodosAgricolas", "type": "string" },
-      { "name": "verificador", "type": "address" },
-      { "name": "esVerificado", "type": "bool" }
-    ]
-  },
-  {
-    "name": "balanceOf",
-    "type": "function",
-    "stateMutability": "view",
-    "inputs": [{ "name": "owner", "type": "address" }],
-    "outputs": [{ "name": "", "type": "uint256" }]
-  },
-  {
-    "name": "isVerificador",
-    "type": "function",
-    "stateMutability": "view",
-    "inputs": [{ "name": "account", "type": "address" }],
-    "outputs": [{ "name": "", "type": "bool" }]
-  },
-  {
-    "name": "gestionarVerificador",
-    "type": "function",
-    "stateMutability": "nonpayable",
     "inputs": [
-      { "name": "cuenta", "type": "address" },
-      { "name": "estado", "type": "bool" }
+      { "name": "tokenId", "type": "uint256", "internalType": "uint256" },
+      { "name": "_isHumanVerified", "type": "bool", "internalType": "bool" }
     ],
-    "outputs": []
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
-    "name": "PassportMinted",
+    "type": "function",
+    "name": "lotePasaporte",
+    "inputs": [{ "name": "tokenId", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [
+      { "name": "verificador", "type": "address", "internalType": "address" },
+      { "name": "esVerificado", "type": "bool", "internalType": "bool" },
+      { "name": "isHumanVerified", "type": "bool", "internalType": "bool" },
+      { "name": "areaM2", "type": "uint32", "internalType": "uint32" },
+      { "name": "cmSueloRecuperado", "type": "uint32", "internalType": "uint32" },
+      { "name": "fechaRegistro", "type": "uint64", "internalType": "uint64" },
+      { "name": "ultimaActualizacion", "type": "uint64", "internalType": "uint64" },
+      { "name": "ubicacionGeografica", "type": "string", "internalType": "string" },
+      { "name": "estadoBiologico", "type": "string", "internalType": "string" },
+      { "name": "hashAnalisisLab", "type": "string", "internalType": "string" },
+      { "name": "ingredientesHash", "type": "string", "internalType": "string" },
+      { "name": "metodosAgricolas", "type": "string", "internalType": "string" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "balanceOf",
+    "inputs": [{ "name": "owner", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
     "type": "event",
+    "name": "PassportMinted",
     "inputs": [
-      { "name": "tokenId", "type": "uint256", "indexed": true },
-      { "name": "producer", "type": "address", "indexed": true },
-      { "name": "ubicacion", "type": "string", "indexed": false }
-    ]
+      { "name": "tokenId", "type": "uint256", "indexed": true, "internalType": "uint256" },
+      { "name": "producer", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "ubicacion", "type": "string", "indexed": false, "internalType": "string" }
+    ],
+    "anonymous": false
   }
 ] as const

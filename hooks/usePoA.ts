@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useConnection, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { ADDRESSES, BIOTA_PASSPORT_ABI } from '@/lib/contracts'
 
 export interface PoACertifyParams {
   tokenId:       bigint
-  nuevoCmSuelo:  bigint
+  nuevoCmSuelo:  number
   nuevoEstado:   string
   nuevosMetodos: string
   imageBlob?:    Blob
@@ -36,7 +36,7 @@ async function uploadToIPFS(blob: Blob): Promise<string> {
 }
 
 export function usePoA(): PoAState {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useConnection()
 
   const [gpsCoords,   setGpsCoords]   = useState<{ lat: number; lng: number } | null>(null)
   const [gpsError,    setGpsError]    = useState<string | null>(null)

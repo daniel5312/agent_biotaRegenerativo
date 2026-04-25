@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useMiniPay } from "@/hooks/useMiniPay";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
@@ -306,7 +306,7 @@ function MetricRow({
 
 function TesoreriaView() {
   const { formattedBalance, isLoadingBalance } = useMiniPay();
-  const { address } = useAccount();
+  const { address } = useConnection();
 
   return (
     <div className="px-5 pt-14 space-y-6 pb-28">

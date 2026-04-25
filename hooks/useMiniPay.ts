@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useConnect } from 'wagmi'
+import { useConnection, useReadContract, useWriteContract, useWaitForTransactionReceipt, useConnect } from 'wagmi'
 import { parseUnits } from 'viem'
 import { ADDRESSES, ERC20_ABI, formatCUSD } from '@/lib/contracts'
 
@@ -32,7 +32,7 @@ export interface MiniPayState {
 }
 
 export function useMiniPay(): MiniPayState {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useConnection()
   const { connect, connectors }  = useConnect()
   const [env,             setEnv]             = useState<AppEnv>('ssr')
   const [autoConnectDone, setAutoConnectDone] = useState(false)

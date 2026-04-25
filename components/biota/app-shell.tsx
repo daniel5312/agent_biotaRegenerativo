@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { usePrivy } from "@privy-io/react-auth"
-import { useAccount } from "wagmi"
+import { useConnection } from "wagmi"
 
 interface AppShellProps {
   children: ReactNode
@@ -28,7 +28,7 @@ interface AppShellProps {
 }
 
 const tabs: { id: TabId; labelEs: string; labelEn: string; icon: typeof Leaf }[] = [
-  { id: "impacto", labelEs: "Campo", labelEn: "Farm", icon: Sprout },
+  { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout },
   { id: "mercado", labelEs: "Mercado", labelEn: "Market", icon: ShoppingBag },
   { id: "academia", labelEs: "Escuela", labelEn: "School", icon: GraduationCap },
   { id: "asesoria", labelEs: "Asesores", labelEn: "Advisors", icon: Users },
@@ -37,7 +37,7 @@ const tabs: { id: TabId; labelEs: string; labelEn: string; icon: typeof Leaf }[]
 export function AppShell({ children, activeTab, onTabChange, isMiniPay = true }: AppShellProps) {
   const { theme, setTheme } = useTheme()
   const { logout, authenticated } = usePrivy()
-  const { address } = useAccount()
+  const { address } = useConnection()
   const [mounted, setMounted] = useState(false)
   const [lang, setLang] = useState<"es" | "en">("es")
 

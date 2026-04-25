@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  useAccount, useReadContract, useWriteContract,
+  useConnection, useReadContract, useWriteContract,
   useWaitForTransactionReceipt, useWatchContractEvent,
 } from 'wagmi'
 import { usePrivy } from '@privy-io/react-auth'
@@ -27,10 +27,11 @@ export interface BiotaPassState {
   estadoBiologico: string
   cmRecuperados:   number
   esVerificado:    boolean
+  isHumanVerified: boolean
 }
 
 export function useBiotaPass(): BiotaPassState {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected } = useConnection()
   const { authenticated }        = usePrivy()
 
   // tokenId: persiste en localStorage vinculado a la wallet
@@ -79,7 +80,21 @@ export function useBiotaPass(): BiotaPassState {
     query:        { enabled: !!tokenId, refetchInterval: 30_000 },
   })
 
-  const loteData = (rawLote as any) ?? null
+  // Mapeo manual del array de retorno a objeto LoteData
+  const loteData: LoteData | null = rawLote ? {
+    verificador: rawLote[0],
+    esVerificado: rawLote[1],
+    isHumanVerified: rawLote[2],
+    areaM2: rawLote[3],
+    cmSueloRecuperado: rawLote[4],
+    fechaRegistro: rawLote[5],
+    ultimaActualizacion: rawLote[6],
+    ubicacionGeografica: rawLote[7],
+    estadoBiologico: rawLote[8],
+    hashAnalisisLab: rawLote[9],
+    ingredientesHash: rawLote[10],
+    metodosAgricolas: rawLote[11],
+  } : null
 
   const {
     writeContract,
@@ -130,5 +145,6 @@ export function useBiotaPass(): BiotaPassState {
     estadoBiologico: (loteData as LoteData)?.estadoBiologico ?? 'Sin diagnóstico',
     cmRecuperados:   Number(cm),
     esVerificado:    (loteData as LoteData)?.esVerificado ?? false,
+    isHumanVerified: (loteData as LoteData)?.isHumanVerified ?? false,
   }
 }

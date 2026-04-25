@@ -11,10 +11,15 @@ pragma solidity ^0.8.28;
  * 3. Aporte al Pool de Regeneración Biota (2%)
  */
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract BiotaSplitter is Ownable {
+    
+    // --- ERRORES PERSONALIZADOS ---
+    error BiotaSplitter__MontoInsuficiente();
+    error BiotaSplitter__DireccionInvalida();
+    error BiotaSplitter__TransferenciaFallida();
     
     // --- EVENTOS (Blockchain Transparency) ---
     
@@ -61,8 +66,10 @@ contract BiotaSplitter is Ownable {
         address pool
     ) external {
         // [CHECK] Validación básica de seguridad
-        require(amount >= 100, "Monto insuficiente para split");
-        require(merchant != address(0) && collective != address(0) && pool != address(0), "Direccion invalida");
+        if (amount < 100) revert BiotaSplitter__MontoInsuficiente();
+        if (merchant == address(0) || collective == address(0) || pool == address(0)) {
+            revert BiotaSplitter__DireccionInvalida();
+        }
 
         // [INTERACTION] Inicializar interfaz del token
         IERC20 erc20 = IERC20(token);
@@ -75,13 +82,15 @@ contract BiotaSplitter is Ownable {
 
         // [EFFECT] Transferencia principal: Usuario -> Contrato
         // Nota ReFi: El usuario debe haber ejecutado 'approve' previamente.
-        require(erc20.transferFrom(msg.sender, address(this), amount), "Error: TransferFrom fallido");
+        if (!erc20.transferFrom(msg.sender, address(this), amount)) {
+            revert BiotaSplitter__TransferenciaFallida();
+        }
 
         // [EFFECT] Reparto atómico de fondos
         // Estas transferencias ocurren en el mismo bloque de la blockchain Celo.
-        require(erc20.transfer(merchant, merchantPart), "Error: Pago a mercante fallido");
-        require(erc20.transfer(collective, collectivePart), "Error: Aporte colectivo fallido");
-        require(erc20.transfer(pool, poolPart), "Error: Aporte pool fallido");
+        if (!erc20.transfer(merchant, merchantPart)) revert BiotaSplitter__TransferenciaFallida();
+        if (!erc20.transfer(collective, collectivePart)) revert BiotaSplitter__TransferenciaFallida();
+        if (!erc20.transfer(pool, poolPart)) revert BiotaSplitter__TransferenciaFallida();
 
         // [LOG] Registro inmutable en la blockchain
         emit PaymentSplit(msg.sender, token, amount, merchant, collective, pool);
@@ -96,6 +105,8 @@ contract BiotaSplitter is Ownable {
      * @param amount Cantidad a retirar.
      */
     function rescueTokens(address token, uint256 amount) external onlyOwner {
-        require(IERC20(token).transfer(msg.sender, amount), "Error en rescate");
+        if (!IERC20(token).transfer(msg.sender, amount)) {
+            revert BiotaSplitter__TransferenciaFallida();
+        }
     }
 }

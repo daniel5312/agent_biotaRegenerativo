@@ -5,12 +5,12 @@ import { usePrivy } from "@privy-io/react-auth"
 import { ArrowRight, Globe, Leaf, Moon, Sprout, Sun, Coins } from "lucide-react"
 import { useTheme } from "next-themes"
 import { AppShell } from "@/components/biota/app-shell"
-import { ImpactoView } from "@/components/biota/impacto-view"
+import { PasaporteView } from "@/components/biota/pasaporte-view"
 import { MercadoView } from "@/components/biota/mercado-view"
 import { AcademiaView } from "@/components/biota/academia-view"
 import { AsesoriaView } from "@/components/biota/asesoria-view"
 
-export type TabId = "impacto" | "mercado" | "academia" | "asesoria"
+export type TabId = "pasaporte" | "mercado" | "academia" | "asesoria"
 
 const translations = {
   es: {
@@ -137,7 +137,7 @@ function LandingPage() {
 
 export default function Page() {
   const { ready, authenticated } = usePrivy()
-  const [activeTab, setActiveTab] = useState<TabId>("impacto")
+  const [activeTab, setActiveTab] = useState<TabId>("pasaporte")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -174,7 +174,7 @@ export default function Page() {
   return (
     <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
       <div className="animate-fade-in h-full">
-        {activeTab === "impacto" && <ImpactoView />}
+        {activeTab === "pasaporte" && <PasaporteView />}
         {activeTab === "mercado" && <MercadoView />}
         {activeTab === "academia" && <AcademiaView />}
         {activeTab === "asesoria" && <AsesoriaView />}

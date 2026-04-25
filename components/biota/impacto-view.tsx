@@ -25,15 +25,30 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useAccount, useWriteContract, useReadContract } from "wagmi"
+import { useConnection, useWriteContract, useReadContract } from "wagmi"
 import { useWallets } from "@privy-io/react-auth"
 import { ADDRESSES, BIOTA_SCROW_ABI, ERC20_ABI, IDENTITY_ABI, formatCUSD } from "@/lib/contracts"
+import { useBiotaPass } from "@/hooks/useBiotaPass"
+import { usePoA } from "@/hooks/usePoA"
 
 export function ImpactoView() {
-  const { address } = useAccount()
+  const { address } = useConnection()
   const { wallets } = useWallets()
+  const { 
+    hasPassport, 
+    tokenId, 
+    bioScore, 
+    isLoading: loadingPassport,
+    cmRecuperados,
+    estadoBiologico,
+    loteData,
+    mintPassport,
+    isMinting,
+    mintConfirmed
+  } = useBiotaPass()
+  const { certificarPoA, isCertifying } = usePoA()
+
   const [selectedActions, setSelectedActions] = useState<string[]>([])
-  const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [creditAmount, setCreditAmount] = useState("")
   const [requestingCredit, setRequestingCredit] = useState(false)
@@ -59,6 +74,15 @@ export function ImpactoView() {
     },
   });
 
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: ADDRESSES.CUSD,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: [address!, ADDRESSES.BIOTA_SCROW],
+    query: { enabled: !!address }
+  }) as { data: bigint | undefined, refetch: any }
+;
+
   const { data: isWhitelisted } = useReadContract({
     address: ADDRESSES.IDENTITY,
     abi: IDENTITY_ABI,
@@ -78,7 +102,7 @@ export function ImpactoView() {
         address: ADDRESSES.BIOTA_SCROW,
         abi: BIOTA_SCROW_ABI,
         functionName: "executeDoubleTrigger",
-        args: [BigInt(Date.now()), address, 100],
+        args: [BigInt(Date.now()), address, tokenId ?? 0n, 100],
       });
     } catch (error) {
       console.error("Error en Reclamo UBI:", error);
@@ -102,17 +126,44 @@ export function ImpactoView() {
     )
   }
 
-  const handleOracleSubmit = () => {
-    if (selectedActions.length === 0) return
-    setSubmitting(true)
-    setTimeout(() => {
-      setSubmitting(false)
+  const handleOracleSubmit = async () => {
+    if (selectedActions.length === 0 || !tokenId) return
+    
+    // Simplificación para la demo: usamos el primer ID seleccionado
+    const action = actions.find(a => selectedActions.includes(a.id))
+    
+    try {
+      await certificarPoA({
+        tokenId: tokenId,
+        nuevoCmSuelo: cmRecuperados + 10, // Incremento simulado
+        nuevoEstado: `Verificado: ${action?.label}`,
+        nuevosMetodos: "Bio-Insumos Biota",
+      })
       setSubmitted(true)
       setTimeout(() => {
         setSubmitted(false)
         setSelectedActions([])
       }, 2500)
-    }, 2000)
+    } catch (error) {
+      console.error("Error al certificar PoA:", error)
+    }
+  }
+
+  const handleMintPassport = async () => {
+    try {
+      await mintPassport({
+        tokenURI: "ipfs://mock-passport-uri",
+        ubicacionGeografica: "Celo, Colombia",
+        areaM2: 5000n,
+        cmSueloRecuperado: 0n,
+        estadoBiologico: "Pendiente",
+        hashAnalisisLab: "n/a",
+        ingredientesHash: "n/a",
+        metodosAgricolas: "Regenerativo",
+      })
+    } catch (error) {
+      console.error("Error al solicitar pasaporte:", error)
+    }
   }
 
   const handleCreditRequest = () => {
@@ -186,7 +237,7 @@ export function ImpactoView() {
                 </div>
                 <p className="text-xs text-emerald-800 dark:text-emerald-300/80 flex items-center gap-1 font-semibold transition-theme">
                   <Mountain className="w-3 h-3 text-amber-600" />
-                  Finca Suelo Vivo, Celo
+                  {hasPassport ? loteData?.ubicacionGeografica : "Finca Suelo Vivo, Celo"}
                 </p>
                 <p className="text-[10px] text-teal-700 dark:text-teal-400/60 font-mono font-medium mt-0.5 transition-theme">
                   Zona Regenerativa - Sepolia
@@ -196,10 +247,22 @@ export function ImpactoView() {
 
             {/* BiotaPass Badge & Identity */}
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <Badge className="bg-gradient-to-r from-emerald-500/20 to-teal-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-500/25 px-2.5 py-1 transition-theme">
-                <Sparkles className="w-3 h-3 mr-1 text-yellow-500" />
-                BiotaPass: Nivel 1
-              </Badge>
+              {hasPassport ? (
+                <Badge className="bg-gradient-to-r from-emerald-500/20 to-teal-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-500/25 px-2.5 py-1 transition-theme">
+                  <Sparkles className="w-3 h-3 mr-1 text-yellow-500" />
+                  BiotaPass: #{tokenId?.toString()}
+                </Badge>
+              ) : (
+                <Button 
+                  onClick={handleMintPassport}
+                  disabled={isMinting || mintConfirmed}
+                  size="sm"
+                  className="h-8 bg-emerald-500 text-white text-[10px] font-black uppercase rounded-xl animate-pulse"
+                >
+                  {isMinting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                  Solicitar Pasaporte
+                </Button>
+              )}
               
               {isWhitelisted ? (
                 <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 px-2.5 py-1 flex items-center gap-1">
@@ -268,8 +331,10 @@ export function ImpactoView() {
                 </span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-blue-900 dark:text-white font-mono transition-theme">50</span>
-                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold badge-usdm">USDm</span>
+                <span className="text-2xl font-bold text-blue-900 dark:text-white font-mono transition-theme">
+                  {hasPassport ? cmRecuperados : 0}
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold badge-usdm">cm2</span>
               </div>
               <div className="mt-1.5 flex items-center gap-1 text-[9px] text-blue-700 dark:text-cyan-500/70 font-medium">
                 <Zap className="w-3 h-3 text-blue-600" />
@@ -344,12 +409,12 @@ export function ImpactoView() {
           {/* Submit Button */}
           <Button
             onClick={handleOracleSubmit}
-            disabled={selectedActions.length === 0 || submitting || submitted}
+            disabled={selectedActions.length === 0 || isCertifying || submitted || !hasPassport}
             className={`
               w-full h-12 font-bold text-sm transition-all cyber-btn
               ${submitted 
                 ? "bg-green-500 hover:bg-green-500" 
-                : selectedActions.length > 0
+                : selectedActions.length > 0 && hasPassport
                   ? "bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:via-green-400 hover:to-teal-400 glow-md"
                   : "bg-gray-200 dark:bg-emerald-900/30 text-gray-500 dark:text-emerald-600"
               }
@@ -357,8 +422,10 @@ export function ImpactoView() {
           >
             {submitted ? (
               <><CheckCircle2 className="w-4 h-4 mr-2" /> Enviado al Oraculo</>
-            ) : submitting ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verificando...</>
+            ) : isCertifying ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Certificando On-Chain...</>
+            ) : !hasPassport ? (
+              <><AlertCircle className="w-4 h-4 mr-2" /> Requiere Pasaporte</>
             ) : (
               <><Send className="w-4 h-4 mr-2" /> Enviar Evidencia</>
             )}

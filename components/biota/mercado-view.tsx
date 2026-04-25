@@ -21,7 +21,7 @@ import {
   Loader2
 } from "lucide-react"
 import { 
-  useAccount, 
+  useConnection, 
   useWriteContract, 
   useSendTransaction, 
   useReadContract, 
@@ -51,7 +51,7 @@ const currencies = [
 ]
 
 export function MercadoView() {
-  const { address } = useAccount()
+  const { address } = useConnection()
   const [cart, setCart] = useState<Record<number, number>>({})
   const [selectedCurrency, setSelectedCurrency] = useState('cUSD')
   const [paid, setPaid] = useState(false)
@@ -74,7 +74,7 @@ export function MercadoView() {
     functionName: 'allowance',
     args: [address!, ADDRESSES.BIOTA_SPLITTER],
     query: { enabled: !!address && !!tokenAddress && selectedCurrency !== 'CELO' }
-  })
+  }) as { data: bigint | undefined, refetch: any }
 
   // Refrescar permiso tras transacción exitosa
   useEffect(() => {
@@ -104,8 +104,8 @@ export function MercadoView() {
   const COLLECTIVE_MUJERES = ADDRESSES.COLLECTIVE_MUJERES as `0x${string}`
   const BIOTA_POOL = ADDRESSES.BIOTA_POOL as `0x${string}`
 
-  const totalAmount = BigInt(cartTotal) * BigInt(10**15)
-  const needsApproval = selectedCurrency !== 'CELO' && (allowance === undefined || allowance < totalAmount)
+  const totalAmount = BigInt(cartTotal) * 10n**15n
+  const needsApproval = selectedCurrency !== 'CELO' && (allowance === undefined || (allowance as bigint) < totalAmount)
 
   const handleAction = async () => {
     if (!address) return;

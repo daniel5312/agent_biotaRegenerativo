@@ -8,6 +8,7 @@ import { IDENTITY_ABI } from './abi/Identity'
 import { BIOTA_SPLITTER_ABI } from './abi/BiotaSplitter'
 import { BIOTA_SCROW_ABI } from './abi/BiotaScrow'
 import { BIOTA_PASSPORT_ABI } from './abi/BiotaPassport'
+import { I_BIOTA_PASSPORT_ABI } from './abi/IBiotaPassport'
 
 // Re-exportar ABIs para que el resto de la app los encuentre aquí
 export {
@@ -15,7 +16,8 @@ export {
   IDENTITY_ABI,
   BIOTA_SPLITTER_ABI,
   BIOTA_SCROW_ABI,
-  BIOTA_PASSPORT_ABI
+  BIOTA_PASSPORT_ABI,
+  I_BIOTA_PASSPORT_ABI
 }
 
 // ── Chains ──────────────────────────────────────────────────────────────────────
@@ -87,17 +89,18 @@ export const ADDRESSES = {
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 export interface LoteData {
+  verificador: `0x${string}`;
+  esVerificado: boolean;
+  isHumanVerified: boolean;
+  areaM2: bigint;
+  cmSueloRecuperado: bigint;
   fechaRegistro: bigint;
   ultimaActualizacion: bigint;
   ubicacionGeografica: string;
-  areaM2: bigint;
-  cmSueloRecuperado: bigint;
   estadoBiologico: string;
   hashAnalisisLab: string;
   ingredientesHash: string;
   metodosAgricolas: string;
-  verificador: `0x${string}`;
-  esVerificado: boolean;
 }
 
 export interface MintParams {

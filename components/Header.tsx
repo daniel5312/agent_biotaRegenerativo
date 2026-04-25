@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { Sun, Moon, Globe, Zap } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth"; // [PRIVY-CORE]
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
 
 /**
  * [REFI-UI] Header optimizado para Privy.
@@ -12,7 +12,7 @@ import { useAccount } from "wagmi";
 export default function Header() {
   const { theme, setTheme } = useTheme();
   const { login, logout, authenticated } = usePrivy();
-  const { address } = useAccount();
+  const { address } = useConnection();
   const [mounted, setMounted] = useState(false);
   const [lang, setLang] = useState("ES");
 

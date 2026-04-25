@@ -3,10 +3,9 @@ pragma solidity 0.8.28; // [SOLIDITY] Actualizado a la versión más reciente se
 
 // [SOLIDITY] Importación del inicializador base requerido por proxies UUPS.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-// [SOLIDITY] Importación de AccessControl para gestionar roles de forma estandarizada y segura.
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-// [SOLIDITY] Importación de la lógica base para permitir que el contrato sea actualizable (UUPS).
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {IBiotaPassport} from "./IBiotaPassport.sol";
 
 // [BLOCKCHAIN] Declaración principal del contrato inteligente BiotaScrow.
 // [EVM] Utiliza herencia múltiple inicializable (patrón Proxy) para ahorrar gas de despliegue y permitir mejoras futuras.
@@ -27,6 +26,7 @@ contract BiotaScrow is Initializable, AccessControlUpgradeable, UUPSUpgradeable 
     error BiotaScrow__UnauthorizedOracle(address caller);  // [BLOCKCHAIN] Identifica billetera que intenta usurpar a la IA.
     error BiotaScrow__InvalidRegenerationData();           // [REFI] Falla si los datos biológicos o wallets vienen vacíos.
     error BiotaScrow__ActionAlreadyRegistered(uint256 id); // [BLOCKCHAIN] Previene doble validación y drenaje de fondos (Doble Gasto).
+    error Biota__ProductorNoVerificado();           // [REFI] Revierta si el productor no cumple requisitos del pasaporte.
 
     // ==========================================
     // [EVM] STORAGE PACKING (Optimización Extrema)
@@ -41,6 +41,9 @@ contract BiotaScrow is Initializable, AccessControlUpgradeable, UUPSUpgradeable 
     // [SOLIDITY] Mapeo que asocia un identificador único (creado off-chain) con la estructura compactada.
     // [CELO] Almacena el historial on-chain de las regeneraciones en la red.
     mapping(uint256 => RegenerationValidation) public validations;
+
+    // [CROSS-CONTRACT] Instancia del contrato de pasaporte para validaciones de flujo de fondos.
+    IBiotaPassport public passport;
 
     // ==========================================
     // [SOLIDITY] EVENTOS
@@ -66,6 +69,15 @@ contract BiotaScrow is Initializable, AccessControlUpgradeable, UUPSUpgradeable 
         _grantRole(AGENT_ROLE, agentOracle);
     }
 
+    /**
+     * @notice [BLOCKCHAIN] Configura la dirección del contrato BiotaPassport.
+     * @dev Restringido a administradores para evitar redirección maliciosa de validaciones.
+     * @param _passport Dirección del contrato que implementa IBiotaPassport.
+     */
+    function setPassportContract(address _passport) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        passport = IBiotaPassport(_passport);
+    }
+
     // ==========================================
     // [REFI] EL DOBLE GATILLO ON-CHAIN
     // ==========================================
@@ -74,6 +86,7 @@ contract BiotaScrow is Initializable, AccessControlUpgradeable, UUPSUpgradeable 
     function executeDoubleTrigger(
         uint256 actionId,     // [BLOCKCHAIN] ID único asociado a la acción agronómica.
         address farmerTarget, // [CELO] Destinatario que recibirá la Renta Básica (UBI).
+        uint256 tokenId,      // [REFI] ID del pasaporte para validación cross-contract.
         uint32 fieldBioScore  // [REFI] Métrica dictaminada por el Agente de IA.
     ) external {
         // [EVM] Verificación de rol usando operaciones bit a bit internas de OZ.
@@ -90,6 +103,24 @@ contract BiotaScrow is Initializable, AccessControlUpgradeable, UUPSUpgradeable 
         // [BLOCKCHAIN] Comprueba que ese ID de acción esté limpio en el storage.
         if (validations[actionId].farmerWallet != address(0)) {
             revert BiotaScrow__ActionAlreadyRegistered(actionId); // [SOLIDITY]
+        }
+
+        // ==========================================
+        // [CROSS-CONTRACT] VALIDACIÓN DE PASAPORTE
+        // ==========================================
+        // [REFI] Garantiza que el flujo de fondos solo llegue a productores con identidad verificada.
+        if (address(passport) != address(0)) {
+            // 1. Validar que posea al menos un pasaporte.
+            if (passport.balanceOf(farmerTarget) == 0) {
+                revert Biota__ProductorNoVerificado();
+            }
+
+            // 2. Validar flags de confianza del token específico.
+            (, bool esVerificado, bool isHumanVerified, , , , , , , , , ) = passport.lotePasaporte(tokenId);
+            
+            if (!esVerificado || !isHumanVerified) {
+                revert Biota__ProductorNoVerificado(); // [GAS-OPTIMIZATION] Uso de Custom Error.
+            }
         }
 
         // [EVM] Escritura en Storage (SSTORE). Como llenamos todo el slot de 32 bytes de una pasada,

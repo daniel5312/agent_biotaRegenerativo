@@ -15,5 +15,5 @@ celo = "https://forno.celo.org"
 celo_sepolia = "https://forno.celo-sepolia.celo-testnet.org" 
 
 [etherscan]
-celo = { key = "${ETHERSCAN_API_KEY}", url = "https://api.celoscan.io/api" }
-celo_sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.celoscan.io/api" }
+celo = { key = "${ETHERSCAN_API_KEY}", url = "https://celo.blockscout.com/api", verifier = "blockscout" }
+celo_sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://celo-sepolia.blockscout.com/api", verifier = "blockscout" }
