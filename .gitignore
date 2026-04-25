@@ -1,45 +1,47 @@
-# --- 1. V0 & VERCEL INTERNALS ---
-__v0_runtime_loader.js
-__v0_devtools.tsx
-__v0_jsx-dev-runtime.ts
-.snowflake/
-.v0-trash/
-.vercel/
-next.user-config.*
-
-# --- 2. DEPENDENCIAS & BUILDS ---
-node_modules/
-.next/
-out/
-build/
-dist/
-.cache/
-
-# --- 3. VARIABLES DE ENTORNO (CRÍTICO) ---
-# Bloqueamos todos los archivos .env excepto el ejemplo
+# --- 1. VARIABLES DE ENTORNO (CRÍTICO - SEGURIDAD) ---
 .env
+.env.local
 .env*.local
 .env.production
 .env.development
 .env.test
-!.env.example
+# Bloqueo preventivo de llaves y certificados
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa
+keystore
+*secret*
+*PRIVATE_KEY*
 
-# --- 4. ARCHIVOS DE SISTEMA ---
+# --- 2. FOUNDRY & WEB3 ARTIFACTS (ESTRICTO) ---
+# Evitamos subir logs de transacciones y archivos compilados
+lib/
+out/
+cache/
+broadcast/
+artifacts/
+typechain-types/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+# Ignoramos la base de datos de cache de Forge
+.forge/
+
+# --- 3. DEPENDENCIAS & NEXT.JS ---
+node_modules/
+.next/
+.turbo/
+build/
+dist/
+.vercel/
+
+# --- 4. ARCHIVOS DE SISTEMA & IDE ---
 .DS_Store
 .DS_Store?
 ._*
 Thumbs.db
-desktop.ini
-
-# --- 5. LOGS & DEPURACIÓN ---
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-logs/
-*.log
-
-# --- 6. ARCHIVOS DE EDITOR/IDE ---
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -47,8 +49,9 @@ logs/
 *.swp
 *.swo
 
-# --- 7. WEB3 / BLOCKCHAIN ARTIFACTS ---
-# Por si luego integras Hardhat o Foundry
-artifacts/
-cache/
-typechain-types/
+# --- 5. LOGS ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+logs/
