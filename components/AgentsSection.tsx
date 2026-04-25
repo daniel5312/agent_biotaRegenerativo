@@ -9,7 +9,7 @@ const AGENTS = [
     id: "DIAGNOSTICO_AGROSOSTENIBLE",
     name: "Onboarding", 
     role: "Guía Biota", 
-    icon: <UserCheck />, 
+    icon: UserCheck, 
     color: "from-emerald-500 to-teal-400",
     prompt: "Hola agricultor, soy tu Guía Biota. ¿Estás listo para regenerar tu tierra?"
   },
@@ -17,7 +17,7 @@ const AGENTS = [
     id: "CAPATAZ",
     name: "Capataz", 
     role: "Gestión de Campo", 
-    icon: <Shield />, 
+    icon: Shield, 
     color: "from-green-600 to-emerald-400",
     prompt: "Capataz en línea. Reportando estado de las parcelas..."
   },
@@ -25,7 +25,7 @@ const AGENTS = [
     id: "DANIEL_EXPERTO",
     name: "D. Experto", 
     role: "Agrónomo IA", 
-    icon: <Microscope />, 
+    icon: Microscope, 
     color: "from-lime-500 to-emerald-500",
     prompt: "Analizando microbiología del suelo. ¿Qué observas hoy?"
   },
@@ -33,7 +33,7 @@ const AGENTS = [
     id: "ANALISTA_LAB",
     name: "Laboratorio", 
     role: "Análisis MM", 
-    icon: <Beaker />, 
+    icon: Beaker, 
     color: "from-cyan-500 to-blue-400",
     prompt: "Cámara de laboratorio activa. Listo para procesar tu receta MM."
   },
@@ -41,7 +41,7 @@ const AGENTS = [
     id: "ANALISTA_CROMA",
     name: "Croma", 
     role: "Visualización", 
-    icon: <BarChart3 />, 
+    icon: BarChart3, 
     color: "from-teal-600 to-lime-400",
     prompt: "Escáner Croma listo. Sube la foto de tu análisis de suelo."
   },
@@ -69,7 +69,7 @@ export default function AgentsSection() {
             <div className={`absolute inset-0 bg-gradient-to-br ${agent.color} opacity-20 blur-xl group-hover:opacity-40 transition-opacity`} />
             <div className="relative bg-white dark:bg-zinc-900 border border-emerald-500/10 rounded-[2rem] p-5 shadow-xl flex flex-col items-center gap-3 transition-all duration-300 group-hover:-translate-y-2 group-hover:border-emerald-500/40 group-active:scale-95">
               <div className={`p-3 rounded-2xl bg-gradient-to-br ${agent.color} text-white shadow-lg shadow-emerald-500/20`}>
-                {React.cloneElement(agent.icon as React.ReactElement, { size: 24 })}
+                <agent.icon size={24} />
               </div>
               <div className="text-center">
                 <p className="text-sm font-black text-zinc-800 dark:text-zinc-100 leading-tight">

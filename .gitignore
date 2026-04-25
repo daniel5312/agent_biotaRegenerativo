@@ -28,6 +28,7 @@ contracts/cache/
 contracts/broadcast/
 # Ignoramos la base de datos de cache de Forge
 .forge/
+.foundry/
 
 # --- 3. DEPENDENCIAS & NEXT.JS ---
 node_modules/

@@ -1,8 +1,15 @@
 export const BIOTA_PASSPORT_ABI = [
   {
     "type": "constructor",
-    "inputs": [],
+    "inputs": [{ "name": "initialOwner", "type": "address", "internalType": "address" }],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "isVerificador",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -37,9 +44,16 @@ export const BIOTA_PASSPORT_ABI = [
   {
     "type": "function",
     "name": "validarImpacto",
+    "inputs": [{ "name": "tokenId", "type": "uint256", "internalType": "uint256" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "gestionarVerificador",
     "inputs": [
-      { "name": "tokenId", "type": "uint256", "internalType": "uint256" },
-      { "name": "_isHumanVerified", "type": "bool", "internalType": "bool" }
+      { "name": "cuenta", "type": "address", "internalType": "address" },
+      { "name": "estado", "type": "bool", "internalType": "bool" }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"

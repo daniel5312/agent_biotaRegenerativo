@@ -50,7 +50,7 @@ export default function MiniPayDashboard() {
         address: ADDRESSES.BIOTA_SCROW,
         abi: BIOTA_SCROW_ABI,
         functionName: "executeDoubleTrigger",
-        args: [BigInt(Date.now()), address!, 100],
+        args: [BigInt(Date.now()), address!, BigInt(1), 100],
       });
     } catch (error) {
       console.error("Error en Reclamo JIT:", error);

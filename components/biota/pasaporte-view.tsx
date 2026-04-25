@@ -109,7 +109,7 @@ export function PasaporteView() {
         address: ADDRESSES.BIOTA_SCROW,
         abi: BIOTA_SCROW_ABI,
         functionName: "executeDoubleTrigger",
-        args: [BigInt(Date.now()), address, tokenId ?? 0n, 100],
+        args: [BigInt(Date.now()), address as `0x${string}`, tokenId ?? 0n, 100],
       });
     } catch (error) {
       console.error("Error en Reclamo UBI:", error);
