@@ -3,8 +3,13 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
 type Message = {
-  role: "user" | "assistant"; // El 'system' lo manejamos en el servidor por seguridad
+  role: "user" | "assistant";
   content: string;
+  metadata?: {
+    verdict?: any;
+    txHash?: string;
+    actionExecuted?: boolean;
+  };
 };
 
 // 1. Actualiza la interface
@@ -53,7 +58,15 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.text },
+        { 
+          role: "assistant", 
+          content: data.text,
+          metadata: {
+            verdict: data.verdict,
+            txHash: data.txHash,
+            actionExecuted: data.actionExecuted
+          }
+        },
       ]);
     } catch (error) {
       console.error("Error:", error);

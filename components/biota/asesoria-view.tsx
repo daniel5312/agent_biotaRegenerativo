@@ -18,11 +18,13 @@ import {
   Info,
   ChevronRight,
   Sprout,
-  Zap
+  Zap,
+  Camera
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { useAgent } from "@/context/agentProvider"
 
 const AGENTS = [
@@ -69,10 +71,11 @@ const AGENTS = [
 ]
 
 export function AsesoriaView() {
-  const { messages, sendMessage, isLoading } = useAgent()
+  const { messages, sendMessage, analizarCroma, isLoading } = useAgent()
   const [input, setInput] = useState("")
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -89,6 +92,18 @@ export function AsesoriaView() {
   const selectAgent = (agent: typeof AGENTS[0]) => {
     setSelectedAgent(agent)
     sendMessage(agent.prompt, agent.id)
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64String = reader.result as string
+      analizarCroma(base64String)
+    }
+    reader.readAsDataURL(file)
   }
 
   return (
@@ -229,7 +244,38 @@ export function AsesoriaView() {
                       }
                     `}>
                       {msg.content}
-                      {isBot && (
+                      {msg.metadata?.verdict && (
+                        <div className="mt-3 p-3 bg-emerald-950/10 dark:bg-black/20 rounded-xl border border-emerald-500/30 animate-glow">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-tighter">
+                              Veredicto Regenerativo
+                            </span>
+                            <Badge className={msg.metadata.verdict.status === "APROBADO" ? "bg-emerald-500" : "bg-amber-500"}>
+                              {msg.metadata.verdict.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-end gap-1 mb-2">
+                            <span className="text-2xl font-black text-emerald-900 dark:text-white leading-none">
+                              {msg.metadata.verdict.score}
+                            </span>
+                            <span className="text-[9px] font-bold text-emerald-600/60 pb-0.5">/ 100 BIO</span>
+                          </div>
+                          <p className="text-[9px] font-medium text-emerald-800/80 dark:text-emerald-300/80 leading-tight">
+                            {msg.metadata.verdict.recomendacion}
+                          </p>
+                          <div className="mt-3 flex gap-2">
+                            <Button size="sm" className="h-7 text-[9px] bg-emerald-600 hover:bg-emerald-700 text-white w-full">
+                              Detalles Técnicos
+                            </Button>
+                            {msg.metadata.verdict.status === "APROBADO" && (
+                              <Button size="sm" variant="outline" className="h-7 text-[9px] border-emerald-600 text-emerald-600 w-full">
+                                <Zap className="w-2.5 h-2.5 mr-1" /> Gatillo UBI
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {isBot && !msg.metadata?.verdict && (
                         <div className="mt-2 flex items-center gap-2 pt-2 border-t border-emerald-100 dark:border-emerald-700/30">
                           <button className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:underline">
                             Ver Mas
@@ -255,7 +301,22 @@ export function AsesoriaView() {
 
         {/* Input Area */}
         <div className="p-3 bg-white/60 dark:bg-emerald-950/60 border-t border-emerald-200 dark:border-emerald-500/20 transition-theme">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImageUpload} 
+            accept="image/*" 
+            className="hidden" 
+          />
           <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-10 w-10 shrink-0 bg-white dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-600/30 text-emerald-600"
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
             <div className="relative flex-1">
               <Input
                 value={input}

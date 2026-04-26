@@ -102,7 +102,7 @@ export function MercadoView() {
   // Direcciones de Impacto (Desde el centro de mando en lib/contracts.ts)
   const MERCHANT_ADDRESS = (process.env.NEXT_PUBLIC_PERSONAL_WALLET || "0x6D4763715bf9cDe401FD4AaC9a6254CeB4382c9b") as `0x${string}`
   const COLLECTIVE_MUJERES = ADDRESSES.COLLECTIVE_MUJERES as `0x${string}`
-  const BIOTA_POOL = ADDRESSES.BIOTA_POOL as `0x${string}`
+  const REFI_MEDELLIN = ADDRESSES.REFI_MEDELLIN as `0x${string}`
 
   const totalAmount = BigInt(cartTotal) * 10n**15n
   const needsApproval = selectedCurrency !== 'CELO' && (allowance === undefined || (allowance as bigint) < totalAmount)
@@ -136,7 +136,7 @@ export function MercadoView() {
             totalAmount,
             MERCHANT_ADDRESS as `0x${string}`,
             COLLECTIVE_MUJERES as `0x${string}`,
-            BIOTA_POOL as `0x${string}`
+            REFI_MEDELLIN as `0x${string}`
           ],
         })
       }
@@ -276,7 +276,7 @@ export function MercadoView() {
                 </div>
                 <div className="text-right">
                   <p className="text-[8px] text-emerald-600/60 uppercase font-bold">Resumen Impacto (4%)</p>
-                  <p className="text-[9px] font-bold text-teal-600 dark:text-emerald-400">Mujeres del Carmen + Pool Biota</p>
+                  <p className="text-[9px] font-bold text-teal-600 dark:text-emerald-400">Mujeres del Carmen + ReFi Medellín</p>
                   <p className="text-xs font-bold text-emerald-950 dark:text-white">{cartCount} items</p>
                 </div>
               </div>
