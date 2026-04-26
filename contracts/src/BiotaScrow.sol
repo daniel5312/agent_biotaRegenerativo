@@ -5,6 +5,7 @@ pragma solidity 0.8.28; // [SOLIDITY] Actualizado a la versión más reciente se
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {IBiotaPassport} from "./IBiotaPassport.sol";
 
 // [BLOCKCHAIN] Declaración principal del contrato inteligente BiotaScrow.
 // [EVM] Utiliza herencia múltiple inicializable (patrón Proxy) para ahorrar gas de despliegue y permitir mejoras futuras.
