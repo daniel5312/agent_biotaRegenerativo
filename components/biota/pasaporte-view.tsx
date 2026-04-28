@@ -26,10 +26,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useConnection, useWriteContract, useReadContract, useWaitForTransactionReceipt } from "wagmi"
 import { useWallets } from "@privy-io/react-auth"
-import { ADDRESSES, BIOTA_SCROW_ABI, ERC20_ABI, IDENTITY_ABI, formatCUSD } from "@/lib/contracts"
+import { ADDRESSES, BIOTA_SCROW_ABI, BIOTA_UBI_ABI, ERC20_ABI, IDENTITY_ABI, formatCUSD } from "@/lib/contracts"
 import { useBiotaPass } from "@/hooks/useBiotaPass"
 import { usePoA } from "@/hooks/usePoA"
 import { useAgent } from "@/context/agentProvider"
+import { useToast } from "@/hooks/use-toast"
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === 'true';
 
@@ -49,6 +50,7 @@ export function PasaporteView() {
     mintConfirmed
   } = useBiotaPass()
   const { certificarPoA, isCertifying } = usePoA()
+  const { toast } = useToast()
 
   const [selectedActions, setSelectedActions] = useState<string[]>([])
   const [submitted, setSubmitted] = useState(false)
@@ -69,6 +71,7 @@ export function PasaporteView() {
 
   // --- Lógica de Smart Contracts ---
   const { data: balanceValue } = useReadContract({
+    chainId: 42220,
     address: ADDRESSES.CUSD,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -77,6 +80,7 @@ export function PasaporteView() {
   });
 
   const { data: gBalanceValue } = useReadContract({
+    chainId: 42220,
     address: ADDRESSES.G$,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -85,6 +89,7 @@ export function PasaporteView() {
   });
 
   const { data: isWhitelisted } = useReadContract({
+    chainId: 42220,
     address: ADDRESSES.IDENTITY,
     abi: IDENTITY_ABI,
     functionName: "isWhitelisted",
@@ -92,7 +97,7 @@ export function PasaporteView() {
     query: { enabled: !!address },
   });
 
-  const { writeContract, isPending: isClaimingUBI } = useWriteContract();
+  const { writeContractAsync, isPending: isClaimingUBI } = useWriteContract();
 
   // Escuchar transacciones del Agente (Onboarding)
   const { isLoading: isAgentMintingLoading, isSuccess: isAgentMintSuccess } = useWaitForTransactionReceipt({
@@ -103,18 +108,21 @@ export function PasaporteView() {
   const isActuallyMinting = isMinting || (agentAction?.isMinting && !isAgentMintSuccess);
 
   const handleClaimUBI = useCallback(async () => {
-    if (!wallets[0] || !address) return;
+    if (!wallets[0] || !address || !tokenId) return;
     try {
-      writeContract({
-        address: ADDRESSES.BIOTA_SCROW,
-        abi: BIOTA_SCROW_ABI,
-        functionName: "executeDoubleTrigger",
-        args: [BigInt(Date.now()), address as `0x${string}`, tokenId ?? 0n, 100],
+      toast({ title: "Activando goteo de UBI...", description: "Firma la transacción para iniciar el flujo." })
+      const hashTx = await writeContractAsync({
+        chainId: 42220,
+        address: ADDRESSES.BIOTA_UBI as `0x${string}`,
+        abi: BIOTA_UBI_ABI,
+        functionName: "iniciarFlujoUbi",
+        args: [tokenId],
       });
-    } catch (error) {
-      console.error("Error en Reclamo UBI:", error);
+      toast({ title: "¡Flujo Iniciado!", description: "El UBI está fluyendo a tu billetera." })
+    } catch (error: any) {
+      toast({ title: "Error", description: error?.message?.slice(0,100) || "Error desconocido", variant: "destructive" })
     }
-  }, [address, wallets, writeContract, tokenId]);
+  }, [address, wallets, writeContractAsync, tokenId, toast]);
 
   const formattedBalance = useMemo(() => {
     return balanceValue !== undefined ? `${formatCUSD(balanceValue as bigint)} cUSD` : "0.00 cUSD";

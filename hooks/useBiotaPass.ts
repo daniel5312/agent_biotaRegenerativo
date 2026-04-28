@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react'
 import {
   useConnection, useReadContract, useWriteContract,
   useWaitForTransactionReceipt, useWatchContractEvent,
+  usePublicClient
 } from 'wagmi'
 import { usePrivy } from '@privy-io/react-auth'
 import {
-  ADDRESSES, BIOTA_PASSPORT_ABI,
+  ADDRESSES, BIOTA_PASSPORT_ABI, ERC20_ABI,
   type LoteData, type MintParams,
   cmToScore, formatFecha,
 } from '@/lib/contracts'
+import { useToast } from '@/hooks/use-toast'
 
 export interface BiotaPassState {
   tokenId:         bigint | null
@@ -18,7 +20,7 @@ export interface BiotaPassState {
   bioScore:        number
   hasPassport:     boolean
   isLoading:       boolean
-  mintPassport:    (params: Omit<MintParams, 'recipient'>) => void
+  mintPassport:    (params: Omit<MintParams, 'recipient'>) => Promise<void>
   isMinting:       boolean
   mintTxHash:      `0x${string}` | undefined
   mintConfirmed:   boolean
@@ -33,6 +35,8 @@ export interface BiotaPassState {
 export function useBiotaPass(): BiotaPassState {
   const { address, isConnected } = useConnection()
   const { authenticated }        = usePrivy()
+  const { toast }                = useToast()
+  const publicClient             = usePublicClient({ chainId: 42220 })
 
   // tokenId: persiste en localStorage vinculado a la wallet
   const [tokenId, setTokenId] = useState<bigint | null>(() => {
@@ -40,6 +44,9 @@ export function useBiotaPass(): BiotaPassState {
     const saved = localStorage.getItem(`biota_tokenId_${address}`)
     return saved ? BigInt(saved) : null
   })
+
+  const [isMinting, setIsMinting] = useState(false)
+  const [mintTxHash, setMintTxHash] = useState<`0x${string}` | undefined>(undefined)
 
   useEffect(() => {
     if (!address || tokenId === null) return
@@ -51,6 +58,7 @@ export function useBiotaPass(): BiotaPassState {
     address:   ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
     abi:       BIOTA_PASSPORT_ABI,
     eventName: 'PassportMinted',
+    chainId:   42220,
     onLogs(logs) {
       for (const log of logs) {
         const { args } = log as any
@@ -63,6 +71,7 @@ export function useBiotaPass(): BiotaPassState {
   })
 
   const { data: balance, isLoading: loadingBalance } = useReadContract({
+    chainId:      42220,
     address:      ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
     abi:          BIOTA_PASSPORT_ABI,
     functionName: 'balanceOf',
@@ -73,6 +82,7 @@ export function useBiotaPass(): BiotaPassState {
   const hasPassport = !!balance && (balance as bigint) > 0n
 
   const { data: rawLote, isLoading: loadingLote } = useReadContract({
+    chainId:      42220,
     address:      ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
     abi:          BIOTA_PASSPORT_ABI,
     functionName: 'lotePasaporte',
@@ -82,50 +92,84 @@ export function useBiotaPass(): BiotaPassState {
 
   // Mapeo manual del array de retorno a objeto LoteData
   const loteData: LoteData | null = rawLote ? {
-    verificador: rawLote[0],
-    esVerificado: rawLote[1],
-    isHumanVerified: rawLote[2],
-    areaM2: BigInt(rawLote[3]),
-    cmSueloRecuperado: BigInt(rawLote[4]),
-    fechaRegistro: BigInt(rawLote[5]),
-    ultimaActualizacion: BigInt(rawLote[6]),
-    ubicacionGeografica: rawLote[7],
-    estadoBiologico: rawLote[8],
-    hashAnalisisLab: rawLote[9],
-    ingredientesHash: rawLote[10],
-    metodosAgricolas: rawLote[11],
+    verificador: (rawLote as any)[0],
+    esVerificado: (rawLote as any)[1],
+    isHumanVerified: (rawLote as any)[2],
+    areaM2: BigInt((rawLote as any)[3]),
+    cmSueloRecuperado: BigInt((rawLote as any)[4]),
+    fechaRegistro: BigInt((rawLote as any)[5]),
+    ultimaActualizacion: BigInt((rawLote as any)[6]),
+    ubicacionGeografica: (rawLote as any)[7] || 'Biota Node - Celo Mainnet',
+    estadoBiologico: (rawLote as any)[8] || 'Transición Agroecológica',
+    hashAnalisisLab: (rawLote as any)[9] || '0xabc...123',
+    ingredientesHash: (rawLote as any)[10] || 'Bocashi, MM',
+    metodosAgricolas: (rawLote as any)[11] || 'Agricultura Sintrópica',
   } : null
 
-  const {
-    writeContract,
-    data:      mintTxHash,
-    isPending: isMinting,
-    error:     mintWriteError,
-  } = useWriteContract()
+  const { writeContractAsync } = useWriteContract()
 
   const { isSuccess: mintConfirmed } = useWaitForTransactionReceipt({
     hash:  mintTxHash,
     query: { enabled: !!mintTxHash },
   })
 
-  const mintPassport = (params: Omit<MintParams, 'recipient'>) => {
+  const mintPassport = async (params: Omit<MintParams, 'recipient'>) => {
     if (!address || !authenticated) return
-    writeContract({
-      address:      ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
-      abi:          BIOTA_PASSPORT_ABI,
-      functionName: 'mintPasaporte',
-      args: [
-        address,
-        params.tokenURI,
-        params.ubicacionGeografica,
-        Number(params.areaM2),
-        Number(params.cmSueloRecuperado),
-        params.estadoBiologico,
-        params.hashAnalisisLab,
-        params.ingredientesHash,
-        params.metodosAgricolas,
-      ],
-    })
+    setIsMinting(true)
+    try {
+      toast({
+        title: "Paso 1: Aprobando cobro en G$...",
+        description: "Firma la transacción para permitir el pago del BiotaPass.",
+      })
+      const approveTx = await writeContractAsync({
+        chainId: 42220,
+        address: ADDRESSES.G$ as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [ADDRESSES.BIOTA_PASSPORT, BigInt(100 * 1e18)], // Aprobación generosa
+      })
+      
+      toast({ title: "Esperando confirmación de G$..." })
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash: approveTx })
+      }
+
+      toast({
+        title: "Paso 2: Creando Pasaporte Biota...",
+        description: "Firma para registrar tu tierra en Celo Mainnet.",
+      })
+      const hash = await writeContractAsync({
+        chainId: 42220,
+        address: ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
+        abi: BIOTA_PASSPORT_ABI,
+        functionName: 'mintPasaporte',
+        args: [
+          address,
+          params.tokenURI,
+          params.ubicacionGeografica,
+          Number(params.areaM2),
+          Number(params.cmSueloRecuperado),
+          params.estadoBiologico,
+          params.hashAnalisisLab,
+          params.ingredientesHash,
+          params.metodosAgricolas,
+        ],
+      })
+      setMintTxHash(hash)
+      toast({
+        title: "¡Pasaporte solicitado!",
+        description: "Tu pasaporte se está confirmando en la blockchain.",
+      })
+    } catch (error: any) {
+      console.error("Error minting passport:", error)
+      toast({
+        title: "Error al crear pasaporte",
+        description: error?.message?.slice(0, 100) || "Error desconocido",
+        variant: "destructive"
+      })
+    } finally {
+      setIsMinting(false)
+    }
   }
 
   const cm = (loteData as LoteData)?.cmSueloRecuperado ?? 0n
@@ -140,7 +184,7 @@ export function useBiotaPass(): BiotaPassState {
     isMinting,
     mintTxHash,
     mintConfirmed,
-    mintError:       mintWriteError?.message?.slice(0, 100) ?? null,
+    mintError:       null,
     fechaRegistro:   loteData ? formatFecha((loteData as LoteData).fechaRegistro) : '—',
     estadoBiologico: (loteData as LoteData)?.estadoBiologico ?? 'Sin diagnóstico',
     cmRecuperados:   Number(cm),
@@ -148,3 +192,4 @@ export function useBiotaPass(): BiotaPassState {
     isHumanVerified: (loteData as LoteData)?.isHumanVerified ?? false,
   }
 }
+

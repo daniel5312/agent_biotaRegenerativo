@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+// import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/components/providers";
 import { AgentProvider } from "@/context/agentProvider";
 import { ThemeProvider } from "next-themes"; // [NEXT-THEMES]
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+// Fallback to system fonts to bypass Google Fonts timeout
+const inter = { className: "font-sans" }; 
 
 export const metadata: Metadata = {
   title: "Biota Protocol: Suelo Vivo",
@@ -26,6 +28,7 @@ export default function RootLayout({
             </AgentProvider>
           </Providers>
         </ThemeProvider>
+        <Toaster />
         <Analytics />
       </body>
     </html>

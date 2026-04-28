@@ -1,6 +1,6 @@
 import { createWalletClient, createPublicClient, http, parseAbiItem } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { celoSepolia, celo } from 'viem/chains';
+import { celo } from 'viem/chains';
 import { ADDRESSES, BIOTA_PASSPORT_ABI, BIOTA_SCROW_ABI } from '../contracts';
 import { generatePassportMetadata } from '../utils';
 
@@ -9,21 +9,22 @@ import { generatePassportMetadata } from '../utils';
  * Formato compatible con @google/genai
  */
 
-// 1. Configuración del Cliente de Wallet (Backend Oracle)
-const account = privateKeyToAccount((process.env.PRIVATE_KEY as `0x${string}`) || '0x');
+// 1. Configuración del Cliente de Wallet (Backend Oracle) - MAINNET ENFORCEMENT
+const account = privateKeyToAccount((process.env.PRIVATE_KEY as `0x${string}`) || '');
 
-const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 42220);
-const chain = chainId === 42220 ? celo : celoSepolia;
+const chainId = 42220; // Celo Mainnet
+const chain = celo;
+const rpcUrl = "https://forno.celo.org";
 
 const walletClient = createWalletClient({
     account,
     chain,
-    transport: http(process.env.NEXT_PUBLIC_RPC_URL)
+    transport: http(rpcUrl)
 });
 
 const publicClient = createPublicClient({
     chain,
-    transport: http(process.env.NEXT_PUBLIC_RPC_URL)
+    transport: http(rpcUrl)
 });
 
 /**
@@ -118,7 +119,7 @@ export async function executeMintPassport(args: any) {
         });
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        
+
         return {
             success: true,
             hash: hash,
@@ -142,20 +143,20 @@ export async function executeMintPassport(args: any) {
  */
 export async function executeSoilValidation(args: any) {
     console.log("[AI-VERDICT-TEST] 🧠 Procesando Veredicto para:", args.farmerAddress);
-    
+
     // Lógica determinista simulada
-    const score = (args.ph >= 5.5 && args.ph <= 7.5 ? 30 : 10) + 
-                  (args.materiaOrganica > 3 ? 40 : 20) + 
-                  (args.biodiversidad / 2);
-    
+    const score = (args.ph >= 5.5 && args.ph <= 7.5 ? 30 : 10) +
+        (args.materiaOrganica > 3 ? 40 : 20) +
+        (args.biodiversidad / 2);
+
     const status = score >= 60 ? "APROBADO" : "OBSERVACIÓN";
-    
+
     const verdict = {
         veredictoId: `BIO-${Date.now()}`,
         status,
         score,
-        recomendacion: status === "APROBADO" 
-            ? "La labor cumple con los estándares regenerativos. Listo para Gatillo UBI." 
+        recomendacion: status === "APROBADO"
+            ? "La labor cumple con los estándares regenerativos. Listo para Gatillo UBI."
             : "Se requiere mayor integración biológica antes de liberar el incentivo.",
         detalles: args
     };
@@ -178,7 +179,7 @@ export async function executeDoubleTrigger(args: any) {
         console.log("[AGENT-TOOL] Ejecutando execute_double_trigger con:", args);
 
         const actionId = args.actionId || BigInt(Date.now());
-        
+
         const hash = await walletClient.writeContract({
             address: ADDRESSES.BIOTA_SCROW as `0x${string}`,
             abi: BIOTA_SCROW_ABI,
@@ -192,7 +193,7 @@ export async function executeDoubleTrigger(args: any) {
         });
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        
+
         return {
             success: true,
             hash: hash,

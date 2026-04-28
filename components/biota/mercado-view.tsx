@@ -57,9 +57,9 @@ export function MercadoView() {
   const [paid, setPaid] = useState(false)
 
   // 1. Configuración de Pago (Wagmi Hooks)
-  const { writeContract: writeSplitter, isPending: isTokenPaying, data: payHash } = useWriteContract()
+  const { mutate: writeSplitter, isPending: isTokenPaying, data: payHash } = useWriteContract()
   const { sendTransaction, isPending: isNativePaying, data: nativeHash } = useSendTransaction()
-  const { writeContract: writeApprove, isPending: isApprovePending, data: approveHash } = useWriteContract()
+  const { mutate: writeApprove, isPending: isApprovePending, data: approveHash } = useWriteContract()
 
   // 2. Esperar Recibos (UX Mejorada)
   const { isLoading: isConfirmingApprove, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash })

@@ -1,6 +1,6 @@
 import { createConfig, http } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { celoSepolia, celoMainnet } from '@/lib/contracts'
+import { celo } from 'wagmi/chains'
 
 // Conector MiniPay: detecta window.ethereum.isMiniPay
 const miniPayConnector = injected({
@@ -14,10 +14,9 @@ const miniPayConnector = injected({
 })
 
 export const wagmiConfig = createConfig({
-  chains: [celoMainnet, celoSepolia],
+  chains: [celo],
   transports: {
-    [celoMainnet.id]: http('https://forno.celo.org'),
-    [celoSepolia.id]: http('https://forno.celo-sepolia.celo-testnet.org'),
+    [celo.id]: http('https://forno.celo.org'),
   },
   connectors: [
     miniPayConnector,

@@ -12,8 +12,8 @@ contract UpgradeBiotaScrow is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         
-        // Direcciones desde el .env
-        address proxyAddress = vm.envAddress("NEXT_PUBLIC_BIOTASCROW_PROXY_ADDRESS");
+        // Dirección fija del Proxy actual según requerimiento
+        address proxyAddress = 0x6bbA84c35685746A3FDffb09b8b36bFce6839A1B;
         address passportAddress = vm.envAddress("NEXT_PUBLIC_BIOTA_PASSPORT_ADDRESS");
 
         vm.startBroadcast(deployerPrivateKey);

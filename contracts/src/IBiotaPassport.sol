@@ -26,11 +26,6 @@ interface IBiotaPassport {
         uint32 areaM2,
         uint32 cmSueloRecuperado,
         uint64 fechaRegistro,
-        uint64 ultimaActualizacion,
-        string memory ubicacionGeografica,
-        string memory estadoBiologico,
-        string memory hashAnalisisLab,
-        string memory ingredientesHash,
-        string memory metodosAgricolas
+        uint64 ultimaActualizacion
     );
 }

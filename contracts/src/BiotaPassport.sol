@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title BiotaPassport - Pasaporte Biológico Dinámico
 /// @notice Core ReFi del protocolo Biota. Registra y tokeniza la regeneración del suelo.
@@ -66,21 +65,13 @@ contract BiotaPassport is ERC721URIStorage, Ownable {
     }
 
     modifier soloProductor(uint256 tokenId) {
-        _checkProductor(tokenId);
+        if (ownerOf(tokenId) != msg.sender) revert Biota__NoEresElPropietario();
         _;
     }
 
     modifier soloVerificador() {
-        _checkVerificador();
-        _;
-    }
-
-    function _checkProductor(uint256 tokenId) internal view {
-        if (ownerOf(tokenId) != msg.sender) revert Biota__NoEresElPropietario();
-    }
-
-    function _checkVerificador() internal view {
         if (!isVerificador[msg.sender]) revert Biota__NoEresVerificador();
+        _;
     }
 
     /// @notice Mintea el pasaporte base para iniciar la medición de impacto
@@ -120,7 +111,7 @@ contract BiotaPassport is ERC721URIStorage, Ownable {
         _setTokenURI(newId, tokenURI);
 
         emit PassportMinted(newId, recipient, _ubicacionGeografica);
-        
+
         unchecked {
             _nextTokenId++;
         }
