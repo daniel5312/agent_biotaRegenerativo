@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { usePrivy } from "@privy-io/react-auth"
+import Link from "next/link"
 import { ArrowRight, Globe, Leaf, Moon, Sprout, Sun, Coins, Terminal, Activity, Cpu, Shield, Zap, ExternalLink, Network, MoveRight, BrainCircuit, Database, ShieldCheck } from "lucide-react"
 import { useTheme } from "next-themes"
 
@@ -284,18 +285,40 @@ export default function Page() {
     )
   }
 
-  if (!authenticated) {
+  const isDebug = typeof window !== 'undefined' && localStorage.getItem('BIOTA_DEBUG') === 'true';
+
+  // Si no está autenticado y no tiene el debug flag, muestra la LandingPage
+  if (!authenticated && !isDebug) {
     return <LandingPage />
   }
 
+  // SPA original con AppShell y Vistas
   return (
     <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
-      <div className="animate-fade-in h-full">
-        {activeTab === "pasaporte" && <PasaporteView />}
-        {activeTab === "impacto" && <ImpactoView />}
-        {activeTab === "mercado" && <MercadoView />}
-        {activeTab === "academia" && <AcademiaView />}
-        {activeTab === "asesoria" && <AsesoriaView />}
+      <div className="flex flex-col h-full">
+        {/* ENLACES A RUTAS FÍSICAS (ECOSISTEMA TRAS BAMBALINAS) */}
+        <div className="flex justify-center gap-4 py-2 px-4 bg-emerald-950/20 border-b border-emerald-900/30">
+          <Link 
+            href="/productor" 
+            className="text-[10px] font-black text-emerald-500 hover:text-emerald-400 uppercase tracking-widest flex items-center gap-1 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 transition-all hover:bg-emerald-500/20"
+          >
+            <Sprout size={12} /> Acceso Productor
+          </Link>
+          <Link 
+            href="/verificador" 
+            className="text-[10px] font-black text-amber-500 hover:text-amber-400 uppercase tracking-widest flex items-center gap-1 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20 transition-all hover:bg-amber-500/20"
+          >
+            <ShieldCheck size={12} /> Acceso Verificador
+          </Link>
+        </div>
+
+        <div className="flex-1 overflow-y-auto animate-fade-in pb-20">
+          {activeTab === "pasaporte" && <PasaporteView />}
+          {activeTab === "impacto" && <ImpactoView />}
+          {activeTab === "mercado" && <MercadoView />}
+          {activeTab === "academia" && <AcademiaView />}
+          {activeTab === "asesoria" && <AsesoriaView />}
+        </div>
       </div>
     </AppShell>
   )
