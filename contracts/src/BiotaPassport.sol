@@ -16,7 +16,7 @@ contract BiotaPassport is ERC721URIStorage, Ownable {
     IERC20 public constant G_TOKEN =
         IERC20(0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A);
 
-    uint256 public constant MINT_PRICE_CELO = 0.25 ether;
+    uint256 public constant MINT_PRICE_CELO = 0.01 ether;
     uint256 public constant MINT_PRICE_G = 50 * 1e18;
 
     error Biota__PagoInsuficiente();

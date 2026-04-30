@@ -25,7 +25,7 @@ export const BIOTA_PASSPORT_ABI = [
       { "name": "_metodosAgricolas", "type": "string", "internalType": "string" }
     ],
     "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -68,7 +68,12 @@ export const BIOTA_PASSPORT_ABI = [
       { "name": "areaM2", "type": "uint32", "internalType": "uint32" },
       { "name": "cmSueloRecuperado", "type": "uint32", "internalType": "uint32" },
       { "name": "fechaRegistro", "type": "uint64", "internalType": "uint64" },
-      { "name": "ultimaActualizacion", "type": "uint64", "internalType": "uint64" }
+      { "name": "ultimaActualizacion", "type": "uint64", "internalType": "uint64" },
+      { "name": "ubicacionGeografica", "type": "string", "internalType": "string" },
+      { "name": "estadoBiologico", "type": "string", "internalType": "string" },
+      { "name": "hashAnalisisLab", "type": "string", "internalType": "string" },
+      { "name": "ingredientesHash", "type": "string", "internalType": "string" },
+      { "name": "metodosAgricolas", "type": "string", "internalType": "string" }
     ],
     "stateMutability": "view"
   },

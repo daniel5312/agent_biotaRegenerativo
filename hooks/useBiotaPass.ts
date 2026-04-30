@@ -154,7 +154,7 @@ export function useBiotaPass(): BiotaPassState {
         if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveTx })
       } else {
         // Pago en CELO Nativo
-        valueToSend = parseEther('0.25'); 
+        valueToSend = parseEther('0.01'); 
       }
 
       toast({

@@ -1,30 +1,44 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useConnection, useWriteContract, useReadContract, useSendTransaction } from "wagmi"
-import { usePrivy } from "@privy-io/react-auth"
-import { parseEther, parseUnits } from "viem"
-import Link from "next/link"
+import { useState } from "react";
 import {
-  ArrowLeft, ShoppingCart, Leaf, Sprout, FlaskConical,
-  Coins, CircleDollarSign, CreditCard, Loader2, Package
-} from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ADDRESSES, ERC20_ABI } from "@/lib/contracts"
-import { useToast } from "@/hooks/use-toast"
+  useAccount,
+  useWriteContract,
+  useReadContract,
+  useSendTransaction,
+  useBalance,
+} from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
+import { parseEther, parseUnits, formatUnits } from "viem";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ShoppingCart,
+  Leaf,
+  Sprout,
+  FlaskConical,
+  Coins,
+  CircleDollarSign,
+  CreditCard,
+  Loader2,
+  Package,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ADDRESSES, ERC20_ABI } from "@/lib/contracts";
+import { useToast } from "@/hooks/use-toast";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
-type Currency = "celo" | "gd" | "usdt"
+type Currency = "celo" | "gd" | "usdt" | "usdc";
 
 interface CurrencyConfig {
-  label: string
-  symbol: string
-  decimals: number
-  icon: React.FC<{ className?: string }>
-  activeClass: string // clases estáticas para que Tailwind no las purgue
-  inactiveClass: string
+  label: string;
+  symbol: string;
+  decimals: number;
+  icon: any;
+  activeClass: string;
+  inactiveClass: string;
 }
 
 const CURRENCIES: Record<Currency, CurrencyConfig> = {
@@ -40,19 +54,23 @@ const CURRENCIES: Record<Currency, CurrencyConfig> = {
   },
   usdt: {
     label: "USDT", symbol: "USDT", decimals: 6, icon: CreditCard,
-    activeClass: "bg-green-500/10 border-green-500/40 text-green-400",
+    activeClass: "bg-emerald-500/10 border-emerald-500/40 text-emerald-400",
     inactiveClass: "bg-white/5 border-white/10 text-stone-400 hover:border-white/20",
   },
-}
+  usdc: {
+    label: "USDC", symbol: "USDC", decimals: 6, icon: CircleDollarSign,
+    activeClass: "bg-sky-500/10 border-sky-500/40 text-sky-400",
+    inactiveClass: "bg-white/5 border-white/10 text-stone-400 hover:border-white/20",
+  },
+};
 
-// ── Catálogo de productos ─────────────────────────────────────────────────────
 interface Product {
-  id: string
-  name: string
-  description: string
-  icon: React.FC<{ className?: string }>
-  prices: Record<Currency, string>
-  category: string
+  id: string;
+  name: string;
+  description: string;
+  icon: any;
+  prices: Record<Currency, string>;
+  category: string;
 }
 
 const PRODUCTS: Product[] = [
@@ -61,7 +79,7 @@ const PRODUCTS: Product[] = [
     name: "Kit Bocashi Biota",
     description: "Inóculo microbiano para activación de suelos regenerativos. 1kg.",
     icon: Sprout,
-    prices: { celo: "0.01", gd: "1", usdt: "0.01" },
+    prices: { celo: "0.01", gd: "10", usdt: "0.01", usdc: "0.01" },
     category: "Insumos",
   },
   {
@@ -69,7 +87,7 @@ const PRODUCTS: Product[] = [
     name: "Análisis de Suelo Básico",
     description: "pH, Materia Orgánica, N, P, K. Resultado digital en 7 días.",
     icon: FlaskConical,
-    prices: { celo: "0.01", gd: "1", usdt: "0.01" },
+    prices: { celo: "0.05", gd: "50", usdt: "0.05", usdc: "0.05" },
     category: "Servicios",
   },
   {
@@ -77,7 +95,7 @@ const PRODUCTS: Product[] = [
     name: "Sello ReFi Medellín",
     description: "Certificado digital de agricultura regenerativa. Válido 1 año.",
     icon: Leaf,
-    prices: { celo: "0.01", gd: "1", usdt: "0.01" },
+    prices: { celo: "0.1", gd: "100", usdt: "0.1", usdc: "0.1" },
     category: "Certificados",
   },
   {
@@ -85,18 +103,18 @@ const PRODUCTS: Product[] = [
     name: "Consultoría Agroecológica",
     description: "Sesión 1:1 con un técnico Biota. 60 minutos.",
     icon: Package,
-    prices: { celo: "0.01", gd: "1", usdt: "0.01" },
+    prices: { celo: "0.2", gd: "200", usdt: "0.2", usdc: "0.2" },
     category: "Servicios",
   },
-]
+];
 
-// ── Selector de Moneda ────────────────────────────────────────────────────────
+// ── Componentes Internos ──────────────────────────────────────────────────────
 function CurrencySelector({ value, onChange }: { value: Currency; onChange: (c: Currency) => void }) {
   return (
     <div className="flex flex-wrap gap-2">
       {(Object.entries(CURRENCIES) as [Currency, CurrencyConfig][]).map(([key, cfg]) => {
-        const Icon = cfg.icon
-        const isActive = value === key
+        const Icon = cfg.icon;
+        const isActive = value === key;
         return (
           <button
             key={key}
@@ -108,212 +126,132 @@ function CurrencySelector({ value, onChange }: { value: Currency; onChange: (c: 
             <Icon className="w-4 h-4" />
             {cfg.symbol}
           </button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
-// ── Producto Card ─────────────────────────────────────────────────────────────
-function ProductCard({
-  product,
-  currency,
-  onBuy,
-  isBuying,
-}: {
-  product: Product
-  currency: Currency
-  onBuy: (product: Product) => void
-  isBuying: boolean
-}) {
-  const Icon = product.icon
-  const cfg = CURRENCIES[currency]
-  const price = product.prices[currency]
+function ProductCard({ product, currency, onBuy, isBuying }: { product: Product; currency: Currency; onBuy: (p: Product) => void; isBuying: boolean }) {
+  const Icon = product.icon;
+  const cfg = CURRENCIES[currency];
+  const price = product.prices[currency];
 
   return (
     <Card className="bg-[#0a0a0a] border-white/5 overflow-hidden hover:border-emerald-500/20 transition-all group rounded-2xl">
-      <div className="h-1 bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500" />
       <CardContent className="p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-            <Icon className="w-6 h-6 text-emerald-400" />
+          <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
+            <Icon className="w-6 h-6" />
           </div>
           <div>
-            <Badge className="bg-white/5 border-white/10 text-stone-500 text-[9px] font-bold uppercase mb-1">
-              {product.category}
-            </Badge>
-            <h3 className="text-white font-black text-base leading-tight">{product.name}</h3>
+            <Badge className="bg-white/5 border-white/10 text-stone-500 text-[9px] font-bold uppercase mb-1">{product.category}</Badge>
+            <h3 className="text-white font-black text-base">{product.name}</h3>
           </div>
         </div>
-
-        <p className="text-stone-500 text-sm leading-relaxed">{product.description}</p>
-
-        <div className="flex items-center justify-between pt-2 border-t border-white/5">
+        <p className="text-stone-500 text-xs leading-relaxed">{product.description}</p>
+        <div className="flex items-center justify-between pt-4 border-t border-white/5">
           <div>
-            <p className="text-[9px] font-bold text-stone-600 uppercase tracking-widest">Precio</p>
-            <p className="text-xl font-black text-white font-mono">
-              {price}{" "}
-              <span className="text-sm font-bold text-emerald-400">{cfg.symbol}</span>
-            </p>
+            <p className="text-[8px] font-black text-stone-600 uppercase">Inversión</p>
+            <p className="text-xl font-black text-white font-mono">{price} <span className="text-xs text-emerald-500">{cfg.symbol}</span></p>
           </div>
-          <Button
-            onClick={() => onBuy(product)}
-            disabled={isBuying}
-            className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase rounded-xl h-10 px-5 transition-all shadow-lg shadow-emerald-500/20"
-          >
-            {isBuying ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
-                Comprar
-              </>
-            )}
+          <Button onClick={() => onBuy(product)} disabled={isBuying} className="bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[10px] uppercase rounded-xl h-10 px-6">
+            {isBuying ? <Loader2 className="w-4 h-4 animate-spin" /> : <><ShoppingCart className="w-3.5 h-3.5 mr-2" /> Pagar</>}
           </Button>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 // ── Componente Principal ──────────────────────────────────────────────────────
 export function TiendaMultipago() {
-  const { address } = useConnection()
-  const { authenticated } = usePrivy()
-  const { writeContractAsync } = useWriteContract()
-  const { sendTransactionAsync } = useSendTransaction()
-  const { toast } = useToast()
-  const [currency, setCurrency] = useState<Currency>("gd")
-  const [buyingId, setBuyingId] = useState<string | null>(null)
+  const { address } = useAccount();
+  const { authenticated } = usePrivy();
+  const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
+  const { toast } = useToast();
+  const [currency, setCurrency] = useState<Currency>("gd");
+  const [buyingId, setBuyingId] = useState<string | null>(null);
 
-  // Balances en vivo desde ERC20
-  const { data: gdBalance } = useReadContract({
-    chainId: 42220,
-    address: ADDRESSES.G$,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  })
+  // Balances
+  const { data: celoRes } = useBalance({ address: address as `0x${string}`, query: { enabled: !!address } });
+  const { data: gdBal } = useReadContract({ chainId: 42220, address: ADDRESSES.G$, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined, query: { enabled: !!address } });
+  const { data: usdtBal } = useReadContract({ chainId: 42220, address: ADDRESSES.USDT, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined, query: { enabled: !!address } });
+  const { data: usdcBal } = useReadContract({ chainId: 42220, address: ADDRESSES.USDC, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined, query: { enabled: !!address } });
 
-  const { data: usdtBalance } = useReadContract({
-    chainId: 42220,
-    address: ADDRESSES.USDT,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  })
-
-  const formatBal = (raw: bigint | undefined, decimals: number): string => {
-    if (!raw) return "0"
-    const div = BigInt(10 ** decimals)
-    return (raw / div).toString()
-  }
+  const formatB = (raw: any, dec: number) => {
+    if (!raw) return "0.00";
+    const val = typeof raw === "object" && "value" in raw ? raw.value : BigInt(raw);
+    return Number(formatUnits(val, dec)).toFixed(2);
+  };
 
   const handleBuy = async (product: Product) => {
+    console.log("CLICK DETECTADO:", product.id, currency);
     if (!authenticated || !address) {
-      toast({ title: "Wallet no conectada", description: "Conecta tu wallet para comprar.", variant: "destructive" })
-      return
+      toast({ title: "Error", description: "Conecta tu wallet.", variant: "destructive" });
+      return;
     }
-    setBuyingId(product.id)
+    setBuyingId(product.id);
     try {
-      const price = product.prices[currency]
-      const cfg = CURRENCIES[currency]
+      const price = product.prices[currency];
+      const cfg = CURRENCIES[currency];
 
       if (currency === "celo") {
-        // Pago CELO nativo: sendTransaction al treasury
-        toast({ title: `Comprando con ${price} CELO...`, description: "Firma la transacción nativa." })
-        await sendTransactionAsync({
-          to: ADDRESSES.TREASURY,
-          value: parseEther(price),
-          chainId: 42220,
-        })
-        toast({ title: "✅ ¡Compra realizada!", description: `${product.name} — ${price} CELO enviados.` })
+        await sendTransactionAsync({ to: ADDRESSES.REFI_MEDELLIN, value: parseEther(price), chainId: 42220 });
+        toast({ title: "✅ Éxito", description: "Pago en CELO enviado." });
       } else {
-        // Pago ERC20 (G$ o USDT): approve monto exacto al treasury
-        const tokenAddress = currency === "gd" ? ADDRESSES.G$ : ADDRESSES.USDT
-        const amount = parseUnits(price, cfg.decimals)
-
-        toast({ title: `Aprobando ${price} ${cfg.symbol}...`, description: "Monto exacto." })
-        await writeContractAsync({
+        const token = currency === "gd" ? ADDRESSES.G$ : currency === "usdt" ? ADDRESSES.USDT : ADDRESSES.USDC;
+        const amount = parseUnits(price, cfg.decimals);
+        
+        toast({ title: "Autorizando...", description: `Firma la autorización de ${cfg.symbol}` });
+        const hash = await writeContractAsync({
           chainId: 42220,
-          address: tokenAddress as `0x${string}`,
+          address: token as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "approve",
-          args: [ADDRESSES.TREASURY, amount],
-        })
-        toast({
-          title: "✅ ¡Compra realizada!",
-          description: `${product.name} — ${price} ${cfg.symbol} aprobados para el treasury Biota.`,
-        })
+          args: [ADDRESSES.REFI_MEDELLIN, amount],
+        });
+        toast({ title: "✅ Enviado", description: `Hash: ${hash.slice(0,10)}` });
       }
     } catch (err: any) {
-      toast({
-        title: "Error al comprar",
-        description: err?.message?.slice(0, 100) || "Error desconocido",
-        variant: "destructive",
-      })
+      console.error("ERROR TIENDA:", err);
+      toast({ title: "Falla", description: err?.shortMessage || "Error en transacción", variant: "destructive" });
     } finally {
-      setBuyingId(null)
+      setBuyingId(null);
     }
-  }
+  };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <Link
-          href="/"
-          className="text-[10px] font-bold text-stone-500 hover:text-white uppercase tracking-widest flex items-center gap-1.5 mb-4 transition-colors group"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-          Volver al Inicio
-        </Link>
-        <h1 className="text-3xl font-black text-white italic uppercase">
-          🌿 Tienda <span className="text-emerald-400">Biota</span>
-        </h1>
-        <p className="text-stone-400 text-sm mt-1">Productos regenerativos — paga con CELO, G$ o USDT</p>
-      </div>
-
-      {/* Selector de moneda + balances en vivo */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 bg-white/[0.03] border border-white/5 rounded-2xl">
+    <div className="space-y-6 max-w-4xl mx-auto p-4 md:p-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <p className="text-[9px] font-bold text-stone-600 uppercase tracking-widest mb-2">Pagar con</p>
+          <Link href="/" className="text-[9px] font-black text-stone-500 uppercase tracking-widest flex items-center gap-1.5 mb-4 hover:text-white transition-colors">
+            <ArrowLeft className="w-3 h-3" /> Panel Biota
+          </Link>
+          <h1 className="text-4xl font-black text-white italic uppercase italic">🌿 Tienda <span className="text-emerald-500">Biota</span></h1>
+        </div>
+        <div className="grid grid-cols-2 gap-2 bg-white/5 p-3 rounded-2xl border border-white/5">
+          <div className="px-2 border-r border-white/5"><p className="text-[7px] font-black text-stone-600 uppercase">CELO</p><p className="text-xs font-black text-amber-500">{formatB(celoRes, 18)}</p></div>
+          <div className="px-2"><p className="text-[7px] font-black text-stone-600 uppercase">G$</p><p className="text-xs font-black text-blue-500">{formatB(gdBal, 18)}</p></div>
+          <div className="px-2 border-r border-white/5"><p className="text-[7px] font-black text-stone-600 uppercase">USDT</p><p className="text-xs font-black text-emerald-500">{formatB(usdtBal, 6)}</p></div>
+          <div className="px-2"><p className="text-[7px] font-black text-stone-600 uppercase">USDC</p><p className="text-xs font-black text-sky-500">{formatB(usdcBal, 6)}</p></div>
+        </div>
+      </div>
+
+      <Card className="bg-white/5 border-white/10 rounded-2xl overflow-hidden">
+        <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500"><CircleDollarSign size={20} /></div>
+            <div><h2 className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Divisa de Pago</h2><p className="text-[9px] text-stone-600 font-bold">Celo Mainnet (42220)</p></div>
+          </div>
           <CurrencySelector value={currency} onChange={setCurrency} />
-        </div>
-        <div className="flex gap-6 text-right">
-          <div>
-            <p className="text-[9px] text-stone-600 font-bold uppercase">G$</p>
-            <p className="text-base font-black text-blue-400 font-mono">
-              {formatBal(gdBalance as bigint | undefined, 18)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[9px] text-stone-600 font-bold uppercase">USDT</p>
-            <p className="text-base font-black text-green-400 font-mono">
-              {formatBal(usdtBalance as bigint | undefined, 6)}
-            </p>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Grid de productos */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {PRODUCTS.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            currency={currency}
-            onBuy={handleBuy}
-            isBuying={buyingId === product.id}
-          />
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {PRODUCTS.map((p) => <ProductCard key={p.id} product={p} currency={currency} onBuy={handleBuy} isBuying={buyingId === p.id} />)}
       </div>
-
-      <p className="text-center text-[10px] text-stone-700 font-mono">
-        Precios de prueba | Celo Mainnet (42220) | Gas optimizado
-      </p>
     </div>
-  )
+  );
 }
