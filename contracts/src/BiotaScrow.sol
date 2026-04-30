@@ -129,18 +129,13 @@ contract BiotaScrow is
 
             // 2. Validar flags de confianza del token específico.
             (
-                ,
+                , // verificador
                 bool esVerificado,
                 bool isHumanVerified,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-                ,
-
+                , // areaM2
+                , // cmSueloRecuperado
+                , // fechaRegistro
+                  // ultimaActualizacion
             ) = passport.lotePasaporte(tokenId);
 
             if (!esVerificado || !isHumanVerified) {

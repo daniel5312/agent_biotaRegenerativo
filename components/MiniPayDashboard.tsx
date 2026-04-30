@@ -38,7 +38,7 @@ export default function MiniPayDashboard() {
     },
   });
 
-  const { writeContract, isPending: isDeploying } = useWriteContract();
+  const { writeContractAsync, isPending: isDeploying } = useWriteContract();
 
   const handleClaimUBI = useCallback(async () => {
     if (!wallets[0]) return;
@@ -46,16 +46,17 @@ export default function MiniPayDashboard() {
       const provider = await wallets[0].getEthereumProvider();
       console.log("[GOODDOLLAR-VIEM] Validando Entitlement...");
 
-      writeContract({
+      const hashTx = await writeContractAsync({
         address: ADDRESSES.BIOTA_SCROW,
         abi: BIOTA_SCROW_ABI,
         functionName: "executeDoubleTrigger",
         args: [BigInt(Date.now()), address!, BigInt(1), 100],
       });
+      console.log("¡Transacción enviada! Hash:", hashTx);
     } catch (error) {
-      console.error("Error en Reclamo JIT:", error);
+      console.error("Error en Reclamo JIT (rechazado o fallido):", error);
     }
-  }, [address, wallets, writeContract]);
+  }, [address, wallets, writeContractAsync]);
 
   const formattedBalance = useMemo(() => {
     return balanceValue !== undefined ? `${formatCUSD(balanceValue as bigint)} cUSD` : "0.00 cUSD";

@@ -1,23 +1,34 @@
-"use client"
+"use client";
 
-import { useAccount, useBalance } from "wagmi"
-import { Leaf, Wallet } from "lucide-react"
-import { useEffect, useState } from "react"
-import { celoMainnet } from "@/lib/contracts"
+import { useAccount, useReadContract } from "wagmi";
+import { formatUnits } from "viem";
+import { Leaf, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ADDRESSES, ERC20_ABI } from "@/lib/contracts";
 
 export function MiniPayHeader() {
-  const { address, isConnected } = useAccount()
-  const [mounted, setMounted] = useState(false)
+  const { address, isConnected } = useAccount();
+  const [mounted, setMounted] = useState(false);
 
-  // Balance en cUSD (Celo Mainnet o Sepolia)
-  const { data: balance } = useBalance({
-    address: address,
-    token: undefined, // Native CELO or we could specify cUSD
+  // Balance en cUSD usando useReadContract ya que useBalance puede no soportar token en esta versión
+  const { data: balanceRaw } = useReadContract({
+    address: ADDRESSES.CUSD,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+    }
   })
 
-  useEffect(() => setMounted(true), [])
+  const balance = typeof balanceRaw === 'bigint' ? {
+    formatted: formatUnits(balanceRaw, 18),
+    symbol: 'cUSD'
+  } : null;
 
-  if (!mounted) return null
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
 
   return (
     <header className="relative z-50 w-full px-4 pt-4 pb-2 bg-emerald-50/80 dark:bg-[#021a0e]/80 backdrop-blur-md border-b border-emerald-200/30 dark:border-emerald-500/10">
@@ -27,8 +38,12 @@ export function MiniPayHeader() {
             <Leaf className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-emerald-950 dark:text-white leading-none">BIOTA</h1>
-            <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold tracking-widest uppercase">MiniPay</p>
+            <h1 className="text-sm font-bold text-emerald-950 dark:text-white leading-none">
+              BIOTA
+            </h1>
+            <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold tracking-widest uppercase">
+              MiniPay
+            </p>
           </div>
         </div>
 
@@ -50,11 +65,13 @@ export function MiniPayHeader() {
           ) : (
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border border-dashed border-emerald-300/50">
               <Wallet className="w-3 h-3 text-emerald-400" />
-              <span className="text-[9px] font-bold text-emerald-500 italic">Desconectado</span>
+              <span className="text-[9px] font-bold text-emerald-500 italic">
+                Desconectado
+              </span>
             </div>
           )}
         </div>
       </div>
     </header>
-  )
+  );
 }

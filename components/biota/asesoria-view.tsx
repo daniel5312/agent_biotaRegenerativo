@@ -26,6 +26,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAgent } from "@/context/agentProvider"
+import { useConnection, useWriteContract } from 'wagmi'
+import { ADDRESSES, BIOTA_SCROW_ABI } from '@/lib/contracts'
+import { useBiotaPass } from '@/hooks/useBiotaPass'
+import { useToast } from '@/hooks/use-toast'
 
 const AGENTS = [
   { 
@@ -71,11 +75,37 @@ const AGENTS = [
 ]
 
 export function AsesoriaView() {
+  const { address } = useConnection()
+  const { tokenId } = useBiotaPass()
+  const { writeContractAsync, isPending: isTriggering } = useWriteContract()
+  const { toast } = useToast()
+
   const { messages, sendMessage, analizarCroma, isLoading } = useAgent()
   const [input, setInput] = useState("")
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleGatilloUBI = async () => {
+    if (tokenId === null || tokenId === undefined || !address) {
+      toast({ title: "Error", description: "No se encontró el Pasaporte o cuenta", variant: "destructive" })
+      return
+    }
+    try {
+      toast({ title: "Enviando Validación...", description: "Firma para activar el gatillo en Celo Mainnet." })
+      await writeContractAsync({
+        chainId: 42220,
+        address: ADDRESSES.BIOTA_SCROW as `0x${string}`,
+        abi: BIOTA_SCROW_ABI,
+        functionName: 'executeDoubleTrigger',
+        args: [BigInt(Date.now()), address as `0x${string}`, tokenId, 100]
+      })
+      toast({ title: "¡Gatillo Activado!", description: "Validación exitosa. El UBI está disponible." })
+    } catch(error: any) {
+      console.error(error)
+      toast({ title: "Error", description: error?.message?.slice(0,100) || "Error desconocido", variant: "destructive" })
+    }
+  }
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -263,15 +293,21 @@ export function AsesoriaView() {
                           <p className="text-[9px] font-medium text-emerald-800/80 dark:text-emerald-300/80 leading-tight">
                             {msg.metadata.verdict.recomendacion}
                           </p>
-                          <div className="mt-3 flex gap-2">
-                            <Button size="sm" className="h-7 text-[9px] bg-emerald-600 hover:bg-emerald-700 text-white w-full">
-                              Detalles Técnicos
-                            </Button>
-                            {msg.metadata.verdict.status === "APROBADO" && (
-                              <Button size="sm" variant="outline" className="h-7 text-[9px] border-emerald-600 text-emerald-600 w-full">
-                                <Zap className="w-2.5 h-2.5 mr-1" /> Gatillo UBI
+                          <div className="mt-4 flex flex-col gap-3">
+                            {msg.metadata.verdict.status?.includes("APROBADO") && (
+                              <Button 
+                                size="lg" 
+                                className="h-12 text-xs font-black bg-orange-500 hover:bg-orange-600 text-white w-full uppercase tracking-widest shadow-lg animate-pulse"
+                                onClick={handleGatilloUBI}
+                                disabled={isTriggering}
+                              >
+                                {isTriggering ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Zap className="w-4 h-4 mr-2" />}
+                                FIRMAR GATILLO UBI AHORA
                               </Button>
                             )}
+                            <Button size="sm" variant="ghost" className="h-7 text-[9px] text-emerald-600 w-full">
+                              Ver Detalles Técnicos
+                            </Button>
                           </div>
                         </div>
                       )}

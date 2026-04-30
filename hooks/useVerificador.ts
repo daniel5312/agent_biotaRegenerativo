@@ -29,7 +29,7 @@ export function useVerificador(): VerificadorState {
     query:        { enabled: isConnected && !!address },
   })
 
-  const { writeContract: writeValidar, data: validateTxHash, isPending: isValidating, error: validateWriteError } = useWriteContract()
+  const { mutate: writeValidar, data: validateTxHash, isPending: isValidating, error: validateWriteError } = useWriteContract()
   const { isSuccess: validateConfirmed } = useWaitForTransactionReceipt({ hash: validateTxHash, query: { enabled: !!validateTxHash } })
 
   const validarImpacto = (tokenId: bigint) => {
@@ -37,7 +37,7 @@ export function useVerificador(): VerificadorState {
     writeValidar({ address: ADDRESSES.BIOTA_PASSPORT, abi: BIOTA_PASSPORT_ABI, functionName: 'validarImpacto', args: [tokenId] })
   }
 
-  const { writeContract: writeGestionar, isPending: isManaging, error: manageWriteError } = useWriteContract()
+  const { mutate: writeGestionar, isPending: isManaging, error: manageWriteError } = useWriteContract()
 
   const gestionarVerificador = (cuenta: `0x${string}`, estado: boolean) => {
     writeGestionar({ address: ADDRESSES.BIOTA_PASSPORT, abi: BIOTA_PASSPORT_ABI, functionName: 'gestionarVerificador', args: [cuenta, estado] })

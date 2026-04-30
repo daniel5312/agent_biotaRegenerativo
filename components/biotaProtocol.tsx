@@ -5,6 +5,7 @@ import { useConnection } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
 import { useMiniPay } from "@/hooks/useMiniPay";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
+import { useAdminBypass } from "@/hooks/useAdminBypass"; // NUEVO HOOK
 import {
   LayoutDashboard,
   ClipboardList,
@@ -33,7 +34,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
-import ChatInterface from "@/components/chatInterface";
+
+// COMPONENTES REALES WAGMI
+import { ImpactoView } from "@/components/biota/impacto-view";
+import { AsesoriaView } from "@/components/biota/asesoria-view";
 
 type TabType = "dashboard" | "recetario" | "escaner" | "tesoreria" | "chat";
 
@@ -41,6 +45,7 @@ export default function BiotaProtocol() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
   const { logout } = usePrivy();
+  const { isBypassed } = useAdminBypass(); // MODO DIOS
 
   const toggleTask = (taskId: string) => {
     setCompletedTasks((prev) =>
@@ -52,7 +57,15 @@ export default function BiotaProtocol() {
 
   return (
     <div className="flex flex-col h-dvh bg-linear-to-b from-[#0a1a14] via-[#0d1f1a] to-[#081210]">
-      <div className="absolute top-4 right-4 z-50">
+      {isBypassed && (
+        <div className="absolute top-0 left-0 w-full h-1 bg-red-500 animate-pulse z-[100]" />
+      )}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        {isBypassed && (
+          <span className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-500/10 px-2 py-1 rounded border border-red-500/30">
+            God Mode
+          </span>
+        )}
         <button
           onClick={logout}
           className="p-2 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 backdrop-blur-md"
@@ -62,7 +75,11 @@ export default function BiotaProtocol() {
       </div>
 
       <main className="flex-1 overflow-y-auto pb-24">
-        {activeTab === "dashboard" && <DashboardView />}
+        {/* COMPONENTES REALES CONECTADOS A WAGMI */}
+        {activeTab === "dashboard" && <ImpactoView />}
+        {activeTab === "chat" && <AsesoriaView />}
+        
+        {/* COMPONENTES SECUNDARIOS */}
         {activeTab === "recetario" && (
           <RecetarioView
             completedTasks={completedTasks}
@@ -71,21 +88,6 @@ export default function BiotaProtocol() {
         )}
         {activeTab === "escaner" && <EscanerView />}
         {activeTab === "tesoreria" && <TesoreriaView />}
-
-        {/* NUEVA VISTA DE CHAT */}
-        {activeTab === "chat" && (
-          <div className="px-5 pt-14 pb-10">
-            <header className="mb-6">
-              <p className="text-emerald-400/80 text-sm font-medium tracking-wide">
-                Inteligencia Biota
-              </p>
-              <h1 className="text-2xl font-bold text-white mt-1">
-                Asesor Multi-Agente
-              </h1>
-            </header>
-            <ChatInterface />
-          </div>
-        )}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 max-w-107.5 mx-auto bg-linear-to-t from-[#0a1510]/98 via-[#0a1510]/95 to-transparent backdrop-blur-2xl border-t border-white/5 pb-safe">
@@ -162,145 +164,6 @@ function NavButton({
         <div className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-400" />
       )}
     </button>
-  );
-}
-
-function DashboardView() {
-  const { bioScore, hasPassport, isLoading } = useBiotaPass();
-  const displayScore = isLoading ? 0 : hasPassport ? bioScore : 0;
-
-  return (
-    <div className="px-5 pt-14 space-y-6">
-      <header className="flex items-start justify-between">
-        <div>
-          <p className="text-emerald-400/80 text-sm font-medium tracking-wide">
-            Buenos dias
-          </p>
-          <h1 className="text-2xl font-bold text-white mt-1">Finca El Cateo</h1>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
-          <div className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-emerald-400 text-xs font-semibold">
-            {hasPassport ? "Pasaporte Activo" : "Sin Registro"}
-          </span>
-        </div>
-      </header>
-
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-white/8 to-white/2 border border-white/10 p-5">
-        <div className="absolute -top-20 -right-20 size-40 bg-emerald-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 size-32 bg-cyan-500/15 rounded-full blur-2xl" />
-
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="size-5 text-emerald-400" />
-            <span className="text-white/80 text-sm font-medium">
-              Score Biológico On-Chain
-            </span>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="relative size-32 shrink-0">
-              <svg className="size-32 -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  className="text-white/5"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  stroke="url(#scoreGradient)"
-                  strokeWidth="8"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={`${displayScore * 2.64} 264`}
-                  className="transition-all duration-1000"
-                />
-                <defs>
-                  <linearGradient
-                    id="scoreGradient"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="100%"
-                  >
-                    <stop offset="0%" stopColor="#f59e0b" />
-                    <stop offset="100%" stopColor="#ef4444" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-bold text-white">
-                  {isLoading ? "..." : displayScore}
-                </span>
-                <span className="text-xs text-white/50 font-medium">/100</span>
-              </div>
-            </div>
-            <div className="flex-1 space-y-4">
-              <MetricRow
-                icon={<Droplets className="size-4" />}
-                label="Biodiversidad"
-                value={32}
-                color="from-cyan-400 to-emerald-400"
-              />
-              <MetricRow
-                icon={<Sun className="size-4" />}
-                label="Enzimas"
-                value={58}
-                color="from-amber-400 to-orange-400"
-              />
-              <MetricRow
-                icon={<TrendingUp className="size-4" />}
-                label="Micorrizas"
-                value={25}
-                color="from-emerald-400 to-teal-400"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-      <Button
-        size="lg"
-        className="w-full h-14 text-base font-bold rounded-2xl bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-lg shadow-emerald-500/25 border-0"
-      >
-        <Leaf className="size-5 mr-2" /> Ver Plan de Rescate
-      </Button>
-    </div>
-  );
-}
-
-function MetricRow({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-white/60">
-          {icon}
-          <span className="text-xs font-medium">{label}</span>
-        </div>
-        <span className="text-xs font-bold text-white">{value}%</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-        <div
-          className={`h-full rounded-full bg-linear-to-r ${color} transition-all duration-700`}
-          style={{ width: `${value}%` }}
-        />
-      </div>
-    </div>
   );
 }
 

@@ -25,15 +25,17 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useConnection, useWriteContract, useReadContract } from "wagmi"
-import { useWallets } from "@privy-io/react-auth"
-import { ADDRESSES, BIOTA_SCROW_ABI, ERC20_ABI, IDENTITY_ABI, formatCUSD } from "@/lib/contracts"
+import { useConnection, useReadContract } from "wagmi"
+import { useWallets, usePrivy } from "@privy-io/react-auth"
+import { ADDRESSES, ERC20_ABI, IDENTITY_ABI, CFA_V1_FORWARDER_ABI, formatCUSD } from "@/lib/contracts"
 import { useBiotaPass } from "@/hooks/useBiotaPass"
 import { usePoA } from "@/hooks/usePoA"
+import { IdentityAction } from "@/components/biota/IdentityAction"
 
 export function ImpactoView() {
   const { address } = useConnection()
   const { wallets } = useWallets()
+  const { authenticated } = usePrivy()
   const { 
     hasPassport, 
     tokenId, 
@@ -55,6 +57,7 @@ export function ImpactoView() {
 
   // --- Lógica de Smart Contracts ---
   const { data: balanceValue } = useReadContract({
+    chainId: 42220,
     address: ADDRESSES.CUSD,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -65,6 +68,7 @@ export function ImpactoView() {
   });
 
   const { data: gBalanceValue } = useReadContract({
+    chainId: 42220,
     address: ADDRESSES.G$,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -75,15 +79,16 @@ export function ImpactoView() {
   });
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    chainId: 42220,
     address: ADDRESSES.CUSD,
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: [address!, ADDRESSES.BIOTA_SCROW],
     query: { enabled: !!address }
-  }) as { data: bigint | undefined, refetch: any }
-;
+  }) as { data: bigint | undefined, refetch: any };
 
   const { data: isWhitelisted } = useReadContract({
+    chainId: 42220,
     address: ADDRESSES.IDENTITY,
     abi: IDENTITY_ABI,
     functionName: "isWhitelisted",
@@ -93,28 +98,31 @@ export function ImpactoView() {
     },
   });
 
-  const { writeContract, isPending: isClaimingUBI } = useWriteContract();
+  // 3. Consultar flujo entrante de G$ (Superfluid)
+  const { data: flowInfo } = useReadContract({
+    chainId: 42220,
+    address: ADDRESSES.SUPERFLUID_FORWARDER,
+    abi: CFA_V1_FORWARDER_ABI,
+    functionName: "getFlowInfo",
+    args: address && ADDRESSES.G$ ? [ADDRESSES.G$, ADDRESSES.BIOTA_UBI, address] : undefined,
+    query: {
+      enabled: !!address && ADDRESSES.BIOTA_UBI !== '0x0000000000000000000000000000000000000000',
+    },
+  });
 
-  const handleClaimUBI = useCallback(async () => {
-    if (!wallets[0] || !address) return;
-    try {
-      writeContract({
-        address: ADDRESSES.BIOTA_SCROW,
-        abi: BIOTA_SCROW_ABI,
-        functionName: "executeDoubleTrigger",
-        args: [BigInt(Date.now()), address, tokenId ?? 0n, 100],
-      });
-    } catch (error) {
-      console.error("Error en Reclamo UBI:", error);
-    }
-  }, [address, wallets, writeContract]);
+  const currentFlowRate = useMemo(() => {
+    if (!flowInfo) return 0n;
+    return (flowInfo as any)[1] as bigint; // flowrate es el segundo elemento
+  }, [flowInfo]);
 
   const formattedBalance = useMemo(() => {
-    return balanceValue !== undefined ? `${formatCUSD(balanceValue as bigint)} cUSD` : "0.00 cUSD";
+    if (balanceValue === undefined) return "0.00";
+    return formatCUSD(balanceValue as bigint);
   }, [balanceValue]);
 
   const formattedGBalance = useMemo(() => {
-    return gBalanceValue !== undefined ? `${formatCUSD(gBalanceValue as bigint)} G$` : "0.00 G$";
+    if (gBalanceValue === undefined) return "0.00";
+    return formatCUSD(gBalanceValue as bigint);
   }, [gBalanceValue]);
 
   // --- Lógica UI v0 ---
@@ -240,7 +248,7 @@ export function ImpactoView() {
                   {hasPassport ? loteData?.ubicacionGeografica : "Finca Suelo Vivo, Celo"}
                 </p>
                 <p className="text-[10px] text-teal-700 dark:text-teal-400/60 font-mono font-medium mt-0.5 transition-theme">
-                  Zona Regenerativa - Sepolia
+                  Zona Regenerativa - Celo Mainnet
                 </p>
               </div>
             </div>
@@ -294,27 +302,24 @@ export function ImpactoView() {
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
                   <span className="text-sm font-bold text-emerald-950 dark:text-white font-mono truncate">
-                    {formattedBalance.split(' ')[0]}
+                    {formattedBalance}
                   </span>
-                  <span className="text-[8px] font-bold text-emerald-600">cUSD</span>
+                  <span className="text-[8px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">cUSD</span>
                 </div>
-                <div className="flex items-baseline justify-between">
+                <div className="flex items-baseline justify-between relative">
                   <span className="text-sm font-bold text-blue-900 dark:text-blue-300 font-mono truncate">
-                    {formattedGBalance.split(' ')[0]}
+                    {formattedGBalance}
                   </span>
-                  <span className="text-[8px] font-bold text-blue-600">G$</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[8px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded">G$</span>
+                    {currentFlowRate > 0n && (
+                      <span className="text-[7px] text-blue-400 font-mono animate-pulse">
+                        +{Number(currentFlowRate * 3600n * 24n * 30n / 10n**18n).toFixed(2)}/mo
+                      </span>
+                    )}
+                    <Zap size={10} className={currentFlowRate > 0n ? "text-blue-400 animate-pulse" : "text-blue-400/20"} />
+                  </div>
                 </div>
-              </div>
-
-              <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between">
-                <button 
-                  onClick={handleClaimUBI} 
-                  disabled={isClaimingUBI || !isWhitelisted}
-                  className="text-[9px] font-bold text-emerald-600 hover:underline disabled:opacity-50 flex items-center gap-1"
-                >
-                  <Sprout className="w-3 h-3" />
-                  {isClaimingUBI ? "Cosechando..." : "Cosechar UBI"}
-                </button>
               </div>
             </CardContent>
           </Card>
@@ -343,6 +348,13 @@ export function ImpactoView() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* ================================================================
+          IDENTITY & UBI ACTIONS (Full Width)
+          ================================================================ */}
+      <div className="animate-slide-up delay-75">
+        <IdentityAction tokenId={tokenId ?? undefined} />
       </div>
 
       {/* ================================================================
@@ -509,39 +521,7 @@ export function ImpactoView() {
         </CardContent>
       </Card>
 
-      {/* ================================================================
-          GOODDOLLAR IDENTITY STATUS (GoodBuilders Integration)
-          ================================================================ */}
-      <Card className={`glass-card overflow-hidden animate-slide-up delay-200 ${
-        isWhitelisted ? "bg-blue-50/50 dark:bg-blue-900/10" : "bg-amber-50/50 dark:bg-amber-900/10"
-      }`}>
-        <CardContent className="p-4 flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${
-            isWhitelisted ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
-          }`}>
-            {isWhitelisted ? <ShieldCheck size={24} /> : <AlertCircle size={24} />}
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xs font-bold text-emerald-950 dark:text-white uppercase tracking-tight">
-              Identidad GoodDollar
-            </h3>
-            <p className="text-[10px] text-emerald-800/70 dark:text-emerald-400/70 leading-tight mt-0.5">
-              {isWhitelisted 
-                ? "Tu identidad humana esta verificada. Recibes UBI completo." 
-                : "Verifica tu rostro para habilitar el reclamo de GoodDollars."}
-            </p>
-          </div>
-          {!isWhitelisted && (
-            <Button 
-              size="sm" 
-              className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase h-8 px-3 rounded-xl shadow-md"
-              onClick={() => window.open("https://wallet.gooddollar.org", "_blank")}
-            >
-              Verificar
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      {/* El componente IdentityAction ya incluye el estado de GoodDollar arriba */}
 
       {/* ================================================================
           ACTIVITY TIMELINE

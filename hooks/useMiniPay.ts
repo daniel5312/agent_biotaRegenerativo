@@ -55,7 +55,7 @@ export function useMiniPay(): MiniPayState {
     query:        { enabled: isConnected && !!address, refetchInterval: 15_000 },
   })
 
-  const { writeContract, data: sendTxHash, isPending: isSending, error: sendWriteError } = useWriteContract()
+  const { mutate: writeContract, data: sendTxHash, isPending: isSending, error: sendWriteError } = useWriteContract()
   const { isSuccess: sendConfirmed } = useWaitForTransactionReceipt({ hash: sendTxHash, query: { enabled: !!sendTxHash } })
 
   const sendCUSD = useCallback((to: `0x${string}`, amount: string) => {

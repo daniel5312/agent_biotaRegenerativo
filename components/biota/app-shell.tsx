@@ -29,10 +29,11 @@ interface AppShellProps {
 
 const tabs: { id: TabId; labelEs: string; labelEn: string; icon: typeof Leaf }[] = [
   { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout },
+  { id: "impacto", labelEs: "Impacto", labelEn: "Impact", icon: Leaf },
   { id: "mercado", labelEs: "Mercado", labelEn: "Market", icon: ShoppingBag },
   { id: "academia", labelEs: "Escuela", labelEn: "School", icon: GraduationCap },
   { id: "asesoria", labelEs: "Asesores", labelEn: "Advisors", icon: Users },
-]
+];
 
 export function AppShell({ children, activeTab, onTabChange, isMiniPay = true }: AppShellProps) {
   const { theme, setTheme } = useTheme()

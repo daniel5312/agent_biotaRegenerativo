@@ -1,19 +1,18 @@
 // lib/privy.config.ts
 import type { PrivyClientConfig } from '@privy-io/react-auth'
-import { celo, celoSepolia } from '@wagmi/core/chains'
+import { celo } from '@wagmi/core/chains'
 
-const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 42220);
-const activeChain = chainId === 42220 ? celo : celoSepolia;
+const activeChain = celo;
 
 export const privyConfig: PrivyClientConfig = {
-  loginMethods: ['email', 'sms', 'wallet', 'telegram'],
+  loginMethods: ['email', 'sms', 'wallet', 'telegram', 'twitter', 'google'],
   embeddedWallets: {
     ethereum: {
       createOnLogin: 'users-without-wallets',
     },
   },
   defaultChain: activeChain,
-  supportedChains: [celo, celoSepolia],
+  supportedChains: [celo],
   appearance: {
     theme: 'dark',
     accentColor: '#10b981',
