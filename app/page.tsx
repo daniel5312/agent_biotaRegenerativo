@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react"
 import { usePrivy } from "@privy-io/react-auth"
 import Link from "next/link"
-import { ArrowRight, Globe, Leaf, Moon, Sprout, Sun, Coins, Terminal, Activity, Cpu, Shield, Zap, ExternalLink, Network, MoveRight, BrainCircuit, Database, ShieldCheck } from "lucide-react"
+import { ArrowRight, Globe, Leaf, Moon, Sprout, Sun, Coins, Terminal, Activity, Cpu, Shield, Zap, ExternalLink, Network, MoveRight, BrainCircuit, Database, ShieldCheck, UserCircle2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { useTheme } from "next-themes"
 
 // COMPONENTES PRINCIPALES DE LA DAPP
@@ -181,18 +182,37 @@ function LandingPage() {
             <p className="text-stone-500">Conecta tu identidad digital y comienza a operar en la red.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            <button
-              onClick={handleCTA}
-              className="bg-[#0a0a0a] border border-white/5 hover:border-emerald-500/30 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 group transition-all"
-            >
-              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:bg-emerald-500/10 transition-all">
-                <Leaf size={32} />
-              </div>
-              <div className="text-center">
-                <h3 className="text-xl font-black text-white mb-2 uppercase tracking-wide">Soy Productor</h3>
-                <p className="text-stone-500 text-sm">Gestiona tu pasaporte, sube evidencias y recibe recompensas.</p>
-              </div>
-            </button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <button
+                  className="bg-[#0a0a0a] border border-white/5 hover:border-emerald-500/30 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 group transition-all w-full"
+                >
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:bg-emerald-500/10 transition-all">
+                    <Leaf size={32} />
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-xl font-black text-white mb-2 uppercase tracking-wide">Soy Productor</h3>
+                    <p className="text-stone-500 text-sm">Gestiona tu pasaporte, sube evidencias y recibe recompensas.</p>
+                  </div>
+                </button>
+              </DialogTrigger>
+              <DialogContent className="bg-[#030712] border-white/10 max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-0">
+                <DialogHeader className="p-8 pb-0">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-emerald-500/10 p-2 rounded-lg text-emerald-500">
+                      <UserCircle2 size={24} />
+                    </div>
+                    <DialogTitle className="text-2xl font-black text-white uppercase italic">Registro de Productor</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-stone-500">
+                    Completa tu pasaporte biológico para empezar a recibir UBI y créditos de impacto.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="p-4 sm:p-8">
+                  <PasaporteView />
+                </div>
+              </DialogContent>
+            </Dialog>
 
             <button
               onClick={handleCTA}

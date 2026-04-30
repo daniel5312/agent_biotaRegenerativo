@@ -20,10 +20,10 @@ export async function POST(req: Request) {
         const { messages, agentRole = "CAPATAZ", image, type } = await req.json();
 
         // --- BYPASS ORACULO (API MOCK) ---
-        return NextResponse.json({ 
-            text: "[MODO DEBUG]: Lote validado. Habilitando Gatillo UBI.", 
-            role: "DANIEL_EXPERTO", 
-            verdict: { status: "APROBADO", score: 100 } 
+        return NextResponse.json({
+            text: "[MODO DEBUG]: Lote validado. Habilitando Gatillo UBI.",
+            role: "DANIEL_EXPERTO",
+            verdict: { status: "APROBADO", score: 100 }
         });
 
         // --- INICIO MODO DEBUG PROFESIONAL ---
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
         // 1. Manejo Multimodal (Visión para Cromas) - Usamos Flash para visión
         if (image && type === 'croma') {
             const base64Data = image.split(",")[1] || image;
-            
+
             // En @google/genai v1.0.0, usamos generateContent directamente desde el cliente o vía models
             const result = await ai.models.generateContent({
                 model: "gemini-1.5-flash",
@@ -117,15 +117,18 @@ export async function POST(req: Request) {
         });
 
         // 6. Manejo de Llamadas a Funciones (Tools)
-        const call = result.functionCalls?.[0];
-        if (call && call.name) {
+        const calls = result.functionCalls ?? [];
+        if (calls.length > 0) {
+            const call = calls[0];
+            const { name, args } = call;
             let toolResult;
-            if (call.name === "mint_biota_passport") {
-                toolResult = await executeMintPassport(call.args);
-            } else if (call.name === "execute_double_trigger") {
-                toolResult = await executeDoubleTrigger(call.args);
-            } else if (call.name === "validate_soil_action") {
-                toolResult = await executeSoilValidation(call.args);
+
+            if (name === "mint_biota_passport") {
+                toolResult = await executeMintPassport(args);
+            } else if (name === "execute_double_trigger") {
+                toolResult = await executeDoubleTrigger(args);
+            } else if (name === "validate_soil_action") {
+                toolResult = await executeSoilValidation(args);
             }
 
             if (toolResult) {

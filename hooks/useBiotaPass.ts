@@ -12,6 +12,7 @@ import {
   type LoteData, type MintParams,
   cmToScore, formatFecha,
 } from '@/lib/contracts'
+import { parseEther, parseUnits } from 'viem'
 import { useToast } from '@/hooks/use-toast'
 
 export interface BiotaPassState {
@@ -30,6 +31,9 @@ export interface BiotaPassState {
   cmRecuperados:   number
   esVerificado:    boolean
   isHumanVerified: boolean
+  gDollarBalance:  string // Nuevo: Para ver los G$ reales
+  paymentMethod:   'CELO' | 'G$'
+  setPaymentMethod: (m: 'CELO' | 'G$') => void
 }
 
 export function useBiotaPass(): BiotaPassState {
@@ -45,6 +49,7 @@ export function useBiotaPass(): BiotaPassState {
     return saved ? BigInt(saved) : null
   })
 
+  const [paymentMethod, setPaymentMethod] = useState<'CELO' | 'G$'>('G$')
   const [isMinting, setIsMinting] = useState(false)
   const [mintTxHash, setMintTxHash] = useState<`0x${string}` | undefined>(undefined)
 
@@ -78,6 +83,20 @@ export function useBiotaPass(): BiotaPassState {
     args:         [address!],
     query:        { enabled: isConnected && !!address },
   })
+
+  // NUEVO: Consulta de balance de G$ real
+  const { data: rawGlowBalance } = useReadContract({
+    chainId:      42220,
+    address:      ADDRESSES.G$ as `0x${string}`,
+    abi:          ERC20_ABI,
+    functionName: 'balanceOf',
+    args:         [address!],
+    query:        { enabled: isConnected && !!address },
+  })
+
+  const gDollarBalance = rawGlowBalance 
+    ? (Number(rawGlowBalance as bigint) / 1e18).toLocaleString() 
+    : '0';
 
   const hasPassport = !!balance && (balance as bigint) > 0n
 
@@ -117,34 +136,40 @@ export function useBiotaPass(): BiotaPassState {
     if (!address || !authenticated) return
     setIsMinting(true)
     try {
-      toast({
-        title: "Paso 1: Aprobando cobro en G$...",
-        description: "Firma la transacción para permitir el pago del BiotaPass.",
-      })
-      const approveTx = await writeContractAsync({
-        chainId: 42220,
-        address: ADDRESSES.G$ as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [ADDRESSES.BIOTA_PASSPORT, BigInt(100 * 1e18)], // Aprobación generosa
-      })
-      
-      toast({ title: "Esperando confirmación de G$..." })
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash: approveTx })
+      // 1. Manejo de Pago según el método seleccionado
+      let valueToSend = 0n;
+
+      if (paymentMethod === 'G$') {
+        toast({
+          title: "Paso 1: Aprobando 50 G$...",
+          description: "Firma la aprobación para el pago del BiotaPass.",
+        })
+        const approveTx = await writeContractAsync({
+          chainId: 42220,
+          address: ADDRESSES.G$ as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [ADDRESSES.BIOTA_PASSPORT, parseUnits('50', 18)],
+        })
+        if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveTx })
+      } else {
+        // Pago en CELO Nativo
+        valueToSend = parseEther('0.25'); 
       }
 
       toast({
-        title: "Paso 2: Creando Pasaporte Biota...",
-        description: "Firma para registrar tu tierra en Celo Mainnet.",
+        title: "Paso Final: Minteando Pasaporte...",
+        description: `Pagando con ${paymentMethod}. Firma para completar.`,
       })
+
+      // IMPORTANTE: El contrato ya no recibe 'recipient', usa msg.sender
       const hash = await writeContractAsync({
         chainId: 42220,
         address: ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
         abi: BIOTA_PASSPORT_ABI,
         functionName: 'mintPasaporte',
+        value: valueToSend,
         args: [
-          address,
           params.tokenURI,
           params.ubicacionGeografica,
           Number(params.areaM2),
@@ -158,7 +183,7 @@ export function useBiotaPass(): BiotaPassState {
       setMintTxHash(hash)
       toast({
         title: "¡Pasaporte solicitado!",
-        description: "Tu pasaporte se está confirmando en la blockchain.",
+        description: "Confirmando en Celo Mainnet...",
       })
     } catch (error: any) {
       console.error("Error minting passport:", error)
@@ -190,6 +215,9 @@ export function useBiotaPass(): BiotaPassState {
     cmRecuperados:   Number(cm),
     esVerificado:    (loteData as LoteData)?.esVerificado ?? false,
     isHumanVerified: (loteData as LoteData)?.isHumanVerified ?? false,
+    gDollarBalance,
+    paymentMethod,
+    setPaymentMethod
   }
 }
 

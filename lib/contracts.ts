@@ -12,6 +12,7 @@ import { BIOTA_PASSPORT_ABI } from './abi/BiotaPassport'
 import { I_BIOTA_PASSPORT_ABI } from './abi/IBiotaPassport'
 import { BIOTA_UBI_ABI } from './abi/BiotaUBI'
 import { CFA_V1_FORWARDER_ABI } from './abi/CFAv1Forwarder'
+import { UBI_SCHEME_ABI } from './abi/UBIScheme'
 
 // Re-exportar ABIs para que el resto de la app los encuentre aquí
 export {
@@ -22,7 +23,8 @@ export {
   BIOTA_PASSPORT_ABI,
   I_BIOTA_PASSPORT_ABI,
   BIOTA_UBI_ABI,
-  CFA_V1_FORWARDER_ABI
+  CFA_V1_FORWARDER_ABI,
+  UBI_SCHEME_ABI
 }
 
 // 2. Detectar red actual (FORCED MAINNET)
@@ -30,18 +32,18 @@ const chainId = 42220;
 export const activeChain = celo;
 
 export const ADDRESSES = {
-  BIOTA_PASSPORT: '0xBf1A8642c045E0178A300CDBAE6608571f745C80' as Address,
+  BIOTA_PASSPORT: '0x07e1DDed6988db0cD1F6d5E9812156Bc4A9EA48D' as Address,
   BIOTA_SCROW: '0x6bbA84c35685746A3FDffb09b8b36bFce6839A1B' as Address,
   BIOTA_SPLITTER: '0x712C036a154419F31dEbbaB31543fd5484ff8D32' as Address,
   COLLECTIVE_MUJERES: '0x0d43131f1577310d6349baf9d6da4fc1cd39764c' as Address,
   REFI_MEDELLIN: '0xd4AC6c14B4C96F7e66049210F56cb07468028d4e' as Address,
   CUSD: '0x765DE816845861e75A25fCA122bb6898B8B1282a' as Address,
-  G$: '0x62B8B11039fcfE5AB0C56E502b1C372A3D2a9C7A' as Address, // Producción G$
+  G$: '0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A' as Address, // Producción G$
   SUPERFLUID_FORWARDER: '0xcfA132E353cB4E398080B9700609bb008eceB125' as Address,
   USDT: '0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e' as Address,
   SDCM: '0xe4d517783d228488b98e85baa430635460f0606b' as Address,
   IDENTITY: '0xC361A6E67822a0EDc17D899227dd9FC50BD62F42' as Address,
-  BIOTA_UBI: '0x0FFE46Fc5Cfd7d0Eb6AA97531E688688a7A55304' as Address, // TODO: Insertar dirección desplegada
+  BIOTA_UBI: '0x8Ede6eF4d025b36480B0F2A80f0896944e83fB9A' as Address,
 } as const;
 
 // ── Types ───────────────────────────────────────────────────────────────────────

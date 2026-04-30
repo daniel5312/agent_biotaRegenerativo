@@ -24,9 +24,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
 import { useConnection, useWriteContract, useReadContract, useWaitForTransactionReceipt } from "wagmi"
-import { useWallets } from "@privy-io/react-auth"
-import { ADDRESSES, BIOTA_SCROW_ABI, BIOTA_UBI_ABI, ERC20_ABI, IDENTITY_ABI, formatCUSD } from "@/lib/contracts"
+import { useWallets, usePrivy } from "@privy-io/react-auth"
+import { ADDRESSES, BIOTA_SCROW_ABI, BIOTA_UBI_ABI, ERC20_ABI, IDENTITY_ABI, UBI_SCHEME_ABI, formatCUSD, type LoteData } from "@/lib/contracts"
 import { useBiotaPass } from "@/hooks/useBiotaPass"
 import { usePoA } from "@/hooks/usePoA"
 import { useAgent } from "@/context/agentProvider"
@@ -37,6 +39,7 @@ const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === 'true';
 export function PasaporteView() {
   const { address } = useConnection()
   const { wallets } = useWallets()
+  const { authenticated } = usePrivy()
   const { agentAction } = useAgent()
   const { 
     hasPassport, 
@@ -47,13 +50,26 @@ export function PasaporteView() {
     loteData,
     mintPassport,
     isMinting,
-    mintConfirmed
+    mintConfirmed,
+    gDollarBalance,
+    paymentMethod,
+    setPaymentMethod
   } = useBiotaPass()
   const { certificarPoA, isCertifying } = usePoA()
   const { toast } = useToast()
 
   const [selectedActions, setSelectedActions] = useState<string[]>([])
   const [submitted, setSubmitted] = useState(false)
+  
+  // Estados para el formulario de registro (UX Completa)
+  const [finca, setFinca] = useState("")
+  const [vereda, setVereda] = useState("")
+  const [municipio, setMunicipio] = useState("")
+  const [departamento, setDepartamento] = useState("")
+  const [nombreProductor, setNombreProductor] = useState("")
+  const [area, setArea] = useState(0)
+  const [ingredientes, setIngredientes] = useState("")
+  const [hashLab, setHashLab] = useState("")
   
   // Cache en localStorage para evitar parpadeos y "vuelo" de la página
   const [cachedData, setCachedData] = useState<any>(() => {
@@ -69,24 +85,6 @@ export function PasaporteView() {
     }
   }, [loteData, address, tokenId, bioScore])
 
-  // --- Lógica de Smart Contracts ---
-  const { data: balanceValue } = useReadContract({
-    chainId: 42220,
-    address: ADDRESSES.CUSD,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  });
-
-  const { data: gBalanceValue } = useReadContract({
-    chainId: 42220,
-    address: ADDRESSES.G$,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  });
 
   const { data: isWhitelisted } = useReadContract({
     chainId: 42220,
@@ -96,6 +94,17 @@ export function PasaporteView() {
     args: address ? [address] : undefined,
     query: { enabled: !!address },
   });
+
+  const { data: entitlement } = useReadContract({
+    chainId: 42220,
+    address: ADDRESSES.BIOTA_UBI as `0x${string}`,
+    abi: UBI_SCHEME_ABI,
+    functionName: "checkEntitlement",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address, refetchInterval: 30_000 },
+  });
+
+  const canClaim = (entitlement as bigint || 0n) > 0n;
 
   const { writeContractAsync, isPending: isClaimingUBI } = useWriteContract();
 
@@ -115,8 +124,8 @@ export function PasaporteView() {
         chainId: 42220,
         address: ADDRESSES.BIOTA_UBI as `0x${string}`,
         abi: BIOTA_UBI_ABI,
-        functionName: "iniciarFlujoUbi",
-        args: [tokenId],
+        functionName: "iniciarFlujoUBI",
+        args: [tokenId as bigint, BigInt("3858024691358")],
       });
       toast({ title: "¡Flujo Iniciado!", description: "El UBI está fluyendo a tu billetera." })
     } catch (error: any) {
@@ -124,13 +133,9 @@ export function PasaporteView() {
     }
   }, [address, wallets, writeContractAsync, tokenId, toast]);
 
-  const formattedBalance = useMemo(() => {
-    return balanceValue !== undefined ? `${formatCUSD(balanceValue as bigint)} cUSD` : "0.00 cUSD";
-  }, [balanceValue]);
+  const formattedBalance = "— cUSD"; // cUSD no es prioritario para el minteo ahora
 
-  const formattedGBalance = useMemo(() => {
-    return gBalanceValue !== undefined ? `${formatCUSD(gBalanceValue as bigint)} G$` : "0.00 G$";
-  }, [gBalanceValue]);
+  const formattedGBalance = `${gDollarBalance} G$`;
 
   const toggleAction = (actionId: string) => {
     setSelectedActions(prev => 
@@ -223,16 +228,27 @@ export function PasaporteView() {
                   BiotaPass: #{effectiveTokenId}
                 </Badge>
               ) : (
-                <div className="flex flex-col gap-1">
-                  <p className="text-[10px] text-amber-600 font-bold uppercase">Habla con el Agente de Onboarding para registrarte</p>
-                  <Button 
-                    disabled={true}
-                    size="sm"
-                    className="h-8 bg-emerald-500/20 text-emerald-600 text-[10px] font-black uppercase rounded-xl"
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Registro vía IA Activo
-                  </Button>
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                  <p className="text-[10px] text-amber-600 font-bold uppercase">Selecciona método de pago para el Pasaporte:</p>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => setPaymentMethod('G$')}
+                      variant={paymentMethod === 'G$' ? 'default' : 'outline'}
+                      className={`h-8 text-[10px] font-black uppercase rounded-xl flex-1 ${paymentMethod === 'G$' ? 'bg-blue-600' : 'border-blue-500/30 text-blue-500'}`}
+                    >
+                      <Zap className="w-3 h-3 mr-1" /> 50 G$
+                    </Button>
+                    <Button 
+                      onClick={() => setPaymentMethod('CELO')}
+                      variant={paymentMethod === 'CELO' ? 'default' : 'outline'}
+                      className={`h-8 text-[10px] font-black uppercase rounded-xl flex-1 ${paymentMethod === 'CELO' ? 'bg-emerald-600' : 'border-emerald-500/30 text-emerald-500'}`}
+                    >
+                      <Coins className="w-3 h-3 mr-1" /> 0.25 CELO
+                    </Button>
+                  </div>
+                  <p className="text-[9px] text-stone-500 italic mt-1 text-center sm:text-left">
+                    * El registro se realiza mediante el Agente IA de Biota.
+                  </p>
                 </div>
               )}
               
@@ -249,64 +265,158 @@ export function PasaporteView() {
           </CardContent>
         </Card>
 
-        {/* Balance Cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="glass-card metric-card overflow-hidden bg-emerald-100/80 dark:bg-emerald-900/30">
-            <CardContent className="p-3 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md">
-                  <Coins className="w-4 h-4 text-white" />
+        {/* Balance Cards & UBI (Solo si tiene pasaporte) */}
+        {effectiveHasPassport && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Card className="glass-card metric-card overflow-hidden bg-emerald-100/80 dark:bg-emerald-900/30">
+              <CardContent className="p-4 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600">
+                    <Coins size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-stone-500">Balance G$</p>
+                    <p className="text-xl font-black text-blue-600 font-mono">{gDollarBalance}</p>
+                  </div>
                 </div>
-                <span className="text-[9px] text-emerald-800 dark:text-emerald-400/80 uppercase tracking-wider font-bold transition-theme">
-                  Mis Balances
-                </span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-bold text-emerald-950 dark:text-white font-mono truncate">{formattedBalance.split(' ')[0]}</span>
-                  <span className="text-[8px] font-bold text-emerald-600">cUSD</span>
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-bold text-blue-900 dark:text-blue-300 font-mono truncate">{formattedGBalance.split(' ')[0]}</span>
-                  <span className="text-[8px] font-bold text-blue-600">G$</span>
-                </div>
-              </div>
-              <div className="pt-2 border-t border-emerald-500/10 flex items-center justify-between">
-                <button 
+                <Button 
                   onClick={handleClaimUBI} 
-                  disabled={isClaimingUBI || !isWhitelisted || !effectiveHasPassport}
-                  className="text-[9px] font-bold text-emerald-600 hover:underline disabled:opacity-50 flex items-center gap-1"
+                  disabled={isClaimingUBI || !canClaim}
+                  size="sm"
+                  className={`font-black text-[10px] uppercase rounded-full shadow-lg transition-all ${canClaim ? 'bg-emerald-500 hover:bg-emerald-400 text-black glow-sm' : 'bg-stone-800 text-stone-500'}`}
                 >
-                  <Sprout className="w-3 h-3" />
-                  {isClaimingUBI ? "Cosechando..." : "Cosechar UBI"}
-                </button>
-              </div>
-            </CardContent>
-          </Card>
+                  {isClaimingUBI ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Sprout className="w-3 h-3 mr-1" /> {canClaim ? 'Cosechar UBI' : 'Sin Entitlement'}</>}
+                </Button>
+              </CardContent>
+            </Card>
 
-          <Card className="glass-card metric-card overflow-hidden bg-emerald-100/80 dark:bg-emerald-900/30">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-md">
-                  <CreditCard className="w-4 h-4 text-white" />
+            <Card className="glass-card metric-card overflow-hidden bg-emerald-100/80 dark:bg-emerald-900/30">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-md">
+                    <CreditCard className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-[9px] text-blue-800 dark:text-emerald-400/80 uppercase tracking-wider font-bold">
+                    Credito Campo
+                  </span>
                 </div>
-                <span className="text-[9px] text-blue-800 dark:text-emerald-400/80 uppercase tracking-wider font-bold transition-theme">
-                  Credito Campo
-                </span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-blue-900 dark:text-white font-mono transition-size">
+                    {cmRecuperados || 0}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold badge-usdm">cm2</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Formulario de Registro (Solo si NO tiene pasaporte) */}
+        {!effectiveHasPassport && (
+          <Card className="glass-card bg-white/5 border-white/10 overflow-hidden shadow-2xl">
+            <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+            <CardContent className="p-6 space-y-6">
+              <div className="space-y-1">
+                <h3 className="text-xs font-black uppercase tracking-widest text-emerald-500 flex items-center gap-2">
+                  <Sparkles className="w-3 h-3" /> Datos del Productor Biota
+                </h3>
+                <p className="text-[10px] text-stone-500 italic">Información oficial para el Pasaporte de Carbono.</p>
               </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-blue-900 dark:text-white font-mono transition-theme">
-                  {effectiveHasPassport ? cmRecuperados : 0}
-                </span>
-                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold badge-usdm">cm2</span>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[10px] font-black uppercase text-stone-500">Nombre del Productor / Razón Social</label>
+                  <Input 
+                    placeholder="Ej: Asociación de Cafeteros del Carmen" 
+                    className="bg-black/20 border-white/10 text-white h-11 rounded-xl focus:border-emerald-500 transition-all"
+                    onChange={(e) => setNombreProductor(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-stone-500">Nombre de la Finca</label>
+                  <Input 
+                    placeholder="Ej: Finca La Esperanza" 
+                    className="bg-black/20 border-white/10 text-white h-11 rounded-xl"
+                    onChange={(e) => setFinca(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-stone-500">Vereda</label>
+                  <Input 
+                    placeholder="Ej: Vereda La Linda" 
+                    className="bg-black/20 border-white/10 text-white h-11 rounded-xl"
+                    onChange={(e) => setVereda(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-stone-500">Municipio</label>
+                  <Input 
+                    placeholder="Ej: El Carmen de Viboral" 
+                    className="bg-black/20 border-white/10 text-white h-11 rounded-xl"
+                    onChange={(e) => setMunicipio(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-stone-500">Departamento</label>
+                  <Input 
+                    placeholder="Ej: Antioquia" 
+                    className="bg-black/20 border-white/10 text-white h-11 rounded-xl"
+                    onChange={(e) => setDepartamento(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-stone-500">Área (m2)</label>
+                  <Input 
+                    type="number" 
+                    placeholder="1000" 
+                    className="bg-black/20 border-white/10 text-white h-11 rounded-xl"
+                    onChange={(e) => setArea(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-stone-500">Telegram / Contacto</label>
+                  <Input 
+                    placeholder="@usuario" 
+                    className="bg-black/20 border-white/10 text-white h-11 rounded-xl"
+                    onChange={(e) => setIngredientes(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[10px] font-black uppercase text-stone-500">Hash de Laboratorio / Suelo</label>
+                  <Input 
+                    placeholder="0x..." 
+                    className="bg-black/20 border-white/10 text-white h-11 font-mono rounded-xl"
+                    onChange={(e) => setHashLab(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="mt-1.5 flex items-center gap-1 text-[9px] text-blue-700 dark:text-cyan-500/70 font-medium">
-                <Zap className="w-3 h-3 text-blue-600" />
-                <span>Disponible</span>
-              </div>
+
+              <Button 
+                onClick={() => {
+                  const combinedUbicacion = `${finca} | ${vereda} | ${municipio} | ${departamento} | Productor: ${nombreProductor}`;
+                  mintPassport({
+                    tokenURI: "https://biota.earth/passport/metadata",
+                    ubicacionGeografica: combinedUbicacion,
+                    areaM2: BigInt(area),
+                    cmSueloRecuperado: 0n,
+                    estadoBiologico: "Transición Agroecológica",
+                    hashAnalisisLab: hashLab || "Sin Hash",
+                    ingredientesHash: ingredientes || "No especificado",
+                    metodosAgricolas: "Prácticas Regenerativas Biota"
+                  })
+                }} 
+                disabled={isActuallyMinting || !finca || !nombreProductor || area <= 0}
+                className="w-full h-16 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl glow-sm text-sm group"
+              >
+                {isActuallyMinting ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="w-5 h-5 mr-2 group-hover:animate-pulse" />}
+                {isActuallyMinting ? "Minteando..." : `Mintear con ${paymentMethod}`}
+              </Button>
             </CardContent>
           </Card>
-        </div>
+        )}
       </div>
 
       <Card className="glass-card overflow-hidden animate-slide-up delay-75 bg-emerald-100/80 dark:bg-emerald-900/30">

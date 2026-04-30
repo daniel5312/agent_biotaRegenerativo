@@ -15,7 +15,6 @@ export const BIOTA_PASSPORT_ABI = [
     "type": "function",
     "name": "mintPasaporte",
     "inputs": [
-      { "name": "recipient", "type": "address", "internalType": "address" },
       { "name": "tokenURI", "type": "string", "internalType": "string" },
       { "name": "_ubicacionGeografica", "type": "string", "internalType": "string" },
       { "name": "_areaM2", "type": "uint32", "internalType": "uint32" },

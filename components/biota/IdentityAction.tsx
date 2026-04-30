@@ -55,8 +55,8 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
         chainId: 42220,
         address: ADDRESSES.BIOTA_UBI,
         abi: BIOTA_UBI_ABI,
-        functionName: "iniciarFlujoUbi", // Aseguramos que sea 'iniciarFlujoUbi' y no 'iniciarFlujoUBI' (case sensitive)
-        args: [tokenId],
+        functionName: "iniciarFlujoUBI",
+        args: [tokenId as bigint, BigInt("3858024691358")],
       })
       console.log("¡Transacción enviada! Hash:", hashTx);
     } catch (error) {
