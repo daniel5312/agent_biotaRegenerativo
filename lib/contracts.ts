@@ -10,8 +10,6 @@ import { BIOTA_SPLITTER_ABI } from './abi/BiotaSplitter'
 import { BIOTA_SCROW_ABI } from './abi/BiotaScrow'
 import { BIOTA_PASSPORT_ABI } from './abi/BiotaPassport'
 import { I_BIOTA_PASSPORT_ABI } from './abi/IBiotaPassport'
-import { BIOTA_UBI_ABI } from './abi/BiotaUBI'
-import { UBI_SCHEME_ABI } from './abi/UBIScheme'
 
 // Re-exportar ABIs para que el resto de la app los encuentre aquí
 export {
@@ -21,8 +19,6 @@ export {
   BIOTA_SCROW_ABI,
   BIOTA_PASSPORT_ABI,
   I_BIOTA_PASSPORT_ABI,
-  BIOTA_UBI_ABI,
-  UBI_SCHEME_ABI
 }
 
 // 2. Detectar red actual (FORCED MAINNET)
@@ -40,7 +36,7 @@ export const ADDRESSES = {
   USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A88248a0CE' as Address,
   USDC: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as Address,
   IDENTITY: '0xC361A6E67822a0EDc17D899227dd9FC50BD62F42' as Address,
-  BIOTA_UBI: '0x8Ede6eF4d025b36480B0F2A80f0896944e83fB9A' as Address,
+
 } as const;
 
 // ── Types ───────────────────────────────────────────────────────────────────────

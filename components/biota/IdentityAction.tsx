@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useConnection, useWriteContract, useReadContract } from "wagmi"
 import { useWallets, usePrivy } from "@privy-io/react-auth"
-import { ADDRESSES, BIOTA_SCROW_ABI, IDENTITY_ABI, BIOTA_UBI_ABI } from "@/lib/contracts"
+import { ADDRESSES, BIOTA_SCROW_ABI, IDENTITY_ABI } from "@/lib/contracts"
 import { useAdminBypass } from "@/hooks/useAdminBypass"
 
 interface IdentityActionProps {
@@ -33,35 +33,14 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
 
   const isWhitelisted = contractIsWhitelisted || isBypassed
 
-  // 2. Estado del Flujo de Superfluid (UBI)
-  const { data: isFlowActive, refetch: refetchFlow } = useReadContract({
-    chainId: 42220,
-    address: ADDRESSES.BIOTA_UBI,
-    abi: BIOTA_UBI_ABI,
-    functionName: "isFlowActive",
-    args: tokenId !== undefined ? [tokenId] : undefined,
-    query: {
-      enabled: tokenId !== undefined && ADDRESSES.BIOTA_UBI !== '0x0000000000000000000000000000000000000000',
-    },
-  })
+  // [DISABLED] Superfluid UBI flow — ABI removed from build
+  const isFlowActive = false
 
   const { writeContractAsync, isPending: isClaimingUBI } = useWriteContract()
 
   const handleClaimUBI = async () => {
-    if (!wallets[0] || !address || !tokenId) return
-    try {
-      // Ahora el reclamo activa el flujo de Superfluid en el contrato BiotaUBI
-      const hashTx = await writeContractAsync({
-        chainId: 42220,
-        address: ADDRESSES.BIOTA_UBI,
-        abi: BIOTA_UBI_ABI,
-        functionName: "iniciarFlujoUBI",
-        args: [tokenId as bigint, BigInt("3858024691358")],
-      })
-      console.log("¡Transacción enviada! Hash:", hashTx);
-    } catch (error) {
-      console.error("Error al iniciar UBI Streaming (rechazado o fallido):", error)
-    }
+    // TODO: Re-enable when BiotaUBI contract is redeployed
+    console.warn("[IdentityAction] UBI claim disabled — contract ABI not available")
   }
 
   return (
