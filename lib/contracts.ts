@@ -6,6 +6,7 @@ export { celo };
 // Importación de ABIs desde la nueva carpeta modular
 import { ERC20_ABI } from './abi/ERC20'
 import { IDENTITY_ABI } from './abi/Identity'
+import { UBI_SCHEME_ABI } from './abi/UBIScheme'
 import { BIOTA_SPLITTER_ABI } from './abi/BiotaSplitter'
 import { BIOTA_SCROW_ABI } from './abi/BiotaScrow'
 import { BIOTA_PASSPORT_ABI } from './abi/BiotaPassport'
@@ -15,6 +16,7 @@ import { I_BIOTA_PASSPORT_ABI } from './abi/IBiotaPassport'
 export {
   ERC20_ABI,
   IDENTITY_ABI,
+  UBI_SCHEME_ABI,
   BIOTA_SPLITTER_ABI,
   BIOTA_SCROW_ABI,
   BIOTA_PASSPORT_ABI,
@@ -36,7 +38,8 @@ export const ADDRESSES = {
   USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A88248a0CE' as Address,
   USDC: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as Address,
   IDENTITY: '0xC361A6E67822a0EDc17D899227dd9FC50BD62F42' as Address,
-
+  UBI_SCHEME: '0x43d72Ff17701B2DA814620735C39C620Ce0ea4A1' as Address,
+  CFA_V1_FORWARDER: '0xcfA132E353cB4E398080B9700609bb008eceB125' as Address,
 } as const;
 
 // ── Types ───────────────────────────────────────────────────────────────────────

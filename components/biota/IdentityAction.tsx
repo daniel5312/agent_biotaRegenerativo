@@ -1,14 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { Camera, ShieldCheck, AlertCircle, Loader2, Sprout, Zap } from "lucide-react"
+import { Camera, ShieldCheck, AlertCircle, Loader2, Zap, Clock, Coins, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useConnection, useWriteContract, useReadContract } from "wagmi"
-import { useWallets, usePrivy } from "@privy-io/react-auth"
-import { ADDRESSES, BIOTA_SCROW_ABI, IDENTITY_ABI } from "@/lib/contracts"
-import { useAdminBypass } from "@/hooks/useAdminBypass"
+import { useConnection } from "wagmi"
+import { useGoodDollarIdentity } from "@/hooks/useGoodDollarIdentity"
+import { useUBIClaim } from "@/hooks/useUBIClaim"
 
 interface IdentityActionProps {
   tokenId?: bigint
@@ -16,69 +14,97 @@ interface IdentityActionProps {
 
 export function IdentityAction({ tokenId }: IdentityActionProps) {
   const { address } = useConnection()
-  const { authenticated } = usePrivy()
-  const { wallets } = useWallets()
-  const { isBypassed } = useAdminBypass()
-  
-  const { data: contractIsWhitelisted } = useReadContract({
-    chainId: 42220,
-    address: ADDRESSES.IDENTITY,
-    abi: IDENTITY_ABI,
-    functionName: "isWhitelisted",
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && ADDRESSES.IDENTITY !== '0x0000000000000000000000000000000000000000',
-    },
-  })
 
-  const isWhitelisted = contractIsWhitelisted || isBypassed
+  // Hook de Identity GoodDollar — lee whitelist, root, expiración, DID
+  const {
+    isWhitelisted,
+    whitelistedRoot,
+    hasValidIdentity,
+    expiry,
+    isBlacklisted,
+    isLoading: loadingIdentity,
+    faceVerificationUrl,
+    isBypassed,
+  } = useGoodDollarIdentity(address as `0x${string}` | undefined)
 
-  // [DISABLED] Superfluid UBI flow — ABI removed from build
+  // Hook de UBI Claim — checkEntitlement + claim real
+  const {
+    entitlementFormatted,
+    canClaim,
+    isClaiming,
+    claimUBI,
+    claimConfirmed,
+    isLoading: loadingClaim,
+    refetchEntitlement,
+  } = useUBIClaim(address as `0x${string}` | undefined, whitelistedRoot)
+
+  // TODO (Sprint 2): Reactivar con getFlowInfo real del CFAv1Forwarder
   const isFlowActive = false
 
-  const { writeContractAsync, isPending: isClaimingUBI } = useWriteContract()
-
-  const handleClaimUBI = async () => {
-    // TODO: Re-enable when BiotaUBI contract is redeployed
-    console.warn("[IdentityAction] UBI claim disabled — contract ABI not available")
-  }
-
   return (
-    <div className="space-y-4">
-      {/* 1. Facial Recognition / GoodDollar Status */}
+    <div className="space-y-3">
+      {/* ═══ 1. Tarjeta de Estado de Identidad GoodDollar ═══ */}
       <Card className={`glass-card overflow-hidden animate-slide-up ${
-        isWhitelisted ? "bg-blue-50/50 dark:bg-blue-900/10" : "bg-amber-50/50 dark:bg-amber-900/10"
+        hasValidIdentity ? "bg-blue-50/50 dark:bg-blue-900/10" : "bg-amber-50/50 dark:bg-amber-900/10"
       }`}>
-        <CardContent className="p-4 flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${
-            isWhitelisted ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
-          }`}>
-            {isWhitelisted ? <ShieldCheck size={24} /> : <AlertCircle size={24} />}
+        <CardContent className="p-4 space-y-3">
+          {/* Header: Estado principal */}
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${
+              hasValidIdentity ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
+            }`}>
+              {loadingIdentity ? (
+                <Loader2 size={24} className="animate-spin" />
+              ) : hasValidIdentity ? (
+                <ShieldCheck size={24} />
+              ) : (
+                <AlertCircle size={24} />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xs font-bold text-emerald-950 dark:text-white uppercase tracking-tight flex items-center gap-1.5">
+                Identidad GoodDollar
+                {isBypassed && <span className="text-red-500 text-[9px]">(BYPASS)</span>}
+                {isBlacklisted && <span className="text-red-500 text-[9px]">(BLACKLISTED)</span>}
+              </h3>
+              <p className="text-[10px] text-emerald-800/70 dark:text-emerald-400/70 leading-tight mt-0.5">
+                {hasValidIdentity 
+                  ? "Identidad humana verificada. Puedes reclamar UBI diario." 
+                  : "Verifica tu rostro para habilitar el reclamo de GoodDollars."}
+              </p>
+            </div>
+            {!hasValidIdentity && (
+              <Button 
+                size="sm" 
+                className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase h-8 px-4 rounded-xl shadow-lg transition-all active:scale-95 animate-pulse-slow"
+                onClick={() => window.open(faceVerificationUrl, "_blank")}
+              >
+                <Camera className="w-3 h-3 mr-1" />
+                Verificar
+              </Button>
+            )}
           </div>
-          <div className="flex-1">
-            <h3 className="text-xs font-bold text-emerald-950 dark:text-white uppercase tracking-tight">
-              Identidad GoodDollar {isBypassed && <span className="text-red-500">(BYPASS)</span>}
-            </h3>
-            <p className="text-[10px] text-emerald-800/70 dark:text-emerald-400/70 leading-tight mt-0.5">
-              {isWhitelisted 
-                ? "Tu identidad humana está verificada. Recibes UBI completo." 
-                : "Verifica tu rostro para habilitar el reclamo de GoodDollars."}
-            </p>
-          </div>
-          {!isWhitelisted && (
-            <Button 
-              size="sm" 
-              className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase h-8 px-4 rounded-xl shadow-lg transition-all active:scale-95 animate-pulse-slow"
-              onClick={() => window.open("https://wallet.gooddollar.org?id=biota", "_blank")}
-            >
-              <Camera className="w-3 h-3 mr-1" />
-              Verificar Rostro
-            </Button>
+
+          {/* Expiry info — solo si está verificado */}
+          {hasValidIdentity && expiry && (
+            <div className="flex items-center gap-2 text-[9px] px-3 py-1.5 bg-blue-100/50 dark:bg-blue-900/20 rounded-xl border border-blue-200/50 dark:border-blue-500/20">
+              <Clock size={12} className={expiry.daysRemaining < 7 ? "text-amber-500" : "text-blue-500"} />
+              <span className="text-blue-800 dark:text-blue-300 font-semibold">
+                {expiry.isExpired
+                  ? "⚠️ Identidad expirada — re-verifica tu rostro"
+                  : `Verificación válida por ${expiry.daysRemaining} días`}
+              </span>
+              {whitelistedRoot && whitelistedRoot.toLowerCase() !== address?.toLowerCase() && (
+                <Badge className="bg-blue-500/10 text-blue-600 text-[8px] ml-auto px-1.5 py-0.5">
+                  Wallet Conectada
+                </Badge>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* 2. Superfluid Streaming Status Badge */}
+      {/* ═══ 2. Superfluid Streaming Badge ═══ */}
       {isFlowActive && (
         <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl animate-fade-in">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -88,28 +114,43 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
         </div>
       )}
 
-      {/* 2. Reclamar UBI Button */}
+      {/* ═══ 3. Botón de Claim UBI ═══ */}
       <button 
-        onClick={handleClaimUBI} 
-        disabled={isClaimingUBI || !isWhitelisted || !authenticated || isFlowActive || !tokenId}
-        className="w-full bg-white dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-400 border-2 border-emerald-200 dark:border-emerald-500/20 h-24 rounded-3xl flex items-center justify-between px-8 shadow-sm active:scale-95 transition-all disabled:opacity-50 group hover:border-emerald-500/40"
+        onClick={claimUBI} 
+        disabled={isClaiming || !hasValidIdentity || !tokenId || isFlowActive || !canClaim}
+        className="w-full bg-white dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-400 border-2 border-emerald-200 dark:border-emerald-500/20 h-24 rounded-3xl flex items-center justify-between px-6 shadow-sm active:scale-95 transition-all disabled:opacity-50 group hover:border-emerald-500/40"
       >
         <div className="text-left">
-          <p className="font-black text-xl uppercase tracking-tight">
-            {isFlowActive ? "UBI Activo" : "Activar UBI"}
+          <p className="font-black text-lg uppercase tracking-tight">
+            {claimConfirmed ? "✅ UBI Reclamado" : isFlowActive ? "UBI Activo" : "Reclamar UBI"}
           </p>
-          <p className="text-sm opacity-70 italic font-medium flex items-center gap-1">
-            <Zap size={14} className={isFlowActive ? "text-blue-500 animate-pulse" : "text-emerald-500"} />
-            {isFlowActive ? "Goteo continuo (Superfluid)" : "Verificación JIT Activa"}
+          <p className="text-xs opacity-70 font-medium flex items-center gap-1">
+            <Coins size={14} className="text-yellow-500" />
+            {canClaim
+              ? `${entitlementFormatted} G$ disponibles hoy`
+              : hasValidIdentity
+                ? "Sin UBI disponible — vuelve mañana"
+                : "Verifica tu identidad primero"}
           </p>
         </div>
-        {isClaimingUBI ? (
-          <Loader2 className="animate-spin text-emerald-600" size={32} />
-        ) : (
-          <div className="p-3 bg-emerald-500/10 rounded-2xl group-hover:bg-emerald-500/20 transition-colors">
-            <Camera className="text-emerald-600" size={32} />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Botón de refresh */}
+          {hasValidIdentity && (
+            <button
+              onClick={(e) => { e.stopPropagation(); refetchEntitlement(); }}
+              className="p-2 rounded-xl bg-emerald-500/5 hover:bg-emerald-500/15 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 text-emerald-500 ${loadingClaim ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+          {isClaiming ? (
+            <Loader2 className="animate-spin text-emerald-600" size={28} />
+          ) : (
+            <div className="p-3 bg-emerald-500/10 rounded-2xl group-hover:bg-emerald-500/20 transition-colors">
+              <Zap className="text-emerald-600" size={28} />
+            </div>
+          )}
+        </div>
       </button>
     </div>
   )
