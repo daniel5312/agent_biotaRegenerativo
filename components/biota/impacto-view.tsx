@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useConnection, useReadContract } from "wagmi"
 import { useWallets, usePrivy } from "@privy-io/react-auth"
-import { ADDRESSES, ERC20_ABI, IDENTITY_ABI, CFA_V1_FORWARDER_ABI, formatCUSD } from "@/lib/contracts"
+import { ADDRESSES, ERC20_ABI, IDENTITY_ABI, formatCUSD } from "@/lib/contracts"
 import { useBiotaPass } from "@/hooks/useBiotaPass"
 import { usePoA } from "@/hooks/usePoA"
 import { IdentityAction } from "@/components/biota/IdentityAction"
@@ -98,22 +98,6 @@ export function ImpactoView() {
     },
   });
 
-  // 3. Consultar flujo entrante de G$ (Superfluid)
-  const { data: flowInfo } = useReadContract({
-    chainId: 42220,
-    address: ADDRESSES.SUPERFLUID_FORWARDER,
-    abi: CFA_V1_FORWARDER_ABI,
-    functionName: "getFlowInfo",
-    args: address && ADDRESSES.G$ ? [ADDRESSES.G$, ADDRESSES.BIOTA_UBI, address] : undefined,
-    query: {
-      enabled: !!address && ADDRESSES.BIOTA_UBI !== '0x0000000000000000000000000000000000000000',
-    },
-  });
-
-  const currentFlowRate = useMemo(() => {
-    if (!flowInfo) return 0n;
-    return (flowInfo as any)[1] as bigint; // flowrate es el segundo elemento
-  }, [flowInfo]);
 
   const formattedBalance = useMemo(() => {
     if (balanceValue === undefined) return "0.00";
@@ -312,12 +296,7 @@ export function ImpactoView() {
                   </span>
                   <div className="flex items-center gap-1">
                     <span className="text-[8px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded">G$</span>
-                    {currentFlowRate > 0n && (
-                      <span className="text-[7px] text-blue-400 font-mono animate-pulse">
-                        +{Number(currentFlowRate * 3600n * 24n * 30n / 10n**18n).toFixed(2)}/mo
-                      </span>
-                    )}
-                    <Zap size={10} className={currentFlowRate > 0n ? "text-blue-400 animate-pulse" : "text-blue-400/20"} />
+                    <Zap size={10} className="text-blue-400/20" />
                   </div>
                 </div>
               </div>

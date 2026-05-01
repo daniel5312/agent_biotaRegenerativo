@@ -106,7 +106,6 @@ export async function executeMintPassport(args: any) {
             abi: BIOTA_PASSPORT_ABI,
             functionName: 'mintPasaporte',
             args: [
-                args.recipient as `0x${string}`,
                 dynamicTokenURI,
                 args.ubicacion,
                 args.areaM2,

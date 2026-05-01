@@ -15,13 +15,15 @@ import {
 import { parseEther, parseUnits } from 'viem'
 import { useToast } from '@/hooks/use-toast'
 
+export type PaymentMethod = 'CELO' | 'G$'
+
 export interface BiotaPassState {
   tokenId:         bigint | null
   loteData:        LoteData | null
   bioScore:        number
   hasPassport:     boolean
   isLoading:       boolean
-  mintPassport:    (params: Omit<MintParams, 'recipient'>) => Promise<void>
+  mintPassport:    (params: Omit<MintParams, 'recipient'>, methodOverride?: PaymentMethod) => Promise<void>
   isMinting:       boolean
   mintTxHash:      `0x${string}` | undefined
   mintConfirmed:   boolean
@@ -132,14 +134,14 @@ export function useBiotaPass(): BiotaPassState {
     query: { enabled: !!mintTxHash },
   })
 
-  const mintPassport = async (params: Omit<MintParams, 'recipient'>) => {
+  const mintPassport = async (params: Omit<MintParams, 'recipient'>, methodOverride?: PaymentMethod) => {
     if (!address || !authenticated) return
     setIsMinting(true)
     try {
       // 1. Manejo de Pago según el método seleccionado
       let valueToSend = 0n;
 
-      if (paymentMethod === 'G$') {
+      if ((methodOverride || paymentMethod) === 'G$') {
         toast({
           title: "Paso 1: Aprobando 50 G$...",
           description: "Firma la aprobación para el pago del BiotaPass.",
@@ -159,7 +161,7 @@ export function useBiotaPass(): BiotaPassState {
 
       toast({
         title: "Paso Final: Minteando Pasaporte...",
-        description: `Pagando con ${paymentMethod}. Firma para completar.`,
+        description: `Pagando con ${methodOverride || paymentMethod}. Firma para completar.`,
       })
 
       // IMPORTANTE: El contrato ya no recibe 'recipient', usa msg.sender

@@ -11,7 +11,6 @@ import { BIOTA_SCROW_ABI } from './abi/BiotaScrow'
 import { BIOTA_PASSPORT_ABI } from './abi/BiotaPassport'
 import { I_BIOTA_PASSPORT_ABI } from './abi/IBiotaPassport'
 import { BIOTA_UBI_ABI } from './abi/BiotaUBI'
-import { CFA_V1_FORWARDER_ABI } from './abi/CFAv1Forwarder'
 import { UBI_SCHEME_ABI } from './abi/UBIScheme'
 
 // Re-exportar ABIs para que el resto de la app los encuentre aquí
@@ -23,7 +22,6 @@ export {
   BIOTA_PASSPORT_ABI,
   I_BIOTA_PASSPORT_ABI,
   BIOTA_UBI_ABI,
-  CFA_V1_FORWARDER_ABI,
   UBI_SCHEME_ABI
 }
 
@@ -39,7 +37,6 @@ export const ADDRESSES = {
   REFI_MEDELLIN: '0xd4AC6c14B4C96F7e66049210F56cb07468028d4e' as Address,
   CUSD: '0x765DE816845861e75A25fCA122bb6898B8B1282a' as Address,
   G$: '0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A' as Address, // Producción G$
-  SUPERFLUID_FORWARDER: '0xcfA132E353cB4E398080B9700609bb008eceB125' as Address,
   USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A88248a0CE' as Address,
   USDC: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as Address,
   IDENTITY: '0xC361A6E67822a0EDc17D899227dd9FC50BD62F42' as Address,
