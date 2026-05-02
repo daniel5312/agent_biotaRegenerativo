@@ -36,35 +36,36 @@ export interface StreamState {
 }
 
 const CHAIN_ID = 42220
-const SENDER_ADDRESS = ADDRESSES.BIOTA_SCROW // El contrato que paga el sueldo
-
 // ── Hook ─────────────────────────────────────────────────────────────────────
-export function useSuperfluidStream(receiverAddress?: `0x${string}`): StreamState {
+export function useSuperfluidStream(receiverAddress?: `0x${string}`, senderOverride?: `0x${string}`): StreamState {
   const { toast } = useToast()
   
-  // 1. Consultar estado del flujo actual
+  // El SENDER es la billetera de UBI (senderOverride) y el RECEIVER es la de Google (receiverAddress)
+  const SENDER = senderOverride || ADDRESSES.BIOTA_SCROW
+  const RECEIVER = receiverAddress
+
+  // 1. Consultar estado del flujo entre UBI -> Google
   const { data: flowData, isLoading: loadingFlow, refetch: refetchFlow } = useReadContract({
     chainId: CHAIN_ID,
     address: ADDRESSES.CFA_V1_FORWARDER,
     abi: CFA_V1_FORWARDER_ABI,
     functionName: 'getFlowInfo',
-    args: receiverAddress ? [ADDRESSES.G$, SENDER_ADDRESS, receiverAddress] : undefined,
+    args: RECEIVER && SENDER ? [ADDRESSES.G$, SENDER, RECEIVER] : undefined,
     query: {
-      enabled: !!receiverAddress,
-      refetchInterval: 30_000,
+      enabled: !!RECEIVER && !!SENDER,
+      refetchInterval: 10_000, // Más rápido para mejor UX
     }
   })
 
-  // 2. Verificar saldo del Emisor (BiotaScrow) para el Buffer
-  // Superfluid requiere un buffer (depósito). Si el emisor no tiene G$, la TX fallará.
+  // 2. Verificar saldo de la billetera de UBI para el Buffer
   const { data: senderBalance } = useReadContract({
     chainId: CHAIN_ID,
     address: ADDRESSES.G$,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
-    args: [SENDER_ADDRESS],
+    args: [SENDER as `0x${string}`],
     query: {
-      enabled: !!receiverAddress,
+      enabled: !!SENDER,
       refetchInterval: 30_000,
     }
   })
@@ -93,14 +94,24 @@ export function useSuperfluidStream(receiverAddress?: `0x${string}`): StreamStat
   // ── Acciones ───────────────────────────────────────────────────────────────
   
   const startStream = useCallback(async () => {
-    if (!receiverAddress) return
+    if (!SENDER || !RECEIVER) return
 
-    // Validación de Buffer de Seguridad
+    // 1. Validar que no sea un flujo hacia uno mismo (Error 0xa47338ef)
+    if (SENDER.toLowerCase() === RECEIVER.toLowerCase()) {
+      toast({
+        title: "🔄 Flujo Circular Detectado",
+        description: "No puedes enviarte un goteo a ti mismo. El goteo debe ir desde tu UBI Wallet hacia tu Google Wallet.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    // 2. Validación de Buffer de Seguridad
     const requiredBuffer = 1n * 10n**17n // Estimación conservadora del buffer
     if (senderBalance && (senderBalance as bigint) < requiredBuffer) {
       toast({
-        title: "⚠️ Fondo de Reserva Insuficiente",
-        description: "El contrato BiotaScrow no tiene suficientes G$ para cubrir el depósito de seguridad del streaming.",
+        title: "⚠️ Saldo de UBI Insuficiente",
+        description: "Tu billetera UBI necesita saldo de G$ para cubrir el depósito del flujo.",
         variant: "destructive"
       })
       return
@@ -108,8 +119,8 @@ export function useSuperfluidStream(receiverAddress?: `0x${string}`): StreamStat
 
     try {
       toast({
-        title: "🌱 Iniciando Sueldo Regenerativo",
-        description: "Abriendo flujo de 1,000 G$ mensuales..."
+        title: "🌱 Iniciando Goteo P2P",
+        description: "Abriendo flujo desde UBI Wallet..."
       })
 
       await writeContractAsync({
@@ -119,23 +130,28 @@ export function useSuperfluidStream(receiverAddress?: `0x${string}`): StreamStat
         functionName: 'createFlow',
         args: [
           ADDRESSES.G$, 
-          SENDER_ADDRESS, 
-          receiverAddress, 
+          SENDER as `0x${string}`, 
+          RECEIVER as `0x${string}`, 
           BigInt(REGENERATIVE_SALARY_FLOWRATE.toString()), // int96
           "0x" // userData vacío
         ],
       })
     } catch (error: any) {
+      console.error("Superfluid Error:", error)
+      const isBufferError = error?.message?.includes("0xa3eab6ac") || error?.data?.includes("0xa3eab6ac")
+      
       toast({
-        title: "❌ Error Superfluid",
-        description: error?.shortMessage || "Error al abrir el grifo de G$",
+        title: isBufferError ? "⚠️ Error de Fondos" : "❌ Error Superfluid",
+        description: isBufferError 
+          ? "La billetera UBI no tiene fondos suficientes para el depósito de seguridad."
+          : error?.shortMessage || "Error al abrir el grifo de G$",
         variant: "destructive"
       })
     }
-  }, [receiverAddress, senderBalance, writeContractAsync, toast])
+  }, [RECEIVER, SENDER, senderBalance, writeContractAsync, toast])
 
   const stopStream = useCallback(async () => {
-    if (!receiverAddress) return
+    if (!RECEIVER || !SENDER) return
     try {
       toast({ title: "⏳ Deteniendo goteo...", description: "Cerrando flujo de G$" })
       await writeContractAsync({
@@ -143,12 +159,12 @@ export function useSuperfluidStream(receiverAddress?: `0x${string}`): StreamStat
         address: ADDRESSES.CFA_V1_FORWARDER,
         abi: CFA_V1_FORWARDER_ABI,
         functionName: 'deleteFlow',
-        args: [ADDRESSES.G$, SENDER_ADDRESS, receiverAddress, "0x"],
+        args: [ADDRESSES.G$, SENDER as `0x${string}`, RECEIVER as `0x${string}`, "0x"],
       })
     } catch (error: any) {
       toast({ title: "Error", description: "No se pudo detener el flujo", variant: "destructive" })
     }
-  }, [receiverAddress, writeContractAsync, toast])
+  }, [RECEIVER, SENDER, writeContractAsync, toast])
 
   return {
     isActive,
