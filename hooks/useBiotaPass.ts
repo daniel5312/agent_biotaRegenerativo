@@ -9,6 +9,7 @@ import {
 import { usePrivy } from '@privy-io/react-auth'
 import {
   ADDRESSES, BIOTA_PASSPORT_ABI, ERC20_ABI,
+  BIOTA_SPLITTER_ABI,
   type LoteData, type MintParams,
   cmToScore, formatFecha,
 } from '@/lib/contracts'
@@ -142,18 +143,33 @@ export function useBiotaPass(): BiotaPassState {
       let valueToSend = 0n;
 
       if ((methodOverride || paymentMethod) === 'G$') {
-        toast({
-          title: "Paso 1: Aprobando 50 G$...",
-          description: "Firma la aprobación para el pago del BiotaPass.",
-        })
-        const approveTx = await writeContractAsync({
+        const fee = 50n * 10n ** 18n
+        
+        // 1. Approve Splitter para la comisión
+        toast({ title: 'Autorizando G$', description: 'Firma la aprobación para el Splitter Biota.' })
+        await writeContractAsync({
           chainId: 42220,
           address: ADDRESSES.G$ as `0x${string}`,
           abi: ERC20_ABI,
           functionName: 'approve',
-          args: [ADDRESSES.BIOTA_PASSPORT, parseUnits('50', 18)],
+          args: [ADDRESSES.BIOTA_SPLITTER, fee],
         })
-        if (publicClient) await publicClient.waitForTransactionReceipt({ hash: approveTx })
+
+        // 2. Ejecutar Pago Dividido
+        toast({ title: 'Dividiendo Comisión', description: 'Enrutando 94/3/3...' })
+        await writeContractAsync({
+          chainId: 42220,
+          address: ADDRESSES.BIOTA_SPLITTER as `0x${string}`,
+          abi: BIOTA_SPLITTER_ABI,
+          functionName: 'payWithSplit',
+          args: [
+            ADDRESSES.G$,
+            fee,
+            ADDRESSES.REFI_MEDELLIN,
+            ADDRESSES.COLLECTIVE_MUJERES,
+            ADDRESSES.BIOTA_SCROW
+          ]
+        })
       } else {
         // Pago en CELO Nativo
         valueToSend = parseEther('0.01'); 

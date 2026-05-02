@@ -11,6 +11,7 @@ import { BIOTA_SPLITTER_ABI } from './abi/BiotaSplitter'
 import { BIOTA_SCROW_ABI } from './abi/BiotaScrow'
 import { BIOTA_PASSPORT_ABI } from './abi/BiotaPassport'
 import { I_BIOTA_PASSPORT_ABI } from './abi/IBiotaPassport'
+import { CFA_V1_FORWARDER_ABI } from './abi/CFAv1Forwarder'
 
 // Re-exportar ABIs para que el resto de la app los encuentre aquí
 export {
@@ -21,6 +22,7 @@ export {
   BIOTA_SCROW_ABI,
   BIOTA_PASSPORT_ABI,
   I_BIOTA_PASSPORT_ABI,
+  CFA_V1_FORWARDER_ABI,
 }
 
 // 2. Detectar red actual (FORCED MAINNET)

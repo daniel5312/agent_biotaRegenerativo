@@ -275,7 +275,7 @@ function LandingPage() {
 
 export default function Page() {
   const { ready, authenticated } = usePrivy()
-  const [activeTab, setActiveTab] = useState<TabId>("asesoria")
+  const [activeTab, setActiveTab] = useState<TabId>("impacto")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {

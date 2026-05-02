@@ -26,7 +26,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ADDRESSES, ERC20_ABI } from "@/lib/contracts";
+import { ADDRESSES, ERC20_ABI, BIOTA_SPLITTER_ABI } from "@/lib/contracts";
 import { useToast } from "@/hooks/use-toast";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -187,36 +187,50 @@ export function TiendaMultipago() {
   };
 
   const handleBuy = async (product: Product) => {
-    console.log("CLICK DETECTADO:", product.id, currency);
     if (!authenticated || !address) {
       toast({ title: "Error", description: "Conecta tu wallet.", variant: "destructive" });
       return;
     }
     setBuyingId(product.id);
-    try {
-      const price = product.prices[currency];
-      const cfg = CURRENCIES[currency];
+    const price = product.prices[currency];
+    const cfg = CURRENCIES[currency];
+    const amountWei = parseUnits(price, cfg.decimals);
 
+    try {
       if (currency === "celo") {
-        await sendTransactionAsync({ to: ADDRESSES.REFI_MEDELLIN, value: parseEther(price), chainId: 42220 });
-        toast({ title: "✅ Éxito", description: "Pago en CELO enviado." });
+        await sendTransactionAsync({ to: ADDRESSES.REFI_MEDELLIN, value: amountWei, chainId: 42220 });
       } else {
-        const token = currency === "gd" ? ADDRESSES.G$ : currency === "usdt" ? ADDRESSES.USDT : ADDRESSES.USDC;
-        const amount = parseUnits(price, cfg.decimals);
+        const tokenAddr = currency === "gd" ? ADDRESSES.G$ : currency === "usdt" ? ADDRESSES.USDT : ADDRESSES.USDC;
         
-        toast({ title: "Autorizando...", description: `Firma la autorización de ${cfg.symbol}` });
-        const hash = await writeContractAsync({
+        // 1. Approve BiotaSplitter
+        toast({ title: "Autorizando...", description: `Firma la autorización de ${cfg.symbol} para el Splitter` });
+        await writeContractAsync({
           chainId: 42220,
-          address: token as `0x${string}`,
+          address: tokenAddr as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "approve",
-          args: [ADDRESSES.REFI_MEDELLIN, amount],
+          args: [ADDRESSES.BIOTA_SPLITTER as `0x${string}`, amountWei],
         });
-        toast({ title: "✅ Enviado", description: `Hash: ${hash.slice(0,10)}` });
+
+        // 2. payWithSplit
+        toast({ title: "Procesando División...", description: "Enrutando fondos (94/3/3)..." });
+        await writeContractAsync({
+          chainId: 42220,
+          address: ADDRESSES.BIOTA_SPLITTER as `0x${string}`,
+          abi: BIOTA_SPLITTER_ABI,
+          functionName: 'payWithSplit',
+          args: [
+            tokenAddr as `0x${string}`, 
+            amountWei,
+            ADDRESSES.REFI_MEDELLIN,    // Biota (94%)
+            ADDRESSES.COLLECTIVE_MUJERES, // Mujeres (3%)
+            ADDRESSES.BIOTA_SCROW       // Biota Regenerativa (3%)
+          ]
+        });
       }
-    } catch (err: any) {
-      console.error("ERROR TIENDA:", err);
-      toast({ title: "Falla", description: err?.shortMessage || "Error en transacción", variant: "destructive" });
+      toast({ title: "✅ Éxito", description: "Pago procesado y dividido correctamente." });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.shortMessage || "Error en el pago", variant: "destructive" });
     } finally {
       setBuyingId(null);
     }
