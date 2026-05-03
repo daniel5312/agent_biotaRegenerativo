@@ -10,7 +10,7 @@ import {
   useWaitForTransactionReceipt,
   useAccount
 } from 'wagmi'
-import { ADDRESSES, CFA_V1_FORWARDER_ABI, ERC20_ABI } from '@/lib/contracts'
+import { ADDRESSES, CFA_V1_FORWARDER_ABI, ERC20_ABI, celo } from '@/lib/contracts'
 import { REGENERATIVE_SALARY_FLOWRATE } from '@/lib/superfluid-utils'
 import { useToast } from '@/hooks/use-toast'
 import { 
@@ -150,7 +150,8 @@ export function useSuperfluidStream(
             BigInt(REGENERATIVE_SALARY_FLOWRATE.toString()),
             "0x"
           ],
-          account: SENDER as `0x${string}`
+          account: SENDER as `0x${string}`,
+          chain: celo // INDISPENSABLE EN CELO
         })
       } else {
         // FIRMA GLOBAL (Wagmi/MetaMask)
@@ -166,6 +167,7 @@ export function useSuperfluidStream(
             BigInt(REGENERATIVE_SALARY_FLOWRATE.toString()), // int96
             "0x" // userData vacío
           ],
+          chain: celo // INDISPENSABLE EN CELO
         })
       }
     } catch (error: any) {
@@ -184,19 +186,48 @@ export function useSuperfluidStream(
 
   const stopStream = useCallback(async () => {
     if (!RECEIVER || !SENDER) return
+
+    // 1. Crear WalletClient Manual si existe manualProvider (Autoridad del Emisor)
+    let signer: any = null
+    if (manualProvider) {
+       signer = createWalletClient({
+         chain: celo,
+         transport: custom(manualProvider)
+       }).extend(publicActions)
+    }
+
     try {
       toast({ title: "⏳ Deteniendo goteo...", description: "Cerrando flujo de G$" })
-      await writeContractAsync({
-        chainId: CHAIN_ID,
-        address: ADDRESSES.CFA_V1_FORWARDER,
-        abi: CFA_V1_FORWARDER_ABI,
-        functionName: 'deleteFlow',
-        args: [ADDRESSES.G$, SENDER as `0x${string}`, RECEIVER as `0x${string}`, "0x"],
-      })
+      
+      if (signer) {
+        // FIRMA MANUAL (WalletConnect - Emisor real)
+        await signer.writeContract({
+          address: ADDRESSES.CFA_V1_FORWARDER,
+          abi: CFA_V1_FORWARDER_ABI,
+          functionName: 'deleteFlow',
+          args: [ADDRESSES.G$, SENDER as `0x${string}`, RECEIVER as `0x${string}`, "0x"],
+          account: SENDER as `0x${string}`,
+          chain: celo
+        })
+      } else {
+        // FIRMA GLOBAL (Wagmi)
+        await writeContractAsync({
+          chainId: CHAIN_ID,
+          address: ADDRESSES.CFA_V1_FORWARDER,
+          abi: CFA_V1_FORWARDER_ABI,
+          functionName: 'deleteFlow',
+          args: [ADDRESSES.G$, SENDER as `0x${string}`, RECEIVER as `0x${string}`, "0x"],
+          chain: celo
+        })
+      }
+      
+      toast({ title: "✅ Goteo detenido", description: "El flujo se ha cerrado correctamente." })
+      refetchFlow?.()
     } catch (error: any) {
-      toast({ title: "Error", description: "No se pudo detener el flujo", variant: "destructive" })
+      console.error("Stop Stream Error:", error)
+      toast({ title: "Error", description: error?.shortMessage || "No se pudo detener el flujo", variant: "destructive" })
     }
-  }, [RECEIVER, SENDER, writeContractAsync, toast])
+  }, [RECEIVER, SENDER, manualProvider, writeContractAsync, refetchFlow, toast])
 
   return {
     isActive,

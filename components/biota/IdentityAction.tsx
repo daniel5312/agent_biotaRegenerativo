@@ -36,14 +36,16 @@ interface IdentityActionProps {
 
 export function IdentityAction({ tokenId }: IdentityActionProps) {
   const { user } = usePrivy()
+  const { address: activeAddress } = useAccount()
   const { toast } = useToast()
   
   // Estados Independientes Panel B
   const [ubiAddress, setUbiAddress] = React.useState<`0x${string}` | null>(null)
   const [ubiProvider, setUbiProvider] = React.useState<any>(null)
   
-  // 1. Identificar Billetera A (Login - Privy)
-  const primaryAddress = user?.wallet?.address as `0x${string}`
+  // 1. Identificar Billetera A (Login - Dinámica)
+  // Usamos activeAddress de Wagmi para que sea lo que el usuario ve en pantalla
+  const primaryAddress = activeAddress as `0x${string}`
 
   // 2. Conexión Manual Panel B (WalletConnect - Independiente)
   const handleConnectUBI = async () => {
@@ -52,11 +54,12 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
       const { WalletConnectModal } = await import("@walletconnect/modal")
 
       const projectId = process.env.NEXT_PUBLIC_PROJECT_ID || '3a8170812b3ec9103e334df568600109'
+      console.log("Usando ProjectID:", projectId);
       
       const modal = new WalletConnectModal({
         projectId,
         chains: ["42220"],
-        enableExplorer: false, // DESACTIVADO: Evita que intente descargar listas y rompa el objeto
+        enableExplorer: false,
       })
 
       const provider = await UniversalProvider.init({
@@ -70,6 +73,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
       })
 
       provider.on("display_uri", (uri: string) => {
+        console.log("URI de WalletConnect generada");
         modal.openModal({ uri })
       })
 
@@ -81,6 +85,13 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
             events: ["chainChanged", "accountsChanged"],
           },
         },
+        optionalNamespaces: {
+          eip155: {
+            methods: ["eth_sendTransaction", "eth_signTransaction", "eth_sign", "personal_sign", "eth_signTypedData"],
+            chains: ["eip155:42220"],
+            events: ["chainChanged", "accountsChanged"],
+          }
+        }
       })
 
       const address = session?.namespaces.eip155.accounts[0].split(":")[2] as `0x${string}`
