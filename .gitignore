@@ -15,19 +15,23 @@ keystore
 *secret*
 *PRIVATE_KEY*
 
-# --- 2. FOUNDRY & WEB3 ARTIFACTS (ESTRICTO) ---
-# Evitamos subir logs de transacciones y archivos compilados
-lib/
+# --- 2. FOUNDRY & CONTRACT ARTIFACTS (ESTRICTO) ---
+# Liberamos la raíz /lib para el frontend, pero bloqueamos las librerías de contratos
+# y los archivos pesados de compilación.
+contracts/lib/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+lib/forge-std/
+lib/openzeppelin-contracts/
 out/
 cache/
 broadcast/
 artifacts/
-typechain-types/
-contracts/out/
-contracts/cache/
-contracts/broadcast/
+
 # Ignoramos la base de datos de cache de Forge
 .forge/
+.foundry/
 .foundry/
 
 # --- 3. DEPENDENCIAS & NEXT.JS ---

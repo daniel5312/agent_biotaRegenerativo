@@ -3,15 +3,15 @@ import { type Address, defineChain } from 'viem'
 import { celo } from 'viem/chains'
 export { celo };
 
-// Importación de ABIs desde la nueva carpeta modular usando rutas absolutas
-import { ERC20_ABI } from '@/lib/abi/ERC20'
-import { IDENTITY_ABI } from '@/lib/abi/Identity'
-import { UBI_SCHEME_ABI } from '@/lib/abi/UBIScheme'
-import { BIOTA_SPLITTER_ABI } from '@/lib/abi/BiotaSplitter'
-import { BIOTA_SCROW_ABI } from '@/lib/abi/BiotaScrow'
-import { BIOTA_PASSPORT_ABI } from '@/lib/abi/BiotaPassport'
-import { I_BIOTA_PASSPORT_ABI } from '@/lib/abi/IBiotaPassport'
-import { CFA_V1_FORWARDER_ABI } from '@/lib/abi/CFAv1Forwarder'
+// Importación de ABIs desde la nueva carpeta modular
+import { ERC20_ABI } from './abi/ERC20'
+import { IDENTITY_ABI } from './abi/Identity'
+import { UBI_SCHEME_ABI } from './abi/UBIScheme'
+import { BIOTA_SPLITTER_ABI } from './abi/BiotaSplitter'
+import { BIOTA_SCROW_ABI } from './abi/BiotaScrow'
+import { BIOTA_PASSPORT_ABI } from './abi/BiotaPassport'
+import { I_BIOTA_PASSPORT_ABI } from './abi/IBiotaPassport'
+import { CFA_V1_FORWARDER_ABI } from './abi/CFAv1Forwarder'
 
 // Re-exportar ABIs para que el resto de la app los encuentre aquí
 export {
