@@ -8,12 +8,18 @@ import {
   useReadContract, 
   useWriteContract, 
   useWaitForTransactionReceipt,
-  useBalance
+  useAccount
 } from 'wagmi'
 import { ADDRESSES, CFA_V1_FORWARDER_ABI, ERC20_ABI } from '@/lib/contracts'
 import { REGENERATIVE_SALARY_FLOWRATE } from '@/lib/superfluid-utils'
 import { useToast } from '@/hooks/use-toast'
-import { formatUnits } from 'viem'
+import { 
+  formatUnits, 
+  parseUnits, 
+  createWalletClient, 
+  custom, 
+  publicActions 
+} from 'viem'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 export interface StreamState {
@@ -24,6 +30,7 @@ export interface StreamState {
   /** ¿Cargando información del contrato? */
   isLoading: boolean
   /** Ejecutar transacción para abrir el flujo */
+  /** Ejecutar transacción para abrir el flujo */
   startStream: () => Promise<void>
   /** Detener el flujo */
   stopStream: () => Promise<void>
@@ -33,16 +40,25 @@ export interface StreamState {
   lastUpdated: number
   /** Depósito de seguridad (buffer) actual */
   bufferAmount: bigint
+  /** ¿La billetera conectada es la dueña del flujo (SENDER)? */
+  canSign: boolean
 }
 
 const CHAIN_ID = 42220
 // ── Hook ─────────────────────────────────────────────────────────────────────
-export function useSuperfluidStream(receiverAddress?: `0x${string}`, senderOverride?: `0x${string}`): StreamState {
+export function useSuperfluidStream(
+  receiverAddress?: `0x${string}`, 
+  senderOverride?: `0x${string}`,
+  manualProvider?: any // Nuevo: Proveedor manual (ej: WalletConnect)
+): StreamState {
   const { toast } = useToast()
+  const { address: activeWallet } = useAccount() 
   
   // El SENDER es la billetera de UBI (senderOverride) y el RECEIVER es la de Google (receiverAddress)
   const SENDER = senderOverride || ADDRESSES.BIOTA_SCROW
   const RECEIVER = receiverAddress
+
+  const canSign = !!(manualProvider || (activeWallet && SENDER && activeWallet.toLowerCase() === SENDER.toLowerCase()))
 
   // 1. Consultar estado del flujo entre UBI -> Google
   const { data: flowData, isLoading: loadingFlow, refetch: refetchFlow } = useReadContract({
@@ -106,36 +122,52 @@ export function useSuperfluidStream(receiverAddress?: `0x${string}`, senderOverr
       return
     }
 
-    // 2. Validación de Buffer de Seguridad
-    const requiredBuffer = 1n * 10n**17n // Estimación conservadora del buffer
-    if (senderBalance && (senderBalance as bigint) < requiredBuffer) {
-      toast({
-        title: "⚠️ Saldo de UBI Insuficiente",
-        description: "Tu billetera UBI necesita saldo de G$ para cubrir el depósito del flujo.",
-        variant: "destructive"
-      })
-      return
+    // 2. Crear WalletClient Manual si existe manualProvider
+    let signer: any = null
+    if (manualProvider) {
+       signer = createWalletClient({
+         chain: undefined, // Se hereda del provider
+         transport: custom(manualProvider)
+       }).extend(publicActions)
     }
 
     try {
       toast({
         title: "🌱 Iniciando Goteo P2P",
-        description: "Abriendo flujo desde UBI Wallet..."
+        description: "Abriendo flujo desde GoodWallet..."
       })
 
-      await writeContractAsync({
-        chainId: CHAIN_ID,
-        address: ADDRESSES.CFA_V1_FORWARDER,
-        abi: CFA_V1_FORWARDER_ABI,
-        functionName: 'createFlow',
-        args: [
-          ADDRESSES.G$, 
-          SENDER as `0x${string}`, 
-          RECEIVER as `0x${string}`, 
-          BigInt(REGENERATIVE_SALARY_FLOWRATE.toString()), // int96
-          "0x" // userData vacío
-        ],
-      })
+      if (signer) {
+        // FIRMA MANUAL (WalletConnect)
+        await signer.writeContract({
+          address: ADDRESSES.CFA_V1_FORWARDER,
+          abi: CFA_V1_FORWARDER_ABI,
+          functionName: 'createFlow',
+          args: [
+            ADDRESSES.G$, 
+            SENDER as `0x${string}`, 
+            RECEIVER as `0x${string}`, 
+            BigInt(REGENERATIVE_SALARY_FLOWRATE.toString()),
+            "0x"
+          ],
+          account: SENDER as `0x${string}`
+        })
+      } else {
+        // FIRMA GLOBAL (Wagmi/MetaMask)
+        await writeContractAsync({
+          chainId: CHAIN_ID,
+          address: ADDRESSES.CFA_V1_FORWARDER,
+          abi: CFA_V1_FORWARDER_ABI,
+          functionName: 'createFlow',
+          args: [
+            ADDRESSES.G$, 
+            SENDER as `0x${string}`, 
+            RECEIVER as `0x${string}`, 
+            BigInt(REGENERATIVE_SALARY_FLOWRATE.toString()), // int96
+            "0x" // userData vacío
+          ],
+        })
+      }
     } catch (error: any) {
       console.error("Superfluid Error:", error)
       const isBufferError = error?.message?.includes("0xa3eab6ac") || error?.data?.includes("0xa3eab6ac")
@@ -174,6 +206,7 @@ export function useSuperfluidStream(receiverAddress?: `0x${string}`, senderOverr
     stopStream,
     isPending: isWriting || isConfirming,
     lastUpdated,
-    bufferAmount
+    bufferAmount,
+    canSign
   }
 }
