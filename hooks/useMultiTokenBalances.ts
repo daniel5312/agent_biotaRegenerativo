@@ -29,7 +29,7 @@ export function useMultiTokenBalances(address?: `0x${string}`) {
     allowFailure: true,
     contracts: [
       { address: ADDRESSES.G$ as `0x${string}`, abi: ERC20_ABI, functionName: 'balanceOf', args: [address!] },
-      { address: ADDRESSES.cUSD as `0x${string}`, abi: ERC20_ABI, functionName: 'balanceOf', args: [address!] },
+      { address: ADDRESSES.CUSD as `0x${string}`, abi: ERC20_ABI, functionName: 'balanceOf', args: [address!] },
       { address: ADDRESSES.USDT as `0x${string}`, abi: ERC20_ABI, functionName: 'balanceOf', args: [address!] },
       { address: ADDRESSES.USDC as `0x${string}`, abi: ERC20_ABI, functionName: 'balanceOf', args: [address!] },
     ],
