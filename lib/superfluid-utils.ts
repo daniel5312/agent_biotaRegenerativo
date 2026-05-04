@@ -29,6 +29,6 @@ export function calculateAccumulated(flowRate: bigint, lastUpdateTimestamp: numb
   return flowRate * elapsed;
 }
 
-// Constante pre-calculada para el Sueldo Regenerativo de 1,000 G$
-// (1000 * 10^18) / 2,628,000 = 380,517,503,805,175 wei/seg
-export const REGENERATIVE_SALARY_FLOWRATE = calculateFlowRate(1000); 
+// Constante pre-calculada para el Sueldo Regenerativo de 2,000 G$
+// (2000 * 10^18) / 2,628,000
+export const REGENERATIVE_SALARY_FLOWRATE = calculateFlowRate(2000); 

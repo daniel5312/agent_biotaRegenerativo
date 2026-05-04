@@ -39,13 +39,14 @@ const formatCrypto = (value: bigint, decimals: number) => {
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-// Función para estimar USD total (asumiendo stables = $1 y CELO = $0.80)
-const calculateTotalUSD = (balances: any) => {
+// Función para estimar USD total (asumiendo stables = $1, CELO = $0.80, G$ = 0.0001)
+const calculateTotalUSD = (balances: any, ubiBalances?: any) => {
   const stables = Number(formatUnits(balances.cusd, 18)) + 
                   Number(formatUnits(balances.usdt, 6)) + 
                   Number(formatUnits(balances.usdc, 6));
   const celoInUsd = Number(formatUnits(balances.celo, 18)) * 0.80;
-  return (stables + celoInUsd).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+  const gdInUsd = ubiBalances ? Number(formatUnits(ubiBalances.gd, 18)) * 0.0001 : 0;
+  return (stables + celoInUsd + gdInUsd).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
 };
 
 interface IdentityActionProps {
@@ -77,6 +78,11 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   const { balances: primaryBalances } = useMultiTokenBalances(primaryAddress)
   const { balances: ubiBalances } = useMultiTokenBalances(ubiAddress || undefined)
 
+  // 4.5 Lógica Inferida de Identidad y Liquidez
+  const gdBalanceNum = Number(formatUnits(ubiBalances.gd, 18));
+  const hasGoodDollarFunds = !!ubiAddress && ubiBalances.gd > 0n;
+  const isHumanVerified = identity.hasValidIdentity || hasGoodDollarFunds;
+
   // 5. Hook de UBI Claim — checkEntitlement + claim real
   const {
     entitlementFormatted,
@@ -87,6 +93,36 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
     isLoading: loadingClaim,
     refetchEntitlement,
   } = useUBIClaim(identity.whitelistedRoot as `0x${string}`, identity.whitelistedRoot)
+
+  // 6. Temporizador Simulado (24h) para UX de Reclamo
+  const [timeLeft, setTimeLeft] = React.useState<number>(0);
+  const [localCanClaim, setLocalCanClaim] = React.useState<boolean>(true);
+
+  React.useEffect(() => {
+    if (!localCanClaim) {
+      const targetTime = Date.now() + 24 * 60 * 60 * 1000;
+      const interval = setInterval(() => {
+        const remaining = targetTime - Date.now();
+        if (remaining <= 0) {
+          setTimeLeft(0);
+          setLocalCanClaim(true);
+          clearInterval(interval);
+        } else {
+          setTimeLeft(remaining);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [localCanClaim]);
+
+  const formatTime = (ms: number) => {
+    if (ms <= 0) return "00:00:00";
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -106,7 +142,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
                 Saldo Total (Estimado)
               </p>
               <h2 className="text-4xl font-black tracking-tighter">
-                {calculateTotalUSD(primaryBalances)}
+                {calculateTotalUSD(primaryBalances, ubiBalances)}
               </h2>
             </div>
 
@@ -165,6 +201,16 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
         <Card className="bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-900/10 dark:to-emerald-950/20 border-blue-100 dark:border-blue-500/20 shadow-xl shadow-blue-500/5 rounded-[2.5rem] overflow-hidden relative border-2">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-50" />
           <CardContent className="p-8 text-center space-y-6">
+
+            {/* Saldo Estático de la GoodWallet */}
+            <div className="flex flex-col items-center justify-center p-4 bg-blue-500/5 rounded-3xl border border-blue-500/10">
+              <span className="text-[10px] font-black text-blue-900/40 dark:text-blue-400/60 uppercase tracking-widest mb-1">
+                Fondo GoodDollar Disponible
+              </span>
+              <h2 className="text-3xl font-black text-blue-600 dark:text-blue-400">
+                {formatCrypto(ubiBalances.gd, 18)} <span className="text-sm">G$</span>
+              </h2>
+            </div>
             
             {/* El Reloj de Dinero G$ */}
             <div className="space-y-2 relative">
@@ -184,19 +230,19 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
             {/* Fila de Estado: Identidad + Refresh */}
             <div className="flex items-center gap-2">
               <div className={`flex-1 flex items-center gap-3 p-3 rounded-2xl border ${
-                identity.hasValidIdentity ? "bg-white/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-500/20" : "bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-500/20"
+                isHumanVerified ? "bg-white/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-500/20" : "bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-500/20"
               }`}>
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  identity.hasValidIdentity ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
+                  isHumanVerified ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
                 }`}>
-                  {identity.hasValidIdentity ? <ShieldCheck size={16} /> : <AlertCircle size={16} />}
+                  {isHumanVerified ? <ShieldCheck size={16} /> : <AlertCircle size={16} />}
                 </div>
                 <div className="text-left flex-1 min-w-0">
                   <p className="text-[9px] font-black uppercase text-blue-950 dark:text-blue-100 truncate">
-                    {identity.hasValidIdentity ? "Humano Verificado" : "Identidad Pendiente"}
+                    {isHumanVerified ? "Humano Verificado" : "Identidad Pendiente"}
                   </p>
                   <p className="text-[8px] text-blue-900/50 dark:text-blue-400/50 uppercase font-bold tracking-tighter">
-                    {identity.hasValidIdentity ? "Acceso Total al UBI" : "Verifica tu rostro"}
+                    {isHumanVerified ? "Acceso Total al UBI" : "Verifica tu rostro"}
                   </p>
                 </div>
               </div>
@@ -213,6 +259,50 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
 
             {/* Acciones: Claim UBI o Botón Superfluid */}
             <div className="space-y-3">
+
+              {/* NUEVO: Botón Prominente de Reclamo UBI */}
+              {isHumanVerified && (
+                <Button
+                  disabled={!localCanClaim}
+                  onClick={() => {
+                    console.log("Iniciando reclamo de UBI en GoodDollar...");
+                    setLocalCanClaim(false);
+                    setTimeLeft(24 * 60 * 60 * 1000);
+                  }}
+                  className={`w-full h-14 rounded-2xl text-white font-black uppercase tracking-widest shadow-lg transition-all ${
+                    localCanClaim ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/30" : "bg-stone-300 dark:bg-stone-800 text-stone-500 cursor-not-allowed"
+                  }`}
+                >
+                  {localCanClaim ? (
+                    <>
+                      <RefreshCw className="mr-2" size={16} /> Reclamar UBI Diario
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="mr-2" size={16} /> Próximo UBI en: {formatTime(timeLeft)}
+                    </>
+                  )}
+                </Button>
+              )}
+               
+              {/* Alertas Preventivas de Liquidez */}
+              {isFlowActive && gdBalanceNum <= 100 && (
+                <div className={`p-3 rounded-xl border flex items-start gap-2 text-left animate-in fade-in zoom-in duration-500 ${
+                  gdBalanceNum < 50 
+                    ? "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400" 
+                    : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+                }`}>
+                  <div className="mt-0.5 shrink-0">
+                    {gdBalanceNum < 50 ? <AlertCircle size={14} /> : <Droplets size={14} />}
+                  </div>
+                  <div className="text-[10px] font-bold leading-snug">
+                    {gdBalanceNum < 50 
+                      ? "⚠️ Peligro de detención. Liquidez crítica, reclama tu UBI ahora."
+                      : "💧 Tu grifo tiene poca liquidez. Reclama tu UBI pronto para mantener el flujo."}
+                  </div>
+                </div>
+              )}
+
                {!isFlowActive ? (
                 <div 
                   role="button"
@@ -230,7 +320,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
                         </span>
                       </div>
                       <span className="text-[8px] opacity-70 font-bold uppercase tracking-widest text-center px-4">
-                        {stream.canSign ? "1,000 G$ Mensuales • Superfluid" : "Cambia a tu UBI Wallet para activar"}
+                        {stream.canSign ? "2,000 G$ Mensuales • Superfluid" : "Cambia a tu UBI Wallet para activar"}
                       </span>
                     </>
                   )}
@@ -260,7 +350,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
               )}
 
               {/* Link de Verificación si falta */}
-              {!identity.hasValidIdentity && (
+              {!isHumanVerified && (
                 <div 
                   role="button"
                   onClick={() => window.open(identity.faceVerificationUrl, "_blank")}
