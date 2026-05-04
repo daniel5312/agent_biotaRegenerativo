@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   description: "Plataforma de agricultura regenerativa para campesinos",
 };
 
+import { UbiFlowProvider } from "@/context/UbiFlowContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -24,7 +26,9 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <Providers>
             <AgentProvider>
-              {children}
+              <UbiFlowProvider>
+                {children}
+              </UbiFlowProvider>
             </AgentProvider>
           </Providers>
         </ThemeProvider>

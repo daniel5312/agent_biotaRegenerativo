@@ -28,7 +28,25 @@ import { useUBIClaim } from "@/hooks/useUBIClaim"
 import { useSuperfluidStream } from "@/hooks/useSuperfluidStream"
 import { StreamingBalance } from "./StreamingBalance"
 import { useMultiTokenBalances } from '@/hooks/useMultiTokenBalances'
+import { useUbiFlow } from "@/context/UbiFlowContext"
 import { formatUnits } from 'viem'
+
+// Función para mostrar precisión dinámica sin perder decimales importantes
+const formatCrypto = (value: bigint, decimals: number) => {
+  const num = Number(formatUnits(value, decimals));
+  if (num === 0) return "0.00";
+  if (num < 0.01) return num.toFixed(4);
+  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+// Función para estimar USD total (asumiendo stables = $1 y CELO = $0.80)
+const calculateTotalUSD = (balances: any) => {
+  const stables = Number(formatUnits(balances.cusd, 18)) + 
+                  Number(formatUnits(balances.usdt, 6)) + 
+                  Number(formatUnits(balances.usdc, 6));
+  const celoInUsd = Number(formatUnits(balances.celo, 18)) * 0.80;
+  return (stables + celoInUsd).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+};
 
 interface IdentityActionProps {
   tokenId?: bigint
@@ -39,79 +57,18 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   const { address: activeAddress } = useAccount()
   const { toast } = useToast()
   
-  // Estados Independientes Panel B
-  const [ubiAddress, setUbiAddress] = React.useState<`0x${string}` | null>(null)
-  const [ubiProvider, setUbiProvider] = React.useState<any>(null)
-  
   // 1. Identificar Billetera A (Login - Dinámica)
-  // Usamos activeAddress de Wagmi para que sea lo que el usuario ve en pantalla
   const primaryAddress = activeAddress as `0x${string}`
 
-  // 2. Conexión Manual Panel B (WalletConnect - Independiente)
-  const handleConnectUBI = async () => {
-    try {
-      const { UniversalProvider } = await import("@walletconnect/universal-provider")
-      const { WalletConnectModal } = await import("@walletconnect/modal")
+  // 2. Consumir el Estado Global (WalletConnect y Superfluid)
+  const { 
+    ubiAddress, 
+    handleConnectUBI, 
+    disconnectUBI, 
+    stream, 
+    isFlowActive 
+  } = useUbiFlow();
 
-      const projectId = process.env.NEXT_PUBLIC_PROJECT_ID || '3a8170812b3ec9103e334df568600109'
-      console.log("Usando ProjectID:", projectId);
-      
-      const modal = new WalletConnectModal({
-        projectId,
-        chains: ["42220"],
-        enableExplorer: false,
-      })
-
-      const provider = await UniversalProvider.init({
-        projectId,
-        metadata: {
-          name: "Biota Protocol",
-          description: "Regenerative Finance Oracle",
-          url: "https://biota.xyz",
-          icons: ["https://biota.xyz/icon.png"],
-        },
-      })
-
-      provider.on("display_uri", (uri: string) => {
-        console.log("URI de WalletConnect generada");
-        modal.openModal({ uri })
-      })
-
-      const session = await provider.connect({
-        namespaces: {
-          eip155: {
-            methods: ["eth_sendTransaction", "eth_signTransaction", "eth_sign", "personal_sign", "eth_signTypedData"],
-            chains: ["eip155:42220"],
-            events: ["chainChanged", "accountsChanged"],
-          },
-        },
-        optionalNamespaces: {
-          eip155: {
-            methods: ["eth_sendTransaction", "eth_signTransaction", "eth_sign", "personal_sign", "eth_signTypedData"],
-            chains: ["eip155:42220"],
-            events: ["chainChanged", "accountsChanged"],
-          }
-        }
-      })
-
-      const address = session?.namespaces.eip155.accounts[0].split(":")[2] as `0x${string}`
-      setUbiAddress(address)
-      setUbiProvider(provider)
-      modal.closeModal()
-
-      toast({
-        title: "✅ GoodWallet Vinculada",
-        description: `Billetera de impacto conectada: ${address.slice(0,6)}...${address.slice(-4)}`,
-      })
-    } catch (e: any) {
-      console.error("Error WalletConnect:", e)
-      toast({
-        title: "❌ Error de Conexión",
-        description: e.message || "No se pudo conectar WalletConnect",
-        variant: "destructive"
-      })
-    }
-  }
 
   // 3. Datos de Identidad
   const identity = useGoodDollarIdentity(primaryAddress)
@@ -120,15 +77,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   const { balances: primaryBalances } = useMultiTokenBalances(primaryAddress)
   const { balances: ubiBalances } = useMultiTokenBalances(ubiAddress || undefined)
 
-  // 5. Hook de Superfluid — monitoreando flujo Panel B -> Panel A
-  const stream = useSuperfluidStream(
-    primaryAddress, 
-    ubiAddress || undefined,
-    ubiProvider // Pasamos el proveedor de WalletConnect para firmar
-  )
-  const isFlowActive = stream.isActive
-
-  // 4. Hook de UBI Claim — checkEntitlement + claim real
+  // 5. Hook de UBI Claim — checkEntitlement + claim real
   const {
     entitlementFormatted,
     canClaim,
@@ -143,31 +92,42 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
       {/* ── BOLSILLO 1: BILLETERA OPERATIVA (MiniPay) ── */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between px-2">
-          <h4 className="text-[10px] font-black text-emerald-900/40 dark:text-emerald-500/40 uppercase tracking-[0.3em]">
-            Billetera Operativa (MiniPay)
-          </h4>
-          <div className="p-1.5 bg-emerald-500/10 rounded-lg">
-            <Wallet size={12} className="text-emerald-500" />
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: 'CELO', val: primaryBalances.celo, dec: 18, icon: <Coins size={10} className="text-emerald-500" /> },
-            { label: 'cUSD', val: primaryBalances.cusd, dec: 18, icon: <Zap size={10} className="text-blue-500" /> },
-            { label: 'USDT', val: primaryBalances.usdt, dec: 6, icon: <TrendingUp size={10} className="text-green-500" /> },
-            { label: 'USDC', val: primaryBalances.usdc, dec: 6, icon: <ShieldCheck size={10} className="text-blue-400" /> }
-          ].map(tk => (
-            <div key={tk.label} className="bg-white/40 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-500/10 flex flex-col items-center hover:bg-white/60 dark:hover:bg-emerald-900/30 transition-all">
-              <div className="mb-1">{tk.icon}</div>
-              <span className="text-[7px] font-black text-emerald-900/40 dark:text-emerald-400/40 uppercase mb-1">{tk.label}</span>
-              <span className="text-[11px] font-black text-emerald-950 dark:text-white truncate w-full text-center">
-                {parseFloat(formatUnits(tk.val, tk.dec)).toFixed(2)}
-              </span>
+        <Card className="bg-gradient-to-br from-emerald-900 to-emerald-950 text-white shadow-xl shadow-emerald-900/20 rounded-[2.5rem] overflow-hidden border-emerald-800">
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <Badge variant="outline" className="border-emerald-700/50 text-emerald-400 bg-emerald-950/50 uppercase tracking-widest text-[9px] font-black">
+                MiniPay Operativa
+              </Badge>
+              <Wallet size={16} className="text-emerald-500" />
             </div>
-          ))}
-        </div>
+            
+            <div className="text-center mb-8">
+              <p className="text-emerald-500/60 text-[10px] font-black uppercase tracking-widest mb-1">
+                Saldo Total (Estimado)
+              </p>
+              <h2 className="text-4xl font-black tracking-tighter">
+                {calculateTotalUSD(primaryBalances)}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 p-3 bg-black/20 rounded-3xl">
+              {[
+                { label: 'CELO', val: primaryBalances.celo, dec: 18, icon: <Coins size={10} className="text-emerald-500" /> },
+                { label: 'cUSD', val: primaryBalances.cusd, dec: 18, icon: <Zap size={10} className="text-blue-500" /> },
+                { label: 'USDT', val: primaryBalances.usdt, dec: 6, icon: <TrendingUp size={10} className="text-green-500" /> },
+                { label: 'USDC', val: primaryBalances.usdc, dec: 6, icon: <ShieldCheck size={10} className="text-blue-400" /> }
+              ].map(tk => (
+                <div key={tk.label} className="flex flex-col items-center justify-center p-2 rounded-2xl hover:bg-white/5 transition-all">
+                  <div className="mb-1 bg-white/10 p-1.5 rounded-full">{tk.icon}</div>
+                  <span className="text-[8px] font-black text-emerald-500/60 uppercase mb-0.5">{tk.label}</span>
+                  <span className="text-[10px] font-bold text-emerald-50 truncate w-full text-center">
+                    {formatCrypto(tk.val, tk.dec)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* ── BOLSILLO 2: BOLSILLO DE IMPACTO (GoodDollar) ── */}
@@ -194,7 +154,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
           ) : (
             <div 
               role="button"
-              onClick={() => { setUbiAddress(null); setUbiProvider(null); }}
+              onClick={disconnectUBI}
               className="text-[8px] font-black text-blue-500/40 hover:text-blue-500 uppercase tracking-widest cursor-pointer"
             >
               [ Desconectar ]
