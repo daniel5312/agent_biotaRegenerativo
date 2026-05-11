@@ -14,7 +14,8 @@ import {
   Moon,
   Globe,
   Wallet,
-  LogOut
+  LogOut,
+  Shield
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { usePrivy } from "@privy-io/react-auth"
@@ -31,6 +32,7 @@ const tabs: { id: TabId; labelEs: string; labelEn: string; icon: typeof Leaf }[]
   { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout },
   { id: "impacto", labelEs: "Impacto", labelEn: "Impact", icon: Leaf },
   { id: "mercado", labelEs: "Mercado", labelEn: "Market", icon: ShoppingBag },
+  { id: "seguridad", labelEs: "Vigil", labelEn: "Vigil", icon: Shield },
   { id: "academia", labelEs: "Escuela", labelEn: "School", icon: GraduationCap },
   { id: "asesoria", labelEs: "Asesores", labelEn: "Advisors", icon: Users },
 ];

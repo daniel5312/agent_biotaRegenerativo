@@ -164,4 +164,9 @@ contract BiotaScrow is
     ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
         // [EVM] Solo el DEFAULT_ADMIN_ROLE puede firmar una actualización. El oráculo IA no tiene este poder.
     }
+
+    // [SOLIDITY] Storage Gap: Reserva 50 slots de memoria para futuras variables.
+    // Esto evita colisiones de almacenamiento (Storage Collisions) al actualizar a una V2.
+    // Muy recomendado por OpenZeppelin para contratos base.
+    uint256[50] private __gap;
 }

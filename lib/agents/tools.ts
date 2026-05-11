@@ -86,10 +86,19 @@ export const soilValidationTool = {
 
 // ... (El resto de las funciones de ejecución se mantienen iguales)
 
+interface MintPassportArgs {
+    recipient: string;
+    ubicacion: string;
+    areaM2: number;
+    cmSuelo?: number;
+    estado: string;
+    metodos: string;
+}
+
 /**
  * Lógica de ejecución de la herramienta en la blockchain.
  */
-export async function executeMintPassport(args: any) {
+export async function executeMintPassport(args: MintPassportArgs) {
     try {
         console.log("[AGENT-TOOL] Ejecutando mint_biota_passport con:", args);
 
@@ -136,11 +145,19 @@ export async function executeMintPassport(args: any) {
 
 
 
+interface SoilValidationArgs {
+    ph: number;
+    materiaOrganica: number;
+    biodiversidad: number;
+    laborEjecutada: string;
+    farmerAddress: string;
+}
+
 /**
  * Lógica de ejecución de la validación determinista.
  * [ZERO-GAS-SIMULATION] - No gasta gas, solo emite un veredicto.
  */
-export async function executeSoilValidation(args: any) {
+export async function executeSoilValidation(args: SoilValidationArgs) {
     console.log("[AI-VERDICT-TEST] 🧠 Procesando Veredicto para:", args.farmerAddress);
 
     // Lógica determinista simulada
@@ -170,10 +187,17 @@ export async function executeSoilValidation(args: any) {
     };
 }
 
+interface DoubleTriggerArgs {
+    farmerTarget: string;
+    tokenId: number;
+    bioScore: number;
+    actionId?: number;
+}
+
 /**
  * Lógica de ejecución del Doble Gatillo en BiotaScrow.
  */
-export async function executeDoubleTrigger(args: any) {
+export async function executeDoubleTrigger(args: DoubleTriggerArgs) {
     try {
         console.log("[AGENT-TOOL] Ejecutando execute_double_trigger con:", args);
 

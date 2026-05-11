@@ -10,11 +10,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.52",
     "@chaoschain/sdk": "^0.3.0",
     "@goodsdks/identity-sdk": "^1.0.5",
-    "@google/genai": "^1.50.1",
-    "@google/generative-ai": "^0.24.1",
+    "@google/genai": "^1.52.0",
     "@hookform/resolvers": "^3.9.1",
     "@metamask/connect-evm": "^0.9.1",
     "@openzeppelin/contracts": "^5.6.1",

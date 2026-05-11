@@ -1,6 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { useConnection } from "wagmi";
+import { useBiotaPass } from "@/hooks/useBiotaPass";
 
 type Message = {
   role: "user" | "assistant";
@@ -12,7 +14,6 @@ type Message = {
   };
 };
 
-// 1. Actualiza la interface
 interface AgentContextType {
   messages: Message[];
   isLoading: boolean;
@@ -23,77 +24,113 @@ interface AgentContextType {
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
 
-/*Asegúrate de que en tu AgentProvider.tsx la exportación sea consistente. Si lo importas como import { AgentProvider }, el archivo debe tener:
-export function AgentProvider(...)
-Y si usas import AgentProvider (sin llaves), debe tener:
-export default function AgentProvider(...)*/
-
 export function AgentProvider({ children }: { children: ReactNode }) {
+  const { address } = useConnection();
+  const { tokenId } = useBiotaPass();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [agentAction, setAgentAction] = useState<{ isMinting: boolean; txHash?: string } | null>(null);
 
+  // 1. Preparar Metadatos de Sesión (Puente de Datos)
+  const getSessionMetadata = () => ({
+    address: address,
+    tokenId: tokenId ? Number(tokenId) : null,
+    isUbiActive: !!tokenId, // Simplificación: si tiene pasaporte, asumimos flujo
+    timestamp: Date.now()
+  });
+
   const sendMessage = async (text: string, agentRole?: string) => {
     try {
       setIsLoading(true);
-      const updatedMessages = [
-        ...messages,
-        { role: "user" as const, content: text },
-      ];
+      const userMessage: Message = { role: "user", content: text };
+      const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
+
+      // Crear un placeholder para la respuesta del bot que se irá llenando
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updatedMessages,
-          agentRole,
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+          agentRole: agentRole || "CAPATAZ",
+          sessionMetadata: getSessionMetadata(), // Inyección de contexto
         }),
       });
-      const data = await response.json();
-      
-      if (data.actionExecuted && data.txHash) {
-        setAgentAction({ isMinting: true, txHash: data.txHash });
+
+      if (!response.body) throw new Error("No hay cuerpo en la respuesta");
+
+      // 2. Lector de Stream (Streaming Real-Time)
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        fullContent += chunk;
+
+        // Actualizar el último mensaje (el del asistente) con el contenido acumulado
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const lastIndex = newMessages.length - 1;
+          newMessages[lastIndex] = { 
+            ...newMessages[lastIndex], 
+            content: fullContent 
+          };
+          return newMessages;
+        });
       }
 
+    } catch (error) {
+      console.error("Error en el Puente de Agentes:", error);
       setMessages((prev) => [
         ...prev,
-        { 
-          role: "assistant", 
-          content: data.text,
-          metadata: {
-            verdict: data.verdict,
-            txHash: data.txHash,
-            actionExecuted: data.actionExecuted
-          }
-        },
+        { role: "assistant", content: "Lo siento, hubo un error conectando con el oráculo de Biota." }
       ]);
-    } catch (error) {
-      console.error("Error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const analizarCroma = async (imagenBase64: string) => {
+    // Implementación similar para cromatografía con soporte de imagen
     try {
       setIsLoading(true);
+      const userMsg: Message = { role: "user", content: "Analizando imagen de cromatografía..." };
+      setMessages(prev => [...prev, userMsg, { role: "assistant", content: "Iniciando escaneo Pfeiffer..." }]);
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          messages: [{ role: "user", content: "Analiza esta cromatografía" }],
           image: imagenBase64,
-          type: "croma",
+          agentRole: "ANALISTA_CROMA",
+          sessionMetadata: getSessionMetadata()
         }),
       });
 
-      const data = await response.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.text },
-      ]);
-    } catch (error) {
-      console.error("Error analizando croma:", error);
+      const reader = response.body?.getReader();
+      if (!reader) return;
+      const decoder = new TextDecoder();
+      let content = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        content += decoder.decode(value);
+        setMessages(prev => {
+          const next = [...prev];
+          next[next.length - 1].content = content;
+          return next;
+        });
+      }
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsLoading(false);
     }
