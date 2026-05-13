@@ -26,7 +26,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAgent } from "@/context/agentProvider"
-import { useConnection, useWriteContract } from 'wagmi'
+import { useConnection, useWriteContract, useSendTransaction } from 'wagmi'
+import { parseEther } from 'viem'
 import { ADDRESSES, BIOTA_SCROW_ABI } from '@/lib/contracts'
 import { useBiotaPass } from '@/hooks/useBiotaPass'
 import { useToast } from '@/hooks/use-toast'
@@ -78,10 +79,12 @@ export function AsesoriaView() {
   const { address } = useConnection()
   const { tokenId } = useBiotaPass()
   const { writeContractAsync, isPending: isTriggering } = useWriteContract()
+  const { sendTransactionAsync } = useSendTransaction()
   const { toast } = useToast()
 
   const { messages, sendMessage, analizarCroma, isLoading } = useAgent()
   const [input, setInput] = useState("")
+  const [isPaying, setIsPaying] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -113,10 +116,36 @@ export function AsesoriaView() {
     }
   }, [messages])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return
-    sendMessage(input, selectedAgent.id)
-    setInput("")
+
+    try {
+      setIsPaying(true)
+      toast({ 
+        title: "Peaje x402 Biota", 
+        description: "Firma el micropago de 0.01 CELO para consultar al Agente." 
+      })
+      
+      const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
+      
+      await sendTransactionAsync({
+        to: AGENT_WALLET,
+        value: parseEther("0.01"),
+      })
+      
+      toast({ title: "✅ Pago Confirmado", description: "Inferencia IA en proceso..." })
+      sendMessage(input, selectedAgent.id)
+      setInput("")
+    } catch (error) {
+      console.error(error)
+      toast({ 
+        title: "Acceso Denegado", 
+        description: "Debes pagar el peaje x402 para usar el Oráculo.", 
+        variant: "destructive" 
+      })
+    } finally {
+      setIsPaying(false)
+    }
   }
 
   const selectAgent = (agent: typeof AGENTS[0]) => {
@@ -367,10 +396,10 @@ export function AsesoriaView() {
             </div>
             <Button 
               onClick={handleSend}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || isPaying}
               className="h-10 w-10 p-0 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-lg glow-sm transition-all active:scale-90"
             >
-              <Send className="w-4 h-4" />
+              {isPaying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
           <p className="text-[8px] text-emerald-600/50 dark:text-emerald-500/40 mt-1.5 text-center font-medium">
