@@ -5,45 +5,74 @@ import { Shield, ShieldAlert, ShieldCheck, AlertCircle, Terminal, Zap, Lock, Unl
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { useWriteContract, useWaitForTransactionReceipt, useConnection } from "wagmi"
+import { useWriteContract, useWaitForTransactionReceipt, useConnection, useReadContract } from "wagmi"
 import { ADDRESSES, ERC20_ABI } from "@/lib/contracts"
 
 export function SecurityView() {
   const { address } = useConnection()
-  const [isVulnerable, setIsVulnerable] = useState(true)
   const [log, setLog] = useState<string[]>([
-    "[Vigil] Escaneando billetera...",
-    "[Vigil] Detectadas 14 aprobaciones activas.",
-    "[Vigil] Analizando Proxy UUPS: 0x6bbA...9A1B",
+    "[Vigil] Escaneando memoria on-chain de Celo Mainnet...",
   ])
+
+  // 1. Auditoría On-Chain Real
+  const { data: currentAllowance, isLoading: isScanning, refetch } = useReadContract({
+    address: ADDRESSES.CUSD as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: address ? [address as `0x${string}`, ADDRESSES.BIOTA_SCROW as `0x${string}`] : undefined,
+    query: {
+      enabled: !!address,
+    }
+  })
+
+  // 2. Veredicto Criptográfico
+  const isVulnerable = currentAllowance !== undefined && (currentAllowance as bigint) > 0n
 
   const { writeContract, data: hash, isPending } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
 
   useEffect(() => {
-    if (isVulnerable) {
-      const timer = setTimeout(() => {
-        setLog(prev => [...prev, "[CRITICAL] V2 Malicioso detectado en Proxy UUPS!", "[CRITICAL] Riesgo: Colisión de almacenamiento y drenaje sin protección."])
-      }, 2000)
-      return () => clearTimeout(timer)
+    if (isScanning) {
+      setLog(["[Vigil] Escaneando memoria on-chain de Celo Mainnet..."])
+      return
     }
-  }, [isVulnerable])
+
+    if (currentAllowance !== undefined) {
+      const allowanceObj = currentAllowance as bigint
+      if (allowanceObj > 0n) {
+        // Para simplificar, asumimos formatUnits y dividimos por 10^18 manualmente si no importamos viem
+        const formattedAmount = Number(allowanceObj) / 1e18
+        setLog([
+          "[Vigil] Escaneo completado.",
+          `[CRITICAL] Riesgo inminente detectado en el contrato proxy.`,
+          `[CRITICAL] Allowance expuesto: ${formattedAmount.toFixed(2)} cUSD`,
+          "[ACTION] Se recomienda revocar los permisos inmediatamente."
+        ])
+      } else {
+        setLog([
+          "[Vigil] Escaneo completado.",
+          "[SUCCESS] No se detectaron permisos abusivos en la billetera.",
+          "[Vigil] Estado: PROTEGIDO."
+        ])
+      }
+    }
+  }, [currentAllowance, isScanning])
 
   const handleRevoke = () => {
     writeContract({
-      address: ADDRESSES.CUSD,
+      address: ADDRESSES.CUSD as `0x${string}`,
       abi: ERC20_ABI,
       functionName: 'approve',
-      args: [ADDRESSES.BIOTA_SCROW, 0n],
+      args: [ADDRESSES.BIOTA_SCROW as `0x${string}`, 0n],
     })
   }
 
   useEffect(() => {
     if (isSuccess) {
-      setIsVulnerable(false)
-      setLog(prev => [...prev, "[SUCCESS] Aprobación revocada: 0.00 cUSD", "[Vigil] Estado: PROTEGIDO."])
+      setLog(prev => [...prev, "[SUCCESS] Transacción de revocación confirmada on-chain.", "[Vigil] Allowance ajustado a 0.00 cUSD.", "[Vigil] Estado: PROTEGIDO."])
+      refetch() // Volver a escanear para actualizar la UI
     }
-  }, [isSuccess])
+  }, [isSuccess, refetch])
 
   return (
     <div className="px-4 py-4 space-y-4 mb-nav animate-fade-in">

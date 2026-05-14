@@ -70,9 +70,28 @@ export function PasaporteView() {
                 <div className="space-y-1"><label className="text-[10px] font-black uppercase text-stone-500">Finca</label><Input onChange={(e)=>setFinca(e.target.value)} className="bg-black/40 border-white/10 h-12 rounded-2xl" /></div>
                 <div className="space-y-1"><label className="text-[10px] font-black uppercase text-stone-500">Municipio</label><Input onChange={(e)=>setMunicipio(e.target.value)} className="bg-black/40 border-white/10 h-12 rounded-2xl" /></div>
               </div>
-              <Button onClick={() => mintPassport({tokenURI:"ipfs://biota", ubicacionGeografica: finca, areaM2: BigInt(area), cmSueloRecuperado:0n, estadoBiologico:"Iniciado", hashAnalisisLab:"0x", ingredientesHash: nombreProductor, metodosAgricolas:"Regenerativo"})} disabled={isMinting || !finca} className="w-full h-14 bg-emerald-500 text-black font-black uppercase rounded-2xl">
-                {isMinting ? <Loader2 className="animate-spin" /> : `Mintear Pasaporte (0.01 CELO)`}
-              </Button>
+              <div className="space-y-4">
+                <div className="flex bg-black/40 p-1 rounded-xl border border-white/10 w-full mb-2">
+                  <button onClick={() => setPaymentMethod("CELO")} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${paymentMethod === "CELO" ? 'bg-amber-500 text-black shadow-md' : 'text-stone-500 hover:text-stone-400'}`}>0.01 CELO</button>
+                  <button onClick={() => setPaymentMethod("G$")} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${paymentMethod === "G$" ? 'bg-blue-600 text-white shadow-md' : 'text-stone-500 hover:text-stone-400'}`}>50 G$</button>
+                </div>
+                <Button 
+                  onClick={() => mintPassport({
+                    tokenURI:"ipfs://biota", 
+                    ubicacionGeografica: finca, 
+                    areaM2: BigInt(area), 
+                    cmSueloRecuperado:0n, 
+                    estadoBiologico:"Iniciado", 
+                    hashAnalisisLab:"0x", 
+                    ingredientesHash: nombreProductor, 
+                    metodosAgricolas:"Regenerativo"
+                  }, paymentMethod)} 
+                  disabled={isMinting || !finca || !nombreProductor} 
+                  className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded-2xl transition-all shadow-lg shadow-emerald-500/20"
+                >
+                  {isMinting ? <Loader2 className="animate-spin" /> : `Mintear Pasaporte (${paymentMethod === 'CELO' ? '0.01 CELO' : '50 G$'})`}
+                </Button>
+              </div>
             </Card>
           )}
 
