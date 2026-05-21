@@ -145,31 +145,18 @@ export function useBiotaPass(): BiotaPassState {
       if ((methodOverride || paymentMethod) === 'G$') {
         const fee = 50n * 10n ** 18n
         
-        // 1. Approve Splitter para la comisión
-        toast({ title: 'Autorizando G$', description: 'Firma la aprobación para el Splitter Biota.' })
-        await writeContractAsync({
+        // 1. Approve Passport para la comisión en G$
+        toast({ title: 'Autorizando G$', description: 'Firma la aprobación para el Pasaporte Biota.' })
+        const approveHash = await writeContractAsync({
           chainId: 42220,
           address: ADDRESSES.G$ as `0x${string}`,
           abi: ERC20_ABI,
           functionName: 'approve',
-          args: [ADDRESSES.BIOTA_SPLITTER, fee],
+          args: [ADDRESSES.BIOTA_PASSPORT, fee],
         })
-
-        // 2. Ejecutar Pago Dividido
-        toast({ title: 'Dividiendo Comisión', description: 'Enrutando 94/3/3...' })
-        await writeContractAsync({
-          chainId: 42220,
-          address: ADDRESSES.BIOTA_SPLITTER as `0x${string}`,
-          abi: BIOTA_SPLITTER_ABI,
-          functionName: 'payWithSplit',
-          args: [
-            ADDRESSES.G$,
-            fee,
-            ADDRESSES.REFI_MEDELLIN,
-            ADDRESSES.COLLECTIVE_MUJERES,
-            ADDRESSES.BIOTA_SCROW
-          ]
-        })
+        
+        toast({ title: 'Procesando...', description: 'Esperando confirmación en la red...' })
+        await publicClient!.waitForTransactionReceipt({ hash: approveHash })
       } else {
         // Pago en CELO Nativo
         valueToSend = parseEther('0.01'); 
@@ -187,6 +174,7 @@ export function useBiotaPass(): BiotaPassState {
         abi: BIOTA_PASSPORT_ABI,
         functionName: 'mintPasaporte',
         value: valueToSend,
+        gas: 600000n, // [FORZAR GAS] Evita que MetaMask bloquee el botón al fallar la estimación
         args: [
           params.tokenURI,
           params.ubicacionGeografica,

@@ -70,9 +70,14 @@ export function PasaporteView() {
                 <div className="space-y-1"><label className="text-[10px] font-black uppercase text-stone-500">Finca</label><Input onChange={(e)=>setFinca(e.target.value)} className="bg-black/40 border-white/10 h-12 rounded-2xl" /></div>
                 <div className="space-y-1"><label className="text-[10px] font-black uppercase text-stone-500">Municipio</label><Input onChange={(e)=>setMunicipio(e.target.value)} className="bg-black/40 border-white/10 h-12 rounded-2xl" /></div>
               </div>
-              <Button onClick={() => mintPassport({tokenURI:"ipfs://biota", ubicacionGeografica: finca, areaM2: BigInt(area), cmSueloRecuperado:0n, estadoBiologico:"Iniciado", hashAnalisisLab:"0x", ingredientesHash: nombreProductor, metodosAgricolas:"Regenerativo"})} disabled={isMinting || !finca} className="w-full h-14 bg-emerald-500 text-black font-black uppercase rounded-2xl">
-                {isMinting ? <Loader2 className="animate-spin" /> : `Mintear Pasaporte (0.01 CELO)`}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => mintPassport({tokenURI:"ipfs://biota", ubicacionGeografica: finca, areaM2: BigInt(area), cmSueloRecuperado:0n, estadoBiologico:"Iniciado", hashAnalisisLab:"0x", ingredientesHash: nombreProductor, metodosAgricolas:"Regenerativo"}, "CELO")} disabled={isMinting || !finca} className="flex-1 h-14 bg-amber-500 text-black font-black uppercase rounded-2xl hover:bg-amber-400">
+                  {isMinting ? <Loader2 className="animate-spin" /> : `Mintear (0.01 CELO)`}
+                </Button>
+                <Button onClick={() => mintPassport({tokenURI:"ipfs://biota", ubicacionGeografica: finca, areaM2: BigInt(area), cmSueloRecuperado:0n, estadoBiologico:"Iniciado", hashAnalisisLab:"0x", ingredientesHash: nombreProductor, metodosAgricolas:"Regenerativo"}, "G$")} disabled={isMinting || !finca} className="flex-1 h-14 bg-blue-500 text-white font-black uppercase rounded-2xl hover:bg-blue-400">
+                  {isMinting ? <Loader2 className="animate-spin" /> : `Mintear (50 G$)`}
+                </Button>
+              </div>
             </Card>
           )}
 
