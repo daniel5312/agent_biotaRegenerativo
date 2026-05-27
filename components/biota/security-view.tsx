@@ -168,10 +168,10 @@ export function SecurityView() {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => { setIsVulnerable(true); setLog(["[Vigil] Re-escaneando..."]); }}
+              onClick={() => { setLog(["[Vigil] Re-escaneando..."]); refetch(); }}
               className="w-full text-[10px] font-bold uppercase tracking-widest opacity-50 hover:opacity-100 hover:bg-transparent"
             >
-              <RefreshCw size={12} className="mr-2" /> Simular nueva vulnerabilidad
+              <RefreshCw size={12} className="mr-2" /> Re-escanear estado
             </Button>
           )}
         </CardContent>
