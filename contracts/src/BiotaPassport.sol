@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28; // [SOLIDITY] Versión fija para determinismo total y optimización de bytecode avanzada.
+pragma solidity 0.8.28; // [SOLIDITY] Versión fija para determinismo y optimización de bytecode.
 
 // [BLOCKCHAIN] Importaciones del ecosistema OpenZeppelin Upgradeable v5.x.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -10,10 +10,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title BiotaPassport - Pasaporte Biológico Dinámico (Upgradeable)
+ * @title BiotaPassport - Pasaporte Biológico Dinámico (Upgradeable V3 - Router Inteligente)
  * @author Biota Protocol
  * @notice [REFI] El alma del protocolo. Tokeniza la identidad y el impacto regenerativo del productor.
- * @dev [EVM] Implementa el patrón UUPS para permitir actualizaciones de lógica preservando los datos históricos.
+ * @dev [EVM] Implementa el patrón UUPS preservando el Storage Layout histórico.
  */
 contract BiotaPassport is 
     Initializable, 
@@ -22,48 +22,40 @@ contract BiotaPassport is
     AccessControlUpgradeable, 
     UUPSUpgradeable 
 {
-    // [SOLIDITY] Definición de Roles (Control de Acceso Granular).
+    // ==========================================
+    // [V1/V2] STORAGE LAYOUT ORIGINAL (INTOCABLE)
+    // No mover, no borrar, no reordenar.
+    // ==========================================
+    
+    // [SOLIDITY] Control de Acceso Granular. (No ocupa slot, es bytecode)
     bytes32 public constant VERIFICADOR_ROLE = keccak256("VERIFICADOR_ROLE");
 
-    // [EVM] Variables de Estado (Storage).
+    // [EVM] Slot 0 (después de herencias de OZ): ID del próximo token a mintear.
     uint256 private _nextTokenId;
 
-    // [CELO] Direcciones de infraestructura crítica (Inmutables por convención en esta versión).
-    address public constant REFI_TREASURY = 0xd4AC6c14B4C96F7e66049210F56cb07468028d4e;
-    address public constant MUJERES_CARMEN = 0x0d43131f1577310D6349bAF9D6Da4fC1Cd39764C;
+    // [CELO] Token GoodDollar en Celo (Inmutable, el ERC20 G$ nunca cambia).
     IERC20 public constant G_TOKEN = IERC20(0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A);
-
-    // [REFI] Parámetros económicos de entrada al protocolo.
-    uint256 public constant MINT_PRICE_CELO = 0.01 ether;
-    uint256 public constant MINT_PRICE_G = 50 * 1e18;
 
     // ==========================================
     // [EVM] CUSTOM ERRORS (Gas-Friendly)
     // ==========================================
-    error Biota__PagoInsuficiente(); // [CELO] Falla si el cUSD/G$ enviado es menor al fee.
+    error Biota__PagoInsuficiente(); // [CELO/GOODDOLLAR] Falla si el pago enviado es menor a las variables dinámicas de fee.
     error Biota__NoEresElPropietario(); // [SOLIDITY] Error de seguridad en ownership.
     error Biota__NoEresVerificador(); // [BLOCKCHAIN] Error de privilegio de rol.
     error Biota__AreaInvalida(); // [REFI] Protección contra datos de lote nulos.
-    error Biota__TransferenciaFallida(); // [EVM] Falla en low-level calls de fondos.
+    error Biota__TransferenciaFallida(); // [EVM] Falla en low-level calls de fondos nativos (CELO).
 
     // ==========================================
     // [EVM] STRUCT PACKING (Optimización Extrema)
     // ==========================================
-    /**
-     * @dev [REFI] Estructura que encapsula la salud del suelo.
-     * [SOLIDITY] Empaquetado de variables para minimizar el uso de slots de 256 bits.
-     */
     struct LoteData {
-        // --- SLOT 1 (30 bytes usados) ---
-        address verificador;     // 20 bytes: Quien dio el visto bueno técnico.
-        bool esVerificado;       // 1 byte: Flag de auditoría terminada.
-        bool isHumanVerified;    // 1 byte: [GOODDOLLAR] Resultado de prueba anti-sybil.
-        uint32 areaM2;           // 4 bytes: Tamaño del lote (Máx 4k hectáreas).
-        uint32 cmSueloRecuperado; // 4 bytes: Métrica principal de impacto.
-        // --- SLOT 2 (16 bytes usados) ---
-        uint64 fechaRegistro;    // 8 bytes: Timestamp inmutable de entrada.
-        uint64 ultimaActualizacion; // 8 bytes: Auditoría temporal.
-        // --- SLOTS DINÁMICOS (Storage Pointers) ---
+        address verificador;     
+        bool esVerificado;       
+        bool isHumanVerified;    
+        uint32 areaM2;           
+        uint32 cmSueloRecuperado; 
+        uint64 fechaRegistro;    
+        uint64 ultimaActualizacion; 
         string ubicacionGeografica;
         string estadoBiologico;
         string hashAnalisisLab;
@@ -71,8 +63,26 @@ contract BiotaPassport is
         string metodosAgricolas;
     }
 
-    // [BLOCKCHAIN] Mapeo de identidad NFT -> Datos de Impacto.
+    // [BLOCKCHAIN] Mapeo de identidad NFT -> Datos de Impacto (Storage V1).
+    // Slot 1
     mapping(uint256 => LoteData) public lotePasaporte;
+
+    // ==========================================
+    // [V3] NUEVO STORAGE LAYOUT (ROUTER INTELIGENTE)
+    // Agregamos las variables aquí abajo para no colisionar con _nextTokenId y lotePasaporte.
+    // ==========================================
+    
+    // [REFI] Direcciones dinámicas para pagos en G$ (Antiguas constantes de V1/V2).
+    address public refiTreasury;      // Slot 2
+    address public mujeresCarmen;     // Slot 3
+
+    // [CELO] Direcciones dinámicas para pagos nativos (Router Inteligente V3).
+    address public poolLoginWallet;      // Slot 4: 0x9158... (Fondo Privy / Google Gas)
+    address public biotaProductoresPool; // Slot 5: 0x9bc4... (Administración/Sostenibilidad)
+
+    // [ECONOMÍA] Precios de entrada dinámicos.
+    uint256 public mintPriceCelo; // Slot 6 (Ej: 0.01 ether = 10000000000000000)
+    uint256 public mintPriceG;    // Slot 7 (¡OJO! 2 Decimales. 10 = 0.10 G$)
 
     // ==========================================
     // [SOLIDITY] EVENTOS
@@ -80,6 +90,8 @@ contract BiotaPassport is
     event PassportMinted(uint256 indexed tokenId, address indexed producer, string ubicacion, bool pagadoConCelo);
     event EvidenciaActualizada(uint256 indexed tokenId, uint32 nuevoCmSuelo, string nuevoEstado);
     event ImpactoVerificado(uint256 indexed tokenId, address indexed verificador);
+    event ParametrosEconomicosActualizados(uint256 nuevoPrecioCelo, uint256 nuevoPrecioG);
+    event RutasDePagoActualizadas(address refi, address mujeres, address login, address productores);
 
     // ==========================================
     // [EVM] INICIALIZACIÓN (Pattern UUPS)
@@ -87,21 +99,47 @@ contract BiotaPassport is
     
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers(); // [SOLIDITY] Bloquea el contrato base para evitar secuestro de la lógica.
+        _disableInitializers(); 
     }
 
-    /**
-     * @notice [BLOCKCHAIN] Reemplaza al constructor en contratos Proxy.
-     * @param initialOwner Dirección de la Multisig o Admin del protocolo.
-     */
     function initialize(address initialOwner) public initializer {
         __ERC721_init("BiotaPassport", "BIO");
         __ERC721URIStorage_init();
         __AccessControl_init();
 
-        // [BLOCKCHAIN] Configuración inicial de roles.
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(VERIFICADOR_ROLE, initialOwner);
+    }
+    
+    // ==========================================
+    // [V3] FUNCIONES DE CONFIGURACIÓN DINÁMICA (SETTERS)
+    // ==========================================
+    
+    /**
+     * @notice [ECONOMÍA] Modifica los precios de entrada en tiempo real (Protegido por ADMIN).
+     * @param _nuevoPrecioCelo Precio nativo en wei (ej. 0.01 ether).
+     * @param _nuevoPrecioG Precio en GoodDollars (Corrección V3: 2 decimales en Celo. Pasar '10' para cobrar 0.10 G$).
+     */
+    function setMintPrices(uint256 _nuevoPrecioCelo, uint256 _nuevoPrecioG) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        mintPriceCelo = _nuevoPrecioCelo;
+        mintPriceG = _nuevoPrecioG;
+        emit ParametrosEconomicosActualizados(_nuevoPrecioCelo, _nuevoPrecioG);
+    }
+    
+    /**
+     * @notice [REFI] Configura las rutas del Router Inteligente para la distribución de fondos sin hacer upgrade.
+     */
+    function setTreasuryAddresses(
+        address _refiTreasury, 
+        address _mujeresCarmen, 
+        address _poolLoginWallet, 
+        address _biotaProductoresPool
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        refiTreasury = _refiTreasury;
+        mujeresCarmen = _mujeresCarmen;
+        poolLoginWallet = _poolLoginWallet;
+        biotaProductoresPool = _biotaProductoresPool;
+        emit RutasDePagoActualizadas(_refiTreasury, _mujeresCarmen, _poolLoginWallet, _biotaProductoresPool);
     }
 
     // ==========================================
@@ -109,8 +147,7 @@ contract BiotaPassport is
     // ==========================================
 
     /**
-     * @notice [REFI] Crea un nuevo pasaporte biológico.
-     * @dev [SOLIDITY] Usa 'calldata' para ahorrar gas al leer strings.
+     * @notice [REFI] Crea un nuevo pasaporte biológico aplicando Router Inteligente V3.
      */
     function mintPasaporte(
         string calldata _tokenURI,
@@ -126,32 +163,35 @@ contract BiotaPassport is
 
         bool pagadoConCelo = false;
 
-        // [CELO] Lógica de pagos atómicos para sostener el protocolo.
+        // [CELO] V3 Router Inteligente: Ruta Nativa
         if (msg.value > 0) {
-            if (msg.value < MINT_PRICE_CELO) revert Biota__PagoInsuficiente();
+            if (msg.value < mintPriceCelo) revert Biota__PagoInsuficiente();
             
-            // [EVM] Reparto manual de CELO (Donación + Tesorería).
-            uint256 paraMujeres = (msg.value * 10) / 100;
-            uint256 paraTreasury = msg.value - paraMujeres;
+            // [EVM] División matemática exacta: 5% Fondo Login, 95% Fondo Productores.
+            uint256 paraLoginGas = (msg.value * 5) / 100;
+            uint256 paraProductores = msg.value - paraLoginGas; // Resta segura que evita perder 'wei' por redondeo.
 
-            (bool s1, ) = REFI_TREASURY.call{value: paraTreasury}("");
-            (bool s2, ) = MUJERES_CARMEN.call{value: paraMujeres}("");
+            // [CELO] Uso de low-level calls. Evita rebotar transacciones si la wallet destino es una MultiSig.
+            (bool s1, ) = poolLoginWallet.call{value: paraLoginGas}("");
+            (bool s2, ) = biotaProductoresPool.call{value: paraProductores}("");
             if (!s1 || !s2) revert Biota__TransferenciaFallida();
+            
             pagadoConCelo = true;
         } else {
-            // [BLOCKCHAIN] Pago alternativo con G$ (GoodDollar).
-            uint256 paraMujeres = (MINT_PRICE_G * 10) / 100;
-            uint256 paraTreasury = MINT_PRICE_G - paraMujeres;
+            // [GOODDOLLAR] V3 Router Inteligente: Ruta ERC-20
+            // [MATEMÁTICA] La variable mintPriceG ya asume el uso de 2 decimales.
+            uint256 paraMujeres = (mintPriceG * 10) / 100; // Ej: (10 * 10) / 100 = 1 G$ (entero)
+            uint256 paraTreasury = mintPriceG - paraMujeres; // Ej: 10 - 1 = 9 G$ (entero)
 
-            bool s1 = G_TOKEN.transferFrom(msg.sender, REFI_TREASURY, paraTreasury);
-            bool s2 = G_TOKEN.transferFrom(msg.sender, MUJERES_CARMEN, paraMujeres);
+            // [EVM] Transferencias limpias de tokens ERC-20
+            bool s1 = G_TOKEN.transferFrom(msg.sender, refiTreasury, paraTreasury);
+            bool s2 = G_TOKEN.transferFrom(msg.sender, mujeresCarmen, paraMujeres);
             if (!s1 || !s2) revert Biota__PagoInsuficiente();
         }
 
         // [SOLIDITY] Generación de Identidad NFT.
         uint256 newId = _nextTokenId;
         
-        // [EVM] Escritura eficiente en storage.
         lotePasaporte[newId] = LoteData({
             verificador: address(0),
             esVerificado: false,
@@ -172,69 +212,47 @@ contract BiotaPassport is
 
         emit PassportMinted(newId, msg.sender, _ubicacionGeografica, pagadoConCelo);
 
-        // [GAS-OPTIMIZATION] Unchecked increment (Ahorra ~20 gas por mint).
+        // [GAS-OPTIMIZATION] Unchecked increment para ahorrar gas.
         unchecked { _nextTokenId++; }
         return newId;
     }
 
-    /**
-     * @notice [REFI] Permite al productor reportar avances sin necesidad de un verificador inmediato.
-     */
     function actualizarEvidencia(
-        uint256 tokenId,
-        uint32 _nuevoCmSuelo,
-        string calldata _nuevoEstado,
-        string calldata _nuevoHashLab,
-        string calldata _nuevosMetodos
+        uint256 tokenId, uint32 _nuevoCmSuelo, string calldata _nuevoEstado, 
+        string calldata _nuevoHashLab, string calldata _nuevosMetodos
     ) external {
-        // [SOLIDITY] Verificación de Ownership manual para ahorrar gas de modificador.
         if (ownerOf(tokenId) != msg.sender) revert Biota__NoEresElPropietario();
-
         LoteData storage lote = lotePasaporte[tokenId];
         lote.cmSueloRecuperado = _nuevoCmSuelo;
         lote.estadoBiologico = _nuevoEstado;
         lote.hashAnalisisLab = _nuevoHashLab;
         lote.metodosAgricolas = _nuevosMetodos;
         lote.ultimaActualizacion = uint64(block.timestamp);
-        lote.esVerificado = false; // [REFI] Al cambiar datos, requiere nueva auditoría.
-
+        lote.esVerificado = false; 
         emit EvidenciaActualizada(tokenId, _nuevoCmSuelo, _nuevoEstado);
     }
 
-    /**
-     * @notice [BLOCKCHAIN] Los verificadores aprueban el impacto para habilitar flujos de UBI.
-     */
     function validarImpacto(uint256 tokenId) external onlyRole(VERIFICADOR_ROLE) {
         lotePasaporte[tokenId].esVerificado = true;
         lotePasaporte[tokenId].verificador = msg.sender;
         emit ImpactoVerificado(tokenId, msg.sender);
     }
 
-    /**
-     * @notice [GOODDOLLAR] Enlaza la identidad humana verificada con el pasaporte biológico.
-     */
     function setHumanVerification(uint256 tokenId, bool status) external onlyRole(VERIFICADOR_ROLE) {
         lotePasaporte[tokenId].isHumanVerified = status;
     }
 
-    /**
-     * @notice [BLOCKCHAIN] Permite destruir un pasaporte en caso de fraude o error grave.
-     */
     function burnPassport(uint256 tokenId) external onlyRole(VERIFICADOR_ROLE) {
         _burn(tokenId);
-        delete lotePasaporte[tokenId]; // [GAS-OPTIMIZATION] Libera storage y devuelve gas (Refund).
+        delete lotePasaporte[tokenId]; 
     }
 
     // ==========================================
     // [BLOCKCHAIN] SISTEMA DE ACTUALIZACIÓN
     // ==========================================
 
-    /**
-     * @dev [SOLIDITY] Hook obligatorio para autorizar mejoras del Proxy.
-     */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
-    // [SOLIDITY] Overrides requeridos por Solidity para herencia múltiple de OZ.
     function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable, ERC721URIStorageUpgradeable) returns (string memory) {
         return super.tokenURI(tokenId);
     }
@@ -243,7 +261,7 @@ contract BiotaPassport is
         return super.supportsInterface(interfaceId);
     }
 
-    // [SOLIDITY] Storage Gap: Reserva de 50 slots para que el equipo de Biota duerma tranquilo.
-    // Esto previene colisiones al añadir nuevas métricas de impacto en la V2.
-    uint256[50] private __gap;
+    // [SOLIDITY] Storage Gap: Reducido de 50 a 44 slots para compensar las 6 nuevas variables dinámicas.
+    // Esto asegura que NO haya Storage Collision con implementaciones anteriores de Proxy.
+    uint256[44] private __gap;
 }
