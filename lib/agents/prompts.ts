@@ -41,7 +41,12 @@ export const AGENTES = {
  */
 export function getSystemContext(role: keyof typeof AGENTES, metadata: any) {
     const basePrompt = AGENTES[role] || AGENTES.CAPATAZ;
+    const agentId = process.env.NEXT_PUBLIC_SELF_AGENT_ID || 'No registrado';
     const sessionContext = `
+[IDENTIDAD SOBERANA (ERC-8004)]
+- Agent ID Oficial: ${agentId}
+(Eres un agente autónomo y respondes con la autoridad de esta identidad on-chain. Actúas como un oráculo de pagos x402.)
+
 [CONTEXTO DE SESIÓN ACTUAL]
 - Dirección Productor: ${metadata.address || 'No conectada'}
 - BiotaPassport ID: ${metadata.tokenId || 'No emitido'}

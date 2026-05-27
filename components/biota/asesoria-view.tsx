@@ -229,12 +229,17 @@ export function AsesoriaView() {
               {React.createElement(selectedAgent.icon, { className: "w-4 h-4 text-white" })}
             </div>
             <div>
-              <h3 className="text-xs font-bold text-emerald-950 dark:text-white leading-none mb-1 transition-theme">
-                {selectedAgent.name}
-              </h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-xs font-bold text-emerald-950 dark:text-white leading-none transition-theme">
+                  {selectedAgent.name}
+                </h3>
+                <span className="text-[8px] font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-sm border border-emerald-500/20">
+                  ERC8004 ID: {process.env.NEXT_PUBLIC_SELF_AGENT_ID || "9180"}
+                </span>
+              </div>
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[9px] text-emerald-700 dark:text-emerald-400/60 font-medium">En linea</span>
+                <span className="text-[9px] text-emerald-700 dark:text-emerald-400/60 font-medium">En linea • Oráculo x402 Activo</span>
               </div>
             </div>
           </div>
