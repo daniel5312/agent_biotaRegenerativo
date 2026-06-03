@@ -7,6 +7,12 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IBiotaPassport} from "./IBiotaPassport.sol";
 
+// [GOODDOLLAR] Interfaz genérica para interactuar con los Pools de GoodCollective en Celo Mainnet.
+interface IGoodCollectivePool {
+    // La función exacta que desencadena la distribución de G$ desde el Pool al agricultor.
+    function distributeReward(address _recipient) external;
+}
+
 // [BLOCKCHAIN] Declaración principal del contrato inteligente BiotaScrow.
 // [EVM] Utiliza herencia múltiple inicializable (patrón Proxy) para ahorrar gas de despliegue y permitir mejoras futuras.
 contract BiotaScrow is
@@ -48,6 +54,10 @@ contract BiotaScrow is
     // [CROSS-CONTRACT] Instancia del contrato de pasaporte para validaciones de flujo de fondos.
     IBiotaPassport public passport;
 
+    // [GOODDOLLAR] Dirección del Pool de GoodCollective en Celo Mainnet.
+    // [REFI] Separación de poderes: BiotaScrow certifica, GoodCollective paga.
+    address public goodCollectivePoolAddress;
+
     // ==========================================
     // [SOLIDITY] EVENTOS
     // ==========================================
@@ -88,6 +98,16 @@ contract BiotaScrow is
         address _passport
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         passport = IBiotaPassport(_passport);
+    }
+
+    /**
+     * @notice [GOODDOLLAR] Conecta el oráculo con el Pool de liquidez de GoodCollective en Celo Mainnet.
+     * @param _poolAddress Dirección del contrato del Pool en Celo.
+     */
+    function setGoodCollectivePool(
+        address _poolAddress
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        goodCollectivePoolAddress = _poolAddress;
     }
 
     // ==========================================
@@ -153,6 +173,13 @@ contract BiotaScrow is
 
         // [BLOCKCHAIN] Detonación del evento on-chain. El gatillo ha sido jalado.
         emit DoubleTriggerFired(actionId, farmerTarget, fieldBioScore); // [SOLIDITY]
+
+        // [GOODDOLLAR] dMRV Trigger: Disparamos la liberación de G$ desde el Pool externo en Celo Mainnet.
+        // [GAS-OPTIMIZATION] Envuelto en try/catch. Si el Pool se queda sin liquidez o el agricultor
+        // no cumple algún requisito interno del Pool, la certificación del impacto sigue guardándose exitosamente.
+        if (goodCollectivePoolAddress != address(0)) {
+            try IGoodCollectivePool(goodCollectivePoolAddress).distributeReward(farmerTarget) {} catch {}
+        }
     }
 
     // ==========================================
