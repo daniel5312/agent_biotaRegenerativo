@@ -204,7 +204,7 @@ export function ImpactoView() {
           ================================================================ */}
       <div className="space-y-3 animate-slide-up">
         {/* Producer Card */}
-        <Card className="glass-card overflow-hidden bg-emerald-100/80 dark:bg-emerald-900/30">
+        <Card className="glass-card overflow-hidden">
           <div className="h-1.5 bg-gradient-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0]" />
           
           <CardContent className="p-4">
@@ -272,7 +272,7 @@ export function ImpactoView() {
         {/* Balance Cards */}
         <div className="grid grid-cols-2 gap-3">
           {/* UBI Balance (cUSD & G$) */}
-          <Card className="glass-card metric-card overflow-hidden bg-emerald-100/80 dark:bg-emerald-900/30">
+          <Card className="glass-card metric-card overflow-hidden">
             <CardContent className="p-3 space-y-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md">
@@ -304,7 +304,7 @@ export function ImpactoView() {
           </Card>
 
           {/* Credit Power */}
-          <Card className="glass-card metric-card overflow-hidden bg-emerald-100/80 dark:bg-emerald-900/30">
+          <Card className="glass-card metric-card overflow-hidden">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-md">
@@ -339,7 +339,7 @@ export function ImpactoView() {
       {/* ================================================================
           REGENERATION ORACLE
           ================================================================ */}
-      <Card className="glass-card overflow-hidden animate-slide-up delay-75 bg-emerald-100/80 dark:bg-emerald-900/30">
+      <Card className="glass-card overflow-hidden animate-slide-up delay-75">
         <div className="h-1 bg-gradient-to-r from-cyan-400 via-emerald-400 to-green-400 animate-shimmer" />
         
         <CardContent className="p-4 space-y-4">
@@ -427,7 +427,7 @@ export function ImpactoView() {
       {/* ================================================================
           MICRO-LENDING POOL
           ================================================================ */}
-      <Card className="glass-card overflow-hidden animate-slide-up delay-150 bg-emerald-100/80 dark:bg-emerald-900/30">
+      <Card className="glass-card overflow-hidden animate-slide-up delay-150">
         <div className="h-1 bg-gradient-to-r from-[#1C7EF0] via-[#00B0A0] to-emerald-400" />
         
         <CardContent className="p-4 space-y-3">
@@ -505,7 +505,7 @@ export function ImpactoView() {
       {/* ================================================================
           ACTIVITY TIMELINE
           ================================================================ */}
-      <Card className="glass-card overflow-hidden animate-slide-up delay-225 bg-emerald-100/80 dark:bg-emerald-900/30">
+      <Card className="glass-card overflow-hidden animate-slide-up delay-225">
         <div className="h-1 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400" />
         
         <CardContent className="p-4">
