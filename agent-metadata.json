@@ -1,11 +1,35 @@
 {
     "name": "Biota Orquestador v1",
-    "description": "Agente experto en suelos y regeneración biológica para Biota Protocol.",
+    "description": "Autonomous regenerative AI agent for Biota Protocol. Validates Proof-of-Action from IoT soil sensors and issues UBI streams to certified farmers on Celo Mainnet.",
+    "version": "1.1.0",
+    "author": "Daniel Vargas Hermosa",
+    "agentId": 9180,
+    "wallet": "0x699AD5EF840764db8CEe62569455bBE6081aA6b8",
+    "address": "0x699AD5EF840764db8CEe62569455bBE6081aA6b8",
+    "tba": "0x699AD5EF840764db8CEe62569455bBE6081aA6b8",
+    "owner": "0x1f90a029013609246573f8B3519C8e352333AB0C",
+    "network": "celo",
+    "chainId": 42220,
     "capabilities": [
         "Cromatografía de Pfeiffer",
         "Diagnóstico de Microorganismos de Montaña",
-        "Validación de Proof-of-Action"
+        "Validación de Proof-of-Action",
+        "IoT Soil Sensor Oracle",
+        "UBI Stream Automation",
+        "dMRV Certification"
     ],
-    "author": "Daniel Vargas Hermosa",
-    "version": "1.0.0"
+    "endpoints": {
+        "api": "https://biota-protocol.vercel.app/api/chat",
+        "webhook": "https://biota-protocol.vercel.app/api/iot/webhook"
+    },
+    "x402": {
+        "enabled": true,
+        "paymentAddress": "0x699AD5EF840764db8CEe62569455bBE6081aA6b8",
+        "network": "celo"
+    },
+    "registry": {
+        "erc8004": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+        "erc6551_tba": "0x699AD5EF840764db8CEe62569455bBE6081aA6b8",
+        "erc6551_registry": "0x000000006551c19487814612e58FE06813775758"
+    }
 }
