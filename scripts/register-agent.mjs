@@ -3,8 +3,8 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 
 async function main() {
-  const privateKey = process.env.AGENT_PRIVATE_KEY;
-  if (!privateKey) throw new Error("❌ Falta AGENT_PRIVATE_KEY en el archivo .env. Añade la llave de la wallet 0x1f90...");
+  const privateKey = process.env.PRIVATE_KEY;
+  if (!privateKey) throw new Error("❌ Falta PRIVATE_KEY en el archivo .env. Añade la llave de la wallet 0x1f90...");
 
   const account = privateKeyToAccount(privateKey);
   console.log(`🤖 Billetera del Agente: ${account.address}`);
