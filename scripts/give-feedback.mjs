@@ -9,8 +9,8 @@
  * Uso: node --env-file=.env scripts/give-feedback.mjs
  */
 
-import { createWalletClient, createPublicClient, http, parseAbi, toHex, pad, parseEther } from 'viem';
-import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
+import { createWalletClient, createPublicClient, http, parseAbi, toHex, pad, keccak256 } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 
 const REPUTATION_REGISTRY = '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63';
@@ -25,42 +25,26 @@ async function main() {
   console.log('  BIOTA PROTOCOL — Logging Agent Interaction (ERC-8004)');
   console.log('═══════════════════════════════════════════════════════════\n');
 
-  // Tu wallet (owner)
-  const privateKey = process.env.PRIVATE_KEY;
-  if (!privateKey) throw new Error('❌ Falta PRIVATE_KEY en .env');
-  const ownerAccount = privateKeyToAccount(privateKey);
-
-  // 1. Crear un Cliente Evaluador temporal (para evitar self-feedback block)
-  const tempPk = generatePrivateKey();
-  const clientAccount = privateKeyToAccount(tempPk);
+  // 1. Usar ADMIN_PRIVATE_KEY directamente como validador de terceros
+  const adminPrivateKey = process.env.ADMIN_PRIVATE_KEY;
+  if (!adminPrivateKey) throw new Error('❌ Falta ADMIN_PRIVATE_KEY en .env');
+  const clientAccount = privateKeyToAccount(adminPrivateKey);
 
   const publicClient = createPublicClient({ chain: celo, transport: http('https://forno.celo.org') });
-  
-  const ownerWallet = createWalletClient({ account: ownerAccount, chain: celo, transport: http('https://forno.celo.org') });
   const clientWallet = createWalletClient({ account: clientAccount, chain: celo, transport: http('https://forno.celo.org') });
 
-  console.log(`👤 Owner (Tu wallet): ${ownerAccount.address}`);
-  console.log(`🕵️  Cliente Evaluador (Temporal): ${clientAccount.address}`);
+  console.log(`🕵️  Cliente Evaluador (Tercero Validador): ${clientAccount.address}`);
   
-  // 2. Fondear al cliente temporal con 0.005 CELO para el gas
-  console.log('\n💸 Fondeando al cliente temporal...');
-  const fundHash = await ownerWallet.sendTransaction({
-    to: clientAccount.address,
-    value: parseEther('0.05')
-  });
-  await publicClient.waitForTransactionReceipt({ hash: fundHash });
-  console.log('   ✅ Fondeo exitoso.');
-
-  // 3. Parámetros de feedback
-  const value = 100n; // 100% success
+  // 2. Parámetros de feedback (Exactos a la documentación oficial de Celopedia)
+  const value = 100n; 
   const valueDecimals = 0;
-  const tag1 = pad(toHex('successRate'), { size: 32 });
-  const tag2 = pad(toHex('reachable'), { size: 32 });
+  const tag1 = pad(toHex('starred'), { size: 32, dir: 'right' }); // tag oficial
+  const tag2 = pad('0x0', { size: 32 }); 
   const endpoint = "https://biota-protocol.vercel.app/api/iot/webhook";
-  const feedbackURI = "ipfs://QmdummyIPFSHashBiotaFeedback"; 
-  const feedbackHash = pad("0x", { size: 32 });
+  const feedbackURI = "ipfs://QmDetailedFeedback"; 
+  const feedbackHash = keccak256(toHex('{}')); // Hash real
 
-  console.log('\n🚀 Cliente enviando interacción oficial a 8004scan...');
+  console.log('\n🚀 Cliente enviando calificación de 100 estrellas a 8004scan...');
   
   try {
     const hash = await clientWallet.writeContract({
