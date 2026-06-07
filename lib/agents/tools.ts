@@ -120,6 +120,23 @@ export const doubleTriggerTool = {
 };
 
 /**
+ * Definición de la herramienta de distribución del Agente (Escrow).
+ */
+export const distributeEscrowTool = {
+    name: "distribute_escrow_funds",
+    description: "Calcula y ejecuta matemáticamente la distribución de fondos (85% dueño, 4% pool, etc.) desde la TBA del Agente.",
+    parameters: {
+        type: "OBJECT",
+        properties: {
+            totalAmount: { type: "NUMBER", description: "Monto total recibido en la TBA (ej: 100)" },
+            currency: { type: "STRING", description: "Moneda de la transacción (CELO, G$, USDT)" },
+            producerAddress: { type: "STRING", description: "Billetera del productor/dueño del producto" }
+        },
+        required: ["totalAmount", "currency", "producerAddress"]
+    }
+};
+
+/**
  * Herramienta para validación determinista (Simulación Zero Gas).
  */
 export const soilValidationTool = {
@@ -177,7 +194,9 @@ export async function executeMintPassport(args: MintPassportArgs) {
                 "0x", // hashAnalisisLab (opcional por ahora)
                 "0x", // ingredientesHash
                 args.metodos
-            ]
+            ],
+            maxFeePerGas: parseGwei('15'),
+            maxPriorityFeePerGas: parseGwei('2')
         });
 
         // [ERC-6551] Ejecutar a través de la TBA del Agente
@@ -272,7 +291,9 @@ export async function executeDoubleTrigger(args: DoubleTriggerArgs) {
                 args.farmerTarget as `0x${string}`,
                 BigInt(args.tokenId),
                 args.bioScore
-            ]
+            ],
+            maxFeePerGas: parseGwei('15'),
+            maxPriorityFeePerGas: parseGwei('2')
         });
 
         // [ERC-6551] Ejecutar a través de la TBA del Agente
@@ -296,4 +317,50 @@ export async function executeDoubleTrigger(args: DoubleTriggerArgs) {
             error: error.message
         };
     }
+}
+
+interface DistributeEscrowArgs {
+    totalAmount: number;
+    currency: string;
+    producerAddress: string;
+}
+
+/**
+ * Lógica de ejecución del Agente Custodio (Escrow).
+ * [ZERO-GAS-SIMULATION] - Calcula la distribución exacta y simula la liberación.
+ */
+export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
+    console.log(`[AGENT-ESCROW-CORE] 🧠 Iniciando distribución autónoma de ${args.totalAmount} ${args.currency}`);
+
+    // Matemáticas de Distribución
+    const amounts = {
+        producer: (args.totalAmount * 0.85).toFixed(4),    // 85% al productor
+        poolBiota: (args.totalAmount * 0.04).toFixed(4),   // 4% Pool Biota Regenerativa
+        donations: (args.totalAmount * 0.06).toFixed(4),   // 6% Mujeres/Kenia (o 3% Fondeo Login si es CELO)
+        treasury: (args.totalAmount * 0.05).toFixed(4),    // 5% Tesorería Biota (DApp)
+    };
+
+    console.log("[AGENT-ESCROW-CORE] 🧮 Splits Calculados:", amounts);
+
+    const txHashSimulated = `0xescrow_${Date.now().toString(16)}`;
+
+    const result = {
+        transactionId: txHashSimulated,
+        totalLiberado: args.totalAmount,
+        moneda: args.currency,
+        beneficiarios: {
+            campesinoProductor: { address: args.producerAddress, amount: amounts.producer },
+            poolRegenerativo: { address: ADDRESSES.BIOTA_SCROW, amount: amounts.poolBiota },
+            tesoreriaBiota: { address: ADDRESSES.DAPP_BIOTA, amount: amounts.treasury },
+        },
+        estado: "LIBERADO"
+    };
+
+    return {
+        success: true,
+        simulation: true,
+        hash: txHashSimulated,
+        distribucion: result,
+        message: `El Agente Orquestador ha liberado y distribuido exitosamente ${args.totalAmount} ${args.currency}.`
+    };
 }

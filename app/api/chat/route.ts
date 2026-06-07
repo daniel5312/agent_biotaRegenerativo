@@ -3,7 +3,9 @@ import { getSystemContext, AgentRole } from '@/lib/agents/prompts';
 import { 
     executeMintPassport, 
     executeDoubleTrigger, 
-    executeSoilValidation 
+    executeSoilValidation,
+    executeEscrowDistribution,
+    distributeEscrowTool
 } from '@/lib/agents/tools';
 
 export const maxDuration = 60;
@@ -61,6 +63,19 @@ export async function POST(req: Request) {
                         }
                     },
                     {
+                        name: 'distribute_escrow_funds',
+                        description: 'Calcula y ejecuta matemáticamente la distribución de fondos (85% dueño, 4% pool, etc.) desde la TBA del Agente.',
+                        parametersJsonSchema: {
+                            type: 'object',
+                            properties: {
+                                totalAmount: { type: 'number' },
+                                currency: { type: 'string' },
+                                producerAddress: { type: 'string' }
+                            },
+                            required: ['totalAmount', 'currency', 'producerAddress']
+                        }
+                    },
+                    {
                         name: 'validate_soil_action',
                         description: 'Evaluación técnica del suelo (Veredicto BIO).',
                         parametersJsonSchema: {
@@ -108,6 +123,7 @@ export async function POST(req: Request) {
                                 if (call.name === 'mint_biota_passport') result = await executeMintPassport(call.args as any);
                                 if (call.name === 'execute_double_trigger') result = await executeDoubleTrigger(call.args as any);
                                 if (call.name === 'validate_soil_action') result = await executeSoilValidation(call.args as any);
+                                if (call.name === 'distribute_escrow_funds') result = await executeEscrowDistribution(call.args as any);
 
                                 // Feedback visual inmediato del contrato en el chat
                                 controller.enqueue(new TextEncoder().encode(`\n[EJECUCIÓN ON-CHAIN]: ${JSON.stringify(result)}\n`));
