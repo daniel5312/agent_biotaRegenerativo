@@ -71,8 +71,8 @@ interface Product {
   icon: any;
   prices: Record<Currency, string>;
   category: string;
+  sellerAddress: string;
 }
-
 const PRODUCTS: Product[] = [
   {
     id: "semilla-bocashi",
@@ -81,6 +81,7 @@ const PRODUCTS: Product[] = [
     icon: Sprout,
     prices: { celo: "0.01", gd: "10", usdt: "0.01", usdc: "0.01" },
     category: "Insumos",
+    sellerAddress: "0x6D4763715bf9cDe401FD4AaC9a6254CeB4382c9b",
   },
   {
     id: "analisis-lab",
@@ -89,6 +90,7 @@ const PRODUCTS: Product[] = [
     icon: FlaskConical,
     prices: { celo: "0.05", gd: "50", usdt: "0.05", usdc: "0.05" },
     category: "Servicios",
+    sellerAddress: "0x6D4763715bf9cDe401FD4AaC9a6254CeB4382c9b",
   },
   {
     id: "sello-refi",
@@ -97,6 +99,7 @@ const PRODUCTS: Product[] = [
     icon: Leaf,
     prices: { celo: "0.1", gd: "100", usdt: "0.1", usdc: "0.1" },
     category: "Certificados",
+    sellerAddress: "0x6D4763715bf9cDe401FD4AaC9a6254CeB4382c9b",
   },
   {
     id: "consultoria-biota",
@@ -105,6 +108,7 @@ const PRODUCTS: Product[] = [
     icon: Package,
     prices: { celo: "0.2", gd: "200", usdt: "0.2", usdc: "0.2" },
     category: "Servicios",
+    sellerAddress: "0x6D4763715bf9cDe401FD4AaC9a6254CeB4382c9b",
   },
 ];
 
@@ -198,37 +202,24 @@ export function TiendaMultipago() {
 
     try {
       if (currency === "celo") {
-        await sendTransactionAsync({ to: ADDRESSES.REFI_MEDELLIN, value: amountWei, chainId: 42220 });
+        toast({ title: "Fondeando Escrow...", description: "Depositando CELO en la TBA del Agente" });
+        await sendTransactionAsync({ to: ADDRESSES.AGENT_TBA, value: amountWei, chainId: 42220 });
       } else {
         const tokenAddr = currency === "gd" ? ADDRESSES.G$ : currency === "usdt" ? ADDRESSES.USDT : ADDRESSES.USDC;
         
-        // 1. Approve BiotaSplitter
-        toast({ title: "Autorizando...", description: `Firma la autorización de ${cfg.symbol} para el Splitter` });
+        toast({ title: "Fondeando Escrow...", description: `Depositando ${cfg.symbol} en la TBA del Agente` });
         await writeContractAsync({
           chainId: 42220,
           address: tokenAddr as `0x${string}`,
           abi: ERC20_ABI,
-          functionName: "approve",
-          args: [ADDRESSES.BIOTA_SPLITTER as `0x${string}`, amountWei],
-        });
-
-        // 2. payWithSplit
-        toast({ title: "Procesando División...", description: "Enrutando fondos (94/3/3)..." });
-        await writeContractAsync({
-          chainId: 42220,
-          address: ADDRESSES.BIOTA_SPLITTER as `0x${string}`,
-          abi: BIOTA_SPLITTER_ABI,
-          functionName: 'payWithSplit',
-          args: [
-            tokenAddr as `0x${string}`, 
-            amountWei,
-            ADDRESSES.REFI_MEDELLIN,    // Biota (94%)
-            ADDRESSES.COLLECTIVE_MUJERES, // Mujeres (3%)
-            ADDRESSES.BIOTA_SCROW       // Biota Regenerativa (3%)
-          ]
+          functionName: "transfer",
+          args: [ADDRESSES.AGENT_TBA as `0x${string}`, amountWei],
         });
       }
-      toast({ title: "✅ Éxito", description: "Pago procesado y dividido correctamente." });
+      toast({ 
+        title: "✅ Fondos Asegurados", 
+        description: "El Agente Orquestador ya tiene el dinero. El 85% irá al campesino, y las donaciones a los pools." 
+      });
     } catch (e: any) {
       toast({ title: "Error", description: e.shortMessage || "Error en el pago", variant: "destructive" });
     } finally {
