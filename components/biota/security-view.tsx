@@ -273,7 +273,6 @@ export function SecurityView() {
           </p>
         </div>
       </div>
-      
       {/* ERC-8004 Agent Metrics (Restaurado) */}
       <div className="pt-4 border-t border-white/5 mt-6">
         <div className="flex items-center gap-2 mb-4">
