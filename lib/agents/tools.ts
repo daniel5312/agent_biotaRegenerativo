@@ -140,9 +140,7 @@ export async function executeMintPassport(args: MintPassportArgs) {
                 "0x", // hashAnalisisLab (opcional por ahora)
                 "0x", // ingredientesHash
                 args.metodos
-            ],
-            maxFeePerGas: parseGwei('15'),
-            maxPriorityFeePerGas: parseGwei('2')
+            ]
         });
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -231,9 +229,7 @@ export async function executeDoubleTrigger(args: DoubleTriggerArgs) {
                 args.farmerTarget as `0x${string}`,
                 BigInt(args.tokenId),
                 args.bioScore
-            ],
-            maxFeePerGas: parseGwei('15'),
-            maxPriorityFeePerGas: parseGwei('2')
+            ]
         });
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
