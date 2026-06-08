@@ -272,6 +272,32 @@ export function SecurityView() {
           </p>
         </div>
       </div>
+
+      {/* ERC-8004 Agent Metrics */}
+      <div className="pt-4 border-t border-white/5 mt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Terminal size={16} className="text-emerald-500" />
+          <h2 className="text-sm font-black italic uppercase">Agent Registry (ERC-8004)</h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20">
+            <h3 className="text-[10px] font-black uppercase text-emerald-500">Agent ID</h3>
+            <p className="text-xs font-mono text-white mt-1">scamceloagent8004</p>
+          </div>
+          <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20">
+            <h3 className="text-[10px] font-black uppercase text-emerald-500">Status</h3>
+            <p className="text-xs font-mono text-white mt-1">ACTIVE / VERIFIED</p>
+          </div>
+          <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20">
+            <h3 className="text-[10px] font-black uppercase text-emerald-500">Tx Count</h3>
+            <p className="text-xs font-mono text-white mt-1">142</p>
+          </div>
+          <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20">
+            <h3 className="text-[10px] font-black uppercase text-emerald-500">Escrow TVL</h3>
+            <p className="text-xs font-mono text-white mt-1">$4,250.00</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

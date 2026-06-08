@@ -36,20 +36,23 @@ import { formatUnits } from "viem";
 import { ADDRESSES, BIOTA_PASSPORT_ABI, ERC20_ABI } from "@/lib/contracts";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
 import { useToast } from "@/hooks/use-toast";
+import { IdentityAction } from "@/components/biota/IdentityAction";
 
 export function PasaporteView() {
   const { address } = useAccount();
   const { authenticated } = usePrivy();
-  const { mintPassport, isMinting } = useBiotaPass();
+  const { mintPassport, isMinting, tokenId } = useBiotaPass();
   const { writeContractAsync } = useWriteContract();
 
   const [activeTab, setActiveTab] = useState<"finca" | "wallet">("finca");
   const [paymentMethod, setPaymentMethod] = useState<"G$" | "CELO">("CELO");
   const [nombreProductor, setNombreProductor] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [finca, setFinca] = useState("");
   const [vereda, setVereda] = useState("");
   const [municipio, setMunicipio] = useState("");
   const [area, setArea] = useState(1000);
+  const [medidaTipo, setMedidaTipo] = useState<"m2" | "ha">("m2");
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
 
   const { data: celoRes } = useBalance({
@@ -89,6 +92,44 @@ export function PasaporteView() {
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
     );
 
+  const [isFauceting, setIsFauceting] = useState(false);
+
+  const handleMintWithFaucet = async () => {
+    try {
+      // 1. Verificamos si tiene saldo CELO para el gas. Si tiene muy poco, le enviamos un Faucet automático.
+      if (Number(celoBalance) < 0.1) {
+        setIsFauceting(true);
+        // Aquí llamaremos al Webhook de Fondeo (Paso 2)
+        const res = await fetch("/api/faucet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address }),
+        });
+        if (!res.ok) throw new Error("Fallo en el Fondeo automático");
+        // Pausa breve para esperar que la tx de gas pase en la red
+        await new Promise(r => setTimeout(r, 3000));
+      }
+
+      // 2. Ejecutar Minteo del Pasaporte
+      const areaCalculada = medidaTipo === "ha" ? BigInt(area) * 10000n : BigInt(area);
+      
+      mintPassport({
+        tokenURI: "ipfs://biota",
+        ubicacionGeografica: finca,
+        areaM2: areaCalculada,
+        cmSueloRecuperado: 0n,
+        estadoBiologico: "Iniciado",
+        hashAnalisisLab: "0x",
+        ingredientesHash: nombreProductor,
+        metodosAgricolas: "Regenerativo",
+      }, "CELO");
+    } catch (err) {
+      console.error("Error en minteo patrocinado:", err);
+    } finally {
+      setIsFauceting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-4 pb-20">
       <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
@@ -114,94 +155,127 @@ export function PasaporteView() {
 
           {effectiveHasPassport ? (
             <Card className="glass-card bg-emerald-500/5 border-emerald-500/20 p-6 rounded-3xl">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-500">
-                    <Sprout size={24} />
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-4 pb-4 border-b border-white/5">
+                  {/* Imagen del NFT */}
+                  <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-emerald-500/30 relative shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                    <img 
+                      src="/logo.png" 
+                      alt="NFT Pasaporte Biota" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback si no existe logo.png
+                        (e.target as HTMLImageElement).src = "https://teal-tired-jay-275.mypinata.cloud/ipfs/QmeFhX3XG7U2mD5R4fRj4vR8e8kE3W7P4yJ3N2mE8T8b5K"; 
+                      }}
+                    />
+                    <div className="absolute bottom-0 left-0 w-full bg-black/60 backdrop-blur-sm text-[8px] text-center font-mono py-0.5 text-emerald-400">
+                      ID #{tokenId ? tokenId.toString() : "001"}
+                    </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-stone-500 uppercase">
-                      Impacto PoA
+                    <p className="text-[10px] font-black text-stone-500 uppercase flex items-center gap-1">
+                      Pasaporte Activo <CheckCircle2 size={10} className="text-emerald-500" />
                     </p>
-                    <p className="text-2xl font-black text-white font-mono">
-                      1,250 cm²
+                    <p className="text-xl font-black text-white font-mono leading-none mt-1">
+                      {finca || "Finca Biota"}
+                    </p>
+                    <p className="text-[9px] text-stone-400 mt-1 uppercase font-mono">
+                      Productor: {nombreProductor || "Verificado"}
                     </p>
                   </div>
                 </div>
-                <Badge className="bg-emerald-500/20 text-emerald-500 text-[10px] font-black italic">
-                  VERIFICADO
-                </Badge>
+
+                <div className="space-y-3">
+                  <div className="bg-blue-600/10 p-2 rounded-2xl border border-blue-500/20">
+                    <IdentityAction tokenId={tokenId ?? undefined} />
+                  </div>
+                  
+                  <Button 
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black h-14 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                    onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'impacto' }))}
+                  >
+                    <Droplets className="w-6 h-6" /> Empezar Goteo (Superfluid)
+                  </Button>
+                </div>
               </div>
             </Card>
           ) : (
             <Card className="bg-white/5 border-white/10 p-8 rounded-3xl space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2 space-y-1">
+                <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-stone-500">
                     Nombre Productor
                   </label>
                   <Input
                     onChange={(e) => setNombreProductor(e.target.value)}
                     className="bg-black/40 border-white/10 h-12 rounded-2xl"
+                    placeholder="Ej. Juan Pérez"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-stone-500">
-                    Finca
+                    Teléfono
+                  </label>
+                  <Input
+                    onChange={(e) => setTelefono(e.target.value)}
+                    className="bg-black/40 border-white/10 h-12 rounded-2xl"
+                    placeholder="Ej. 310..."
+                    type="tel"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-stone-500">
+                    Nombre del Predio (Finca)
                   </label>
                   <Input
                     onChange={(e) => setFinca(e.target.value)}
                     className="bg-black/40 border-white/10 h-12 rounded-2xl"
+                    placeholder="Ej. El Edén"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-stone-500">
-                    Municipio
+                    Municipio - Vereda
                   </label>
                   <Input
                     onChange={(e) => setMunicipio(e.target.value)}
                     className="bg-black/40 border-white/10 h-12 rounded-2xl"
+                    placeholder="Ej. Marinilla - La Peña"
                   />
                 </div>
-              </div>
-              <div className="space-y-4">
-                <div className="flex bg-black/40 p-1 rounded-xl border border-white/10 w-full mb-2">
-                  <button
-                    onClick={() => setPaymentMethod("CELO")}
-                    className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${paymentMethod === "CELO" ? "bg-amber-500 text-black shadow-md" : "text-stone-500 hover:text-stone-400"}`}
-                  >
-                    0.01 CELO
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod("G$")}
-                    className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${paymentMethod === "G$" ? "bg-blue-600 text-white shadow-md" : "text-stone-500 hover:text-stone-400"}`}
-                  >
-                    50 G$
-                  </button>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-stone-500">
+                    Medida
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      onChange={(e) => setArea(Number(e.target.value))}
+                      className="bg-black/40 border-white/10 h-12 rounded-2xl flex-1"
+                      type="number"
+                      placeholder="Ej. 50"
+                    />
+                    <select
+                      value={medidaTipo}
+                      onChange={(e) => setMedidaTipo(e.target.value as "m2" | "ha")}
+                      className="bg-black/40 border-white/10 h-12 rounded-2xl text-white px-3 outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="m2">m²</option>
+                      <option value="ha">Ha</option>
+                    </select>
+                  </div>
                 </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-white/5">
                 <Button
-                  onClick={() =>
-                    mintPassport(
-                      {
-                        tokenURI: "ipfs://biota",
-                        ubicacionGeografica: finca,
-                        areaM2: BigInt(area),
-                        cmSueloRecuperado: 0n,
-                        estadoBiologico: "Iniciado",
-                        hashAnalisisLab: "0x",
-                        ingredientesHash: nombreProductor,
-                        metodosAgricolas: "Regenerativo",
-                      },
-                      paymentMethod,
-                    )
-                  }
-                  disabled={isMinting || !finca || !nombreProductor}
+                  onClick={handleMintWithFaucet}
+                  disabled={isMinting || isFauceting || !finca || !nombreProductor || !telefono}
                   className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded-2xl transition-all shadow-lg shadow-emerald-500/20"
                 >
-                  {isMinting ? (
-                    <Loader2 className="animate-spin" />
+                  {isMinting || isFauceting ? (
+                    <><Loader2 className="animate-spin w-5 h-5 mr-2" /> {isFauceting ? "Fondeando Gas..." : "Minteando..."}</>
                   ) : (
-                    `Mintear Pasaporte (${paymentMethod === "CELO" ? "0.01 CELO" : "50 G$"})`
+                    "Mintear Formulario"
                   )}
                 </Button>
               </div>
