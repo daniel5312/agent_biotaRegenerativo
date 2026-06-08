@@ -12,6 +12,7 @@ import {
   Unlock,
   Loader2,
   RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 import {
   Card,
@@ -252,24 +253,88 @@ export function SecurityView() {
       </Card>
 
       {/* Security Details */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-stone-900/50 p-4 rounded-2xl border border-white/5">
-          <Zap size={16} className="text-amber-500 mb-2" />
-          <h3 className="text-[10px] font-black uppercase text-stone-300">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-stone-900/50 p-2.5 rounded-xl border border-white/5 flex flex-col justify-center">
+          <Zap size={12} className="text-amber-500 mb-1" />
+          <h3 className="text-[9px] font-black uppercase text-stone-300">
             Proxy Target
           </h3>
-          <p className="text-[10px] font-mono text-stone-500 break-all">
-            {ADDRESSES.BIOTA_SCROW.slice(0, 20)}...
+          <p className="text-[9px] font-mono text-stone-500 truncate">
+            {ADDRESSES.BIOTA_SCROW.slice(0, 16)}...
           </p>
         </div>
-        <div className="bg-stone-900/50 p-4 rounded-2xl border border-white/5">
-          <Lock size={16} className="text-blue-500 mb-2" />
-          <h3 className="text-[10px] font-black uppercase text-stone-300">
+        <div className="bg-stone-900/50 p-2.5 rounded-xl border border-white/5 flex flex-col justify-center">
+          <Lock size={12} className="text-blue-500 mb-1" />
+          <h3 className="text-[9px] font-black uppercase text-stone-300">
             Auth Method
           </h3>
-          <p className="text-[10px] font-mono text-stone-500">
+          <p className="text-[9px] font-mono text-stone-500">
             ERC20 approve(0)
           </p>
+        </div>
+      </div>
+      
+      {/* ERC-8004 Agent Metrics (Restaurado) */}
+      <div className="pt-4 border-t border-white/5 mt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Terminal size={16} className="text-emerald-500" />
+          <h2 className="text-sm font-black italic uppercase text-white">Agent Registry (ERC-8004)</h2>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+            <h3 className="text-[8px] font-black uppercase text-emerald-500 flex items-center gap-1">
+               <ShieldCheck size={10} /> Agent ID
+            </h3>
+            <p className="text-[10px] font-mono text-white mt-1 truncate">scamceloagent8004</p>
+          </div>
+          <div className="bg-blue-500/10 p-2.5 rounded-xl border border-blue-500/20">
+            <h3 className="text-[8px] font-black uppercase text-blue-500 flex items-center gap-1">
+              <RefreshCw size={10} /> Transacciones
+            </h3>
+            <p className="text-[10px] font-mono text-white mt-1">142 Tx</p>
+          </div>
+          <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
+            <h3 className="text-[8px] font-black uppercase text-amber-500 flex items-center gap-1">
+              <Zap size={10} /> Feedback Score
+            </h3>
+            <p className="text-[10px] font-mono text-white mt-1">4.9 / 5.0</p>
+          </div>
+          <div className="bg-purple-500/10 p-2.5 rounded-xl border border-purple-500/20">
+            <h3 className="text-[8px] font-black uppercase text-purple-500 flex items-center gap-1">
+              <Lock size={10} /> Trust Level
+            </h3>
+            <p className="text-[10px] font-mono text-white mt-1">Verificado</p>
+          </div>
+        </div>
+
+        {/* Enlaces a los Exploradores */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <a 
+            href={`https://celoscan.io/address/${ADDRESSES.AGENT_TBA}`} 
+            target="_blank" 
+            rel="noreferrer"
+            className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 p-3 rounded-xl flex items-center justify-between transition-all"
+          >
+            <div>
+              <p className="text-[10px] font-black uppercase text-stone-400">Ver en Celoscan</p>
+              <p className="text-[9px] font-mono text-stone-500">celoscan.io</p>
+            </div>
+            <ExternalLink size={14} className="text-stone-400" />
+          </a>
+          
+          <a 
+            href={`https://explorer.celo.org/mainnet/address/${ADDRESSES.AGENT_TBA}`} 
+            target="_blank" 
+            rel="noreferrer"
+            className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 p-3 rounded-xl flex items-center justify-between transition-all"
+          >
+            <div>
+              <p className="text-[10px] font-black uppercase text-emerald-500">Ver en Celo Explorer</p>
+              <p className="text-[9px] font-mono text-emerald-700">explorer.celo.org</p>
+            </div>
+            <ExternalLink size={14} className="text-emerald-500" />
+          </a>
         </div>
       </div>
     </div>
