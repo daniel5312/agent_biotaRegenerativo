@@ -56,6 +56,7 @@ export type TabId =
 
 function LandingPage() {
   const { login, ready, authenticated } = usePrivy();
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [logIndex, setLogIndex] = useState(0);
 
@@ -92,7 +93,7 @@ function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#030712] text-stone-300 font-sans selection:bg-emerald-500/30 antialiased overflow-x-hidden">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#030712] text-stone-800 dark:text-stone-300 font-sans selection:bg-emerald-500/30 antialiased overflow-x-hidden transition-colors duration-500">
       {/* FONDO CYBER-ORGÁNICO */}
       <div className="fixed inset-0 overflow-hidden -z-10">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-900/10 blur-[150px] rounded-full" />
@@ -101,28 +102,38 @@ function LandingPage() {
       </div>
 
       {/* NAVBAR */}
-      <nav className="fixed top-0 w-full z-[100] bg-[#030712]/80 backdrop-blur-xl border-b border-white/5">
+      <nav className="fixed top-0 w-full z-[100] bg-white/80 dark:bg-[#030712]/80 backdrop-blur-xl border-b border-stone-200 dark:border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
           <div
             className="flex items-center gap-2 cursor-pointer group"
             onClick={scrollToTop}
           >
-            <div className="w-8 h-8 bg-[#0a0a0a] border border-emerald-500/30 rounded-lg flex items-center justify-center text-emerald-500 group-hover:border-emerald-400 group-hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all">
+            <div className="w-8 h-8 bg-stone-100 dark:bg-[#0a0a0a] border border-stone-200 dark:border-emerald-500/30 rounded-lg flex items-center justify-center text-black dark:text-emerald-500 group-hover:border-black dark:group-hover:border-emerald-400 group-hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all">
               <Cpu size={18} />
             </div>
-            <span className="text-xl font-black tracking-tighter uppercase italic text-white">
+            <span className="text-xl font-black tracking-tighter uppercase italic text-black dark:text-white">
               BIOTA<span className="text-emerald-500">_</span>
             </span>
           </div>
-          <button
-            onClick={handleCTA}
-            disabled={!ready}
-            className="text-[10px] font-black tracking-[0.2em] bg-emerald-500 text-black px-6 py-2.5 rounded-sm hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all uppercase disabled:opacity-50"
-          >
-            {ready && authenticated
-              ? "Ingresar a la Red"
-              : "Conectar Billetera"}
-          </button>
+          
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 rounded-full bg-stone-100 dark:bg-white/5 text-black dark:text-white hover:bg-stone-200 dark:hover:bg-white/10 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              onClick={handleCTA}
+              disabled={!ready}
+              className="text-[10px] font-black tracking-[0.2em] bg-emerald-500 text-black px-6 py-2.5 rounded-sm hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all uppercase disabled:opacity-50"
+            >
+              {ready && authenticated
+                ? "Ingresar a la Red"
+                : "Conectar Billetera"}
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -249,17 +260,16 @@ function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             <Dialog>
               <DialogTrigger asChild>
-                <button className="bg-[#0a0a0a] border border-white/5 hover:border-emerald-500/30 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 group transition-all w-full">
-                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-emerald-500 group-hover:scale-110 group-hover:bg-emerald-500/10 transition-all">
+                <button className="bg-white dark:bg-[#0a0a0a] border border-stone-200 dark:border-white/5 hover:border-black dark:hover:border-emerald-500/30 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 group transition-all w-full shadow-sm dark:shadow-none">
+                  <div className="w-16 h-16 bg-stone-100 dark:bg-white/5 rounded-full flex items-center justify-center text-black dark:text-emerald-500 group-hover:scale-110 group-hover:bg-stone-200 dark:group-hover:bg-emerald-500/10 transition-all">
                     <Leaf size={32} />
                   </div>
                   <div className="text-center">
-                    <h3 className="text-xl font-black text-white mb-2 uppercase tracking-wide">
+                    <h3 className="text-xl font-black text-black dark:text-white mb-2 uppercase tracking-wide">
                       Soy Productor
                     </h3>
                     <p className="text-stone-500 text-sm">
-                      Gestiona tu pasaporte, sube evidencias y recibe
-                      recompensas.
+                      Gestiona tu pasaporte, sube evidencias y recibe recompensas.
                     </p>
                   </div>
                 </button>
@@ -287,13 +297,13 @@ function LandingPage() {
 
             <button
               onClick={handleCTA}
-              className="bg-[#0a0a0a] border border-white/5 hover:border-amber-500/30 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 group transition-all"
+              className="bg-white dark:bg-[#0a0a0a] border border-stone-200 dark:border-white/5 hover:border-black dark:hover:border-amber-500/30 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 group transition-all w-full shadow-sm dark:shadow-none"
             >
-              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center text-amber-500 group-hover:scale-110 group-hover:bg-amber-500/10 transition-all">
+              <div className="w-16 h-16 bg-stone-100 dark:bg-white/5 rounded-full flex items-center justify-center text-black dark:text-amber-500 group-hover:scale-110 group-hover:bg-stone-200 dark:group-hover:bg-amber-500/10 transition-all">
                 <Globe size={32} />
               </div>
               <div className="text-center">
-                <h3 className="text-xl font-black text-white mb-2 uppercase tracking-wide">
+                <h3 className="text-xl font-black text-black dark:text-white mb-2 uppercase tracking-wide">
                   Soy Sponsor
                 </h3>
                 <p className="text-stone-500 text-sm">
@@ -315,36 +325,36 @@ function LandingPage() {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/[0.02] transition-colors">
-              <Zap size={24} className="text-emerald-400 mb-6" />
-              <h3 className="text-lg font-black text-white mb-3">
+            <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-2xl border border-stone-200 dark:border-white/5 hover:bg-stone-50 dark:hover:bg-white/[0.02] transition-colors shadow-sm dark:shadow-none">
+              <Zap size={24} className="text-black dark:text-emerald-400 mb-6" />
+              <h3 className="text-lg font-black text-black dark:text-white mb-3">
                 Celo Mainnet
               </h3>
-              <p className="text-stone-400 text-sm leading-relaxed">
+              <p className="text-stone-500 dark:text-stone-400 text-sm leading-relaxed">
                 Ejecutamos nuestros contratos en una red **carbono-neutral** y
                 optimizada para dispositivos móviles (Mobile-First).
                 Transacciones instantáneas a coste cero.
               </p>
             </div>
 
-            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/[0.02] transition-colors">
-              <Coins size={24} className="text-blue-400 mb-6" />
-              <h3 className="text-lg font-black text-white mb-3">
+            <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-2xl border border-stone-200 dark:border-white/5 hover:bg-stone-50 dark:hover:bg-white/[0.02] transition-colors shadow-sm dark:shadow-none">
+              <Coins size={24} className="text-black dark:text-blue-400 mb-6" />
+              <h3 className="text-lg font-black text-black dark:text-white mb-3">
                 GoodDollar UBI
               </h3>
-              <p className="text-stone-400 text-sm leading-relaxed">
+              <p className="text-stone-500 dark:text-stone-400 text-sm leading-relaxed">
                 Integración nativa para la verificación de identidad (Proof of
                 Personhood) y la distribución de una Renta Básica Universal como
                 base del ecosistema.
               </p>
             </div>
 
-            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/[0.02] transition-colors">
-              <Database size={24} className="text-amber-400 mb-6" />
-              <h3 className="text-lg font-black text-white mb-3">
+            <div className="bg-white dark:bg-[#0a0a0a] p-8 rounded-2xl border border-stone-200 dark:border-white/5 hover:bg-stone-50 dark:hover:bg-white/[0.02] transition-colors shadow-sm dark:shadow-none">
+              <Database size={24} className="text-black dark:text-amber-400 mb-6" />
+              <h3 className="text-lg font-black text-black dark:text-white mb-3">
                 Opera MiniPay
               </h3>
-              <p className="text-stone-400 text-sm leading-relaxed">
+              <p className="text-stone-500 dark:text-stone-400 text-sm leading-relaxed">
                 Fricción cero para el productor rural. Sin necesidad de guardar
                 frases semilla complejas ni pagar gas de red. **Adopción masiva
                 simplificada.**
