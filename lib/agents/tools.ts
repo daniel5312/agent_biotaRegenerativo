@@ -22,7 +22,7 @@ const walletClient = createWalletClient({
     transport: http(rpcUrl)
 });
 
-const publicClient = createPublicClient({
+export const publicClient = createPublicClient({
     chain,
     transport: http(rpcUrl)
 });
