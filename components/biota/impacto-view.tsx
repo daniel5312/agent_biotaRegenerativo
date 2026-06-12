@@ -25,13 +25,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { useConnection, useReadContract } from "wagmi"
+import { useConnection, useReadContract, useSendTransaction } from "wagmi"
+import { parseEther } from "viem"
 import { useWallets, usePrivy } from "@privy-io/react-auth"
 import { useRef } from "react"
 import { ADDRESSES, ERC20_ABI, IDENTITY_ABI, formatCUSD } from "@/lib/contracts"
 import { useBiotaPass } from "@/hooks/useBiotaPass"
 import { usePoA } from "@/hooks/usePoA"
 import { IdentityAction } from "@/components/biota/IdentityAction"
+import { compressImage } from "@/lib/utils"
 
 export function ImpactoView() {
   const { address } = useConnection()
@@ -50,6 +52,7 @@ export function ImpactoView() {
     mintConfirmed
   } = useBiotaPass()
   const { certificarPoA, isCertifying } = usePoA()
+  const { sendTransactionAsync } = useSendTransaction()
 
   const [selectedActions, setSelectedActions] = useState<string[]>([])
   const [submitted, setSubmitted] = useState(false)
@@ -115,14 +118,11 @@ export function ImpactoView() {
   }, [gBalanceValue]);
 
   // --- Lógica UI v0 ---
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImageBase64(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+      const base64String = await compressImage(file);
+      setImageBase64(base64String)
     }
   }
 
@@ -138,18 +138,26 @@ export function ImpactoView() {
   }
 
   const handleOracleSubmit = async () => {
-    if (selectedActions.length === 0 || !tokenId) return
+    if (selectedActions.length === 0) return
     
     setSubmitted(true)
     
     try {
-      // Llamada real al Oráculo de Inteligencia Artificial
+      // 1. Cobrar peaje x402
+      const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`;
+      const txHash = await sendTransactionAsync({
+        to: AGENT_WALLET,
+        value: parseEther("0.01"),
+      });
+
+      // 2. Llamada real al Oráculo de Inteligencia Artificial
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agentRole: 'ANALISTA_CROMA',
-          sessionMetadata: { address, tokenId: tokenId.toString(), isUbiActive: true },
+          sessionMetadata: { address, tokenId: tokenId ? tokenId.toString() : null, isUbiActive: true },
+          txHash: txHash,
           messages: [{
             role: 'user',
             content: 'Por favor analiza esta cromatografía de Pfeiffer de mi finca y emite un veredicto.',

@@ -3,14 +3,35 @@ import { getSystemContext, AgentRole } from '@/lib/agents/prompts';
 import { 
     executeMintPassport, 
     executeDoubleTrigger, 
-    executeSoilValidation 
+    executeSoilValidation,
+    publicClient
 } from '@/lib/agents/tools';
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
     try {
-        const { messages, agentRole = "CAPATAZ", sessionMetadata = {} } = await req.json();
+        const { messages, agentRole = "CAPATAZ", sessionMetadata = {}, txHash } = await req.json();
+
+        // Solo verificamos si es una consulta de IA pura. El dashboard (sin txHash) puede pasar bajo ciertas condiciones si lo deseamos, pero por ahora en Mainnet exigimos pago o exención.
+        // Si el agente no es el CAPATAZ de diagnóstico gratuito, verificamos el pago.
+        if (agentRole !== 'DIAGNOSTICO_AGROSOSTENIBLE' && agentRole !== 'CAPATAZ') {
+            if (!txHash) {
+                throw new Error("Pago x402 requerido para usar Oráculos Avanzados.");
+            }
+            try {
+                const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
+                if (receipt.status !== 'success') {
+                    throw new Error("Transacción fallida.");
+                }
+                const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C").toLowerCase();
+                if (receipt.to?.toLowerCase() !== AGENT_WALLET) {
+                    throw new Error("El peaje no fue pagado al agente correcto.");
+                }
+            } catch (e: any) {
+                throw new Error("Validación de Peaje Fallida: " + e.message);
+            }
+        }
 
         // 1. INICIALIZACIÓN PURA
         const ai = new GoogleGenAI({ 
@@ -122,7 +143,15 @@ export async function POST(req: Request) {
                                 let result;
 
                                 if (call.name === 'mint_biota_passport') result = await executeMintPassport(call.args as any);
-                                if (call.name === 'execute_double_trigger') result = await executeDoubleTrigger(call.args as any);
+                                if (call.name === 'execute_double_trigger') {
+                                    // [SECURITY] Sanitización On-Chain
+                                    const args = call.args as any;
+                                    if (args.bioScore >= 100) {
+                                        console.warn("[FIREWALL] Intento de inyección detectado (Score 100). Degradando a 60.");
+                                        args.bioScore = 60;
+                                    }
+                                    result = await executeDoubleTrigger(args);
+                                }
                                 if (call.name === 'validate_soil_action') result = await executeSoilValidation(call.args as any);
 
                                 // Feedback visual inmediato del contrato en el chat

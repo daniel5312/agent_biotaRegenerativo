@@ -26,6 +26,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAgent } from "@/context/agentProvider"
+import { compressImage } from "@/lib/utils"
 import { useConnection, useWriteContract, useSendTransaction } from 'wagmi'
 import { parseEther } from 'viem'
 import { ADDRESSES, BIOTA_SCROW_ABI } from '@/lib/contracts'
@@ -128,13 +129,13 @@ export function AsesoriaView() {
       
       const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
       
-      await sendTransactionAsync({
+      const txHash = await sendTransactionAsync({
         to: AGENT_WALLET,
         value: parseEther("0.01"),
       })
       
       toast({ title: "✅ Pago Confirmado", description: "Inferencia IA en proceso..." })
-      sendMessage(input, selectedAgent.id)
+      sendMessage(input, selectedAgent.id, txHash)
       setInput("")
     } catch (error) {
       console.error(error)
@@ -150,19 +151,42 @@ export function AsesoriaView() {
 
   const selectAgent = (agent: typeof AGENTS[0]) => {
     setSelectedAgent(agent)
-    sendMessage(agent.prompt, agent.id)
+    setInput(agent.prompt)
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const base64String = reader.result as string
-      analizarCroma(base64String)
+    try {
+      setIsPaying(true)
+      toast({ 
+        title: "Peaje x402 Biota", 
+        description: "Firma el micropago de 0.01 CELO para analizar la imagen." 
+      })
+      
+      const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
+      
+      const txHash = await sendTransactionAsync({
+        to: AGENT_WALLET,
+        value: parseEther("0.01"),
+      })
+      
+      toast({ title: "✅ Pago Confirmado", description: "Inferencia Visual en proceso..." })
+      
+      const base64String = await compressImage(file);
+      analizarCroma(base64String, txHash);
+      
+    } catch (error) {
+      console.error(error)
+      toast({ 
+        title: "Acceso Denegado", 
+        description: "Debes pagar el peaje x402 para usar el Escáner Croma.", 
+        variant: "destructive" 
+      })
+    } finally {
+      setIsPaying(false)
     }
-    reader.readAsDataURL(file)
   }
 
   return (
