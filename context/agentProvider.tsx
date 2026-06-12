@@ -107,8 +107,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [{ role: "user", content: "Analiza esta cromatografía" }],
-          image: imagenBase64,
+          messages: [{ role: "user", content: "Analiza esta cromatografía", image: imagenBase64 }],
           agentRole: "ANALISTA_CROMA",
           sessionMetadata: getSessionMetadata()
         }),
