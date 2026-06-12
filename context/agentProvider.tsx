@@ -18,8 +18,8 @@ interface AgentContextType {
   messages: Message[];
   isLoading: boolean;
   agentAction: { isMinting: boolean; txHash?: string } | null;
-  sendMessage: (text: string, agentRole?: string) => Promise<void>;
-  analizarCroma: (imagenBase64: string) => Promise<void>;
+  sendMessage: (text: string, agentRole?: string, txHash?: string) => Promise<void>;
+  analizarCroma: (imagenBase64: string, txHash?: string) => Promise<void>;
 }
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
@@ -39,7 +39,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     timestamp: Date.now()
   });
 
-  const sendMessage = async (text: string, agentRole?: string) => {
+  const sendMessage = async (text: string, agentRole?: string, txHash?: string) => {
     try {
       setIsLoading(true);
       const userMessage: Message = { role: "user", content: text };
@@ -56,6 +56,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           agentRole: agentRole || "CAPATAZ",
           sessionMetadata: getSessionMetadata(), // Inyección de contexto
+          txHash: txHash
         }),
       });
 
@@ -96,7 +97,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const analizarCroma = async (imagenBase64: string) => {
+  const analizarCroma = async (imagenBase64: string, txHash?: string) => {
     // Implementación similar para cromatografía con soporte de imagen
     try {
       setIsLoading(true);
@@ -109,7 +110,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           messages: [{ role: "user", content: "Analiza esta cromatografía", image: imagenBase64 }],
           agentRole: "ANALISTA_CROMA",
-          sessionMetadata: getSessionMetadata()
+          sessionMetadata: getSessionMetadata(),
+          txHash: txHash
         }),
       });
 
