@@ -301,7 +301,7 @@ export function AsesoriaView() {
                       {isBot ? <Bot className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                     </div>
                     <div className={`
-                      p-3 rounded-2xl text-[11px] leading-relaxed shadow-sm
+                      p-3 rounded-2xl text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap break-words overflow-hidden
                       ${isBot 
                         ? "bg-white dark:bg-emerald-800/50 text-emerald-950 dark:text-emerald-50 border border-emerald-200 dark:border-emerald-700/50" 
                         : "bg-emerald-600 text-white border border-emerald-500"
