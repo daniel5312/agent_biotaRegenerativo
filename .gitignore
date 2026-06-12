@@ -39,8 +39,11 @@ node_modules/
 .next/
 .turbo/
 build/
-dist/
-.vercel/
+dist/# Vercel
+.vercel
+
+# Documentos pesados y PDFs de conocimiento (No subir a repo, extraer a Markdown)
+*.pdf
 
 # --- 4. ARCHIVOS DE SISTEMA & IDE ---
 .DS_Store
