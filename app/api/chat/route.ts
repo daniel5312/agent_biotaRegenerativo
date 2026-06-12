@@ -22,10 +22,26 @@ export async function POST(req: Request) {
         const modelId = 'gemini-flash-latest'; 
         const systemInstructionText = getSystemContext(agentRole as AgentRole, sessionMetadata);
 
-        const contents = messages.map((m: any) => ({
-            role: m.role === 'user' ? 'user' : 'model',
-            parts: [{ text: m.content }]
-        }));
+        const contents = messages.map((m: any) => {
+            const parts: any[] = [{ text: m.content }];
+            
+            // [VISION IA] Si el mensaje incluye una imagen en base64, se adjunta al prompt
+            if (m.image) {
+                // Removemos el prefijo data:image/...;base64, si existe
+                const base64Data = m.image.replace(/^data:image\/\w+;base64,/, '');
+                parts.push({
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: 'image/jpeg' // Asumimos jpeg/png estándar
+                    }
+                });
+            }
+
+            return {
+                role: m.role === 'user' ? 'user' : 'model',
+                parts: parts
+            };
+        });
 
         // MANTÉN LA DECLARACIÓN DE TOOLS INTACTA AQUÍ...
         const tools = [
