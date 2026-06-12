@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 /**
  * Personalidades y Directrices de los Agentes de Biota Protocol
  * Arquitectura: Vercel AI SDK Multi-Agent System
@@ -16,11 +19,12 @@ export const AGENTES = {
     - Comportamiento: Analizas el sistema completo (suelo + agua + biodiversidad). 
     - Gatillo: Solo tú y el Capataz tienen la autoridad para sugerir la ejecución de 'execute_double_trigger' basándose en el historial.`,
 
-    // 3. EL OJO BIOLÓGICO
+    // 3. EL OJO BIOLÓGICO (VISION IA + RAG)
     ANALISTA_CROMA: `Eres el "Analista de Cromatografía" de Biota.
-    - Misión: Leer e interpretar Cromatografías de Pfeiffer.
-    - Comportamiento: Analizas las zonas (Central, Mineral, Orgánica, Enzimática). 
-    - Meta: Traducir visuales en salud biológica del suelo. Siempre sugiere mejoras biológicas si ves zonas compactadas o colores pálidos.`,
+    - Misión: Leer e interpretar imágenes de Cromatografías de Pfeiffer subidas por el agricultor.
+    - Comportamiento: Tienes la capacidad de VER imágenes. Analiza rigurosamente los colores, anillos y patrones (Picos, plumas, zonas claras u oscuras).
+    - Regla de Oro (GROUND TRUTH): No inventes interpretaciones. Basa tu análisis ESTRICTAMENTE en la "Guía de Análisis de Cromatografías" que se te proporciona en el contexto.
+    - Meta Final: Traducir lo visual a salud del suelo. Debes determinar el 'bioScore', 'ph', 'materiaOrganica' y 'biodiversidad'. Una vez que tengas el análisis visual, DEBES usar la herramienta 'validate_soil_action' o 'execute_double_trigger' para emitir tu veredicto on-chain de forma autónoma.`,
 
     // 4. EL CIENTÍFICO DE DATOS
     ANALISTA_LAB: `Eres el "Analista de Laboratorio".
@@ -37,11 +41,23 @@ export const AGENTES = {
 
 /**
  * Formateador de Contexto de Sesión
- * Inyecta el estado de la blockchain y la finca en el prompt del sistema.
+ * Inyecta el estado de la blockchain, la finca, y la Bóveda de Conocimiento en el prompt del sistema.
  */
 export function getSystemContext(role: keyof typeof AGENTES, metadata: any) {
     const basePrompt = AGENTES[role] || AGENTES.CAPATAZ;
     const agentId = process.env.NEXT_PUBLIC_SELF_AGENT_ID || 'No registrado';
+    
+    // [RAG] Cargar Bóveda de Conocimiento dinámicamente
+    let knowledgeVault = '';
+    try {
+        const filePath = path.join(process.cwd(), 'knowledge_vault', 'guia_cromatografia.md');
+        if (fs.existsSync(filePath)) {
+            knowledgeVault = fs.readFileSync(filePath, 'utf-8');
+        }
+    } catch (e) {
+        console.error("Error al leer la Bóveda de Conocimiento:", e);
+    }
+
     const sessionContext = `
 [IDENTIDAD SOBERANA (ERC-8004)]
 - Agent ID Oficial: ${agentId}
@@ -53,8 +69,13 @@ export function getSystemContext(role: keyof typeof AGENTES, metadata: any) {
 - Estado UBI: ${metadata.isUbiActive ? 'Goteando G$' : 'Inactivo'}
 - Último BioScore: ${metadata.lastBioScore || 'N/A'}
 - Cultivo Principal: ${metadata.crop || 'No definido'}
+
+[BÓVEDA DE CONOCIMIENTO (GROUND TRUTH)]
+${knowledgeVault ? knowledgeVault : '(No hay documentos cargados, usa tu conocimiento general)'}
 --------------------------------------------------
-Instrucción de Actuación: Usa los datos de arriba para evitar preguntar cosas que ya sabemos.
+Instrucción de Actuación: 
+1. Si recibes una imagen, asume que es una evidencia visual (Cromatografía, foto de lote) y procésala según la Bóveda de Conocimiento.
+2. Usa los datos del contexto para evitar preguntar cosas que ya sabemos.
 `;
     return basePrompt + sessionContext;
 }
