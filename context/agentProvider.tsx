@@ -19,7 +19,7 @@ interface AgentContextType {
   isLoading: boolean;
   agentAction: { isMinting: boolean; txHash?: string } | null;
   sendMessage: (text: string, agentRole?: string, txHash?: string) => Promise<void>;
-  analizarCroma: (imagenBase64: string, txHash?: string) => Promise<void>;
+  analizarImagen: (imagenBase64: string, agentRole: string, txHash?: string) => Promise<void>;
 }
 
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
@@ -97,19 +97,19 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const analizarCroma = async (imagenBase64: string, txHash?: string) => {
+  const analizarImagen = async (imagenBase64: string, agentRole: string, txHash?: string) => {
     // Implementación similar para cromatografía con soporte de imagen
     try {
       setIsLoading(true);
-      const userMsg: Message = { role: "user", content: "Analizando imagen de cromatografía..." };
-      setMessages(prev => [...prev, userMsg, { role: "assistant", content: "Iniciando escaneo Pfeiffer..." }]);
+      const userMsg: Message = { role: "user", content: "Analizando imagen adjunta..." };
+      setMessages(prev => [...prev, userMsg, { role: "assistant", content: "Iniciando escaneo visual..." }]);
 
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [{ role: "user", content: "Analiza esta cromatografía", image: imagenBase64 }],
-          agentRole: "ANALISTA_CROMA",
+          messages: [{ role: "user", content: "Por favor analiza los datos de esta imagen.", image: imagenBase64 }],
+          agentRole: agentRole,
           sessionMetadata: getSessionMetadata(),
           txHash: txHash
         }),
@@ -139,7 +139,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   return (
     <AgentContext.Provider
-      value={{ messages, isLoading, agentAction, sendMessage, analizarCroma }}
+      value={{ messages, isLoading, agentAction, sendMessage, analizarImagen }}
     >
       {children}
     </AgentContext.Provider>
