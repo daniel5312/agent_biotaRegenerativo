@@ -9,6 +9,10 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+interface IEngagementRewards {
+    function appClaim(address user) external;
+}
+
 /**
  * @title BiotaPassport - Pasaporte Biológico Dinámico (Upgradeable V3 - Router Inteligente)
  * @author Biota Protocol
@@ -188,6 +192,10 @@ contract BiotaPassport is
             bool s2 = G_TOKEN.transferFrom(msg.sender, mujeresCarmen, paraMujeres);
             if (!s1 || !s2) revert Biota__PagoInsuficiente();
         }
+
+        // [GOODDOLLAR] Recompensas de Protocolo (EngagementRewards)
+        // Envuelto en try/catch para no bloquear el minteo si la dApp no está aprobada o el usuario no está verificado facialmente.
+        try IEngagementRewards(0x25db74CF4E7BA120526fd87e159CF656d94bAE43).appClaim(msg.sender) {} catch {}
 
         // [SOLIDITY] Generación de Identidad NFT.
         uint256 newId = _nextTokenId;

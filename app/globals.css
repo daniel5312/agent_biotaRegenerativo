@@ -13,30 +13,30 @@
    - COPm: #10b981 (esmeralda Colombia)
    ============================================================================ */
 
-/* LIGHT MODE - Clean white background, green containers */
+/* LIGHT MODE - Superfluid Light Aesthetic */
 :root {
-  --background: #fafafa;
-  --foreground: #1a1a1a;
-  --card: rgba(16, 185, 129, 0.08);
-  --card-foreground: #14532d;
-  --popover: rgba(16, 185, 129, 0.06);
-  --popover-foreground: #14532d;
-  --primary: #10b981;
-  --primary-foreground: #ffffff;
-  --secondary: rgba(16, 185, 129, 0.12);
-  --secondary-foreground: #047857;
-  --muted: rgba(16, 185, 129, 0.06);
-  --muted-foreground: #166534;
-  --accent: rgba(16, 185, 129, 0.10);
-  --accent-foreground: #047857;
+  --background: #FFFFFF; /* Blanco puro para fondo principal */
+  --foreground: #ffffff; /* Texto blanco (resaltará sobre las tarjetas oscuras) */
+  --card: rgba(6, 40, 25, 0.65); /* Verde oscuro selva pero con buena transparencia */
+  --card-foreground: #ffffff;
+  --popover: rgba(6, 40, 25, 0.95);
+  --popover-foreground: #ffffff;
+  --primary: #1CFE9A; /* Superfluid Neon Green */
+  --primary-foreground: #000000; /* Text on primary buttons */
+  --secondary: rgba(28, 254, 154, 0.2);
+  --secondary-foreground: #ffffff;
+  --muted: rgba(28, 254, 154, 0.08);
+  --muted-foreground: #ffffff;
+  --accent: rgba(28, 254, 154, 0.15);
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #fef2f2;
-  --border: rgba(16, 185, 129, 0.20);
-  --input: rgba(16, 185, 129, 0.08);
-  --ring: rgba(16, 185, 129, 0.5);
+  --border: rgba(28, 254, 154, 0.4); /* Bordes neón fuertes */
+  --input: rgba(28, 254, 154, 0.15);
+  --ring: rgba(28, 254, 154, 0.6);
   
   /* Chart colors - vibrant agricultural */
-  --chart-1: #10b981;
+  --chart-1: #1CFE9A;
   --chart-2: #22c55e;
   --chart-3: #84cc16;
   --chart-4: #14b8a6;
@@ -53,38 +53,38 @@
   --copm: #10b981;
   
   /* Glow - subtle in light mode */
-  --glow-primary: rgba(16, 185, 129, 0.25);
-  --glow-secondary: rgba(34, 197, 94, 0.20);
-  --glass-bg: rgba(16, 185, 129, 0.06);
-  --glass-border: rgba(16, 185, 129, 0.18);
+  --glow-primary: rgba(28, 254, 154, 0.4);
+  --glow-secondary: rgba(34, 197, 94, 0.2);
+  --glass-bg: rgba(248, 250, 252, 0.85);
+  --glass-border: rgba(28, 254, 154, 0.3);
 }
 
-/* DARK MODE - Futuristic blockchain feel */
+/* DARK MODE - Exact Superfluid Aesthetic */
 .dark {
-  --background: #021a0e;
-  --foreground: #ecfdf5;
-  --card: rgba(6, 35, 20, 0.85);
-  --card-foreground: #ecfdf5;
-  --popover: rgba(6, 35, 20, 0.95);
-  --popover-foreground: #ecfdf5;
-  --primary: #34d399;
-  --primary-foreground: #021a0e;
-  --secondary: rgba(52, 211, 153, 0.15);
-  --secondary-foreground: #a7f3d0;
-  --muted: rgba(52, 211, 153, 0.08);
-  --muted-foreground: #6ee7b7;
-  --accent: rgba(52, 211, 153, 0.18);
-  --accent-foreground: #a7f3d0;
-  --destructive: #f87171;
-  --destructive-foreground: #450a0a;
-  --border: rgba(52, 211, 153, 0.25);
-  --input: rgba(52, 211, 153, 0.12);
-  --ring: rgba(52, 211, 153, 0.5);
+  --background: #000000; /* Pure Black, el clásico de Superfluid */
+  --foreground: #F3F4F6;
+  --card: rgba(28, 254, 154, 0.03); /* Tarjetas extremadamente transparentes (cristal puro) */
+  --card-foreground: #F3F4F6;
+  --popover: rgba(5, 5, 5, 0.95);
+  --popover-foreground: #F3F4F6;
+  --primary: #1CFE9A; /* Superfluid Easter Neon Green */
+  --primary-foreground: #000000;
+  --secondary: rgba(28, 254, 154, 0.1);
+  --secondary-foreground: #1CFE9A;
+  --muted: rgba(255, 255, 255, 0.05);
+  --muted-foreground: #9CA3AF;
+  --accent: rgba(28, 254, 154, 0.15);
+  --accent-foreground: #1CFE9A;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #374151; /* Borde gris estándar Web3 */
+  --input: #111111;
+  --ring: #10B981;
   
-  --glow-primary: rgba(52, 211, 153, 0.5);
-  --glow-secondary: rgba(34, 197, 94, 0.4);
-  --glass-bg: rgba(6, 35, 20, 0.75);
-  --glass-border: rgba(52, 211, 153, 0.3);
+  --glow-primary: rgba(16, 185, 129, 0.4);
+  --glow-secondary: rgba(16, 185, 129, 0.1);
+  --glass-bg: rgba(0, 0, 0, 0.5);
+  --glass-border: rgba(16, 185, 129, 0.2);
 }
 
 /* Configuración del tema movida a tailwind.config.ts para compatibilidad con el editor */
@@ -95,17 +95,32 @@
   }
   body {
     color: var(--foreground);
-    background: #fafafa;
+    background: var(--background);
+    /* Degradado radial blanco/gris-muy-claro */
+    background-image: radial-gradient(circle at 50% 0%, #FFFFFF 0%, #F1F5F9 100%);
+    background-attachment: fixed;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
+  
+  /* FORZAR TEXTO BLANCO Y ALTO CONTRASTE EN MODO CLARO */
+  html:not(.dark) .text-emerald-950,
+  html:not(.dark) .text-emerald-900,
+  html:not(.dark) .text-emerald-800,
+  html:not(.dark) .text-emerald-700,
+  html:not(.dark) .text-blue-950,
+  html:not(.dark) .text-blue-900,
+  html:not(.dark) .text-blue-800,
+  html:not(.dark) .text-blue-700,
+  html:not(.dark) .text-teal-800,
+  html:not(.dark) .text-teal-700 {
+    color: #ffffff !important;
+  }
   .dark body {
-    background: linear-gradient(
-      155deg, 
-      #052e16 0%, 
-      #064e3b 30%,
-      #065f46 60%,
-      #064e3b 100%
-    );
+    background: #000000;
+    /* Restaurar el radial gradient verde de fondo, pero MUCHO MÁS OSCURO */
+    background-image: 
+      radial-gradient(circle at 50% -20%, rgba(28, 254, 154, 0.08), transparent 50%),
+      radial-gradient(circle at 50% 120%, rgba(28, 254, 154, 0.05), transparent 50%);
     background-attachment: fixed;
   }
 }
@@ -183,6 +198,24 @@
   to { transform: scale(1); opacity: 1; }
 }
 
+@keyframes liquid-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes faucet-drop {
+  0% { transform: translateY(-100%); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes ambient-liquid-flow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+
 /* Animation Classes */
 .animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
 .animate-glow-border { animation: glow-border 3s ease-in-out infinite; }
@@ -199,6 +232,43 @@
 .animate-pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
 .animate-spin-slow { animation: spin-slow 20s linear infinite; }
 .animate-grow-in { animation: grow-in 0.3s ease-out forwards; }
+
+.animate-liquid-flow {
+  background: linear-gradient(270deg, #1CFE9A, #020604, #1CFE9A, #064e3b);
+  background-size: 300% 300%;
+  animation: liquid-flow 4s ease infinite;
+}
+
+.faucet-pipe {
+  position: relative;
+  background: #111111;
+  border-left: 1px solid #1F2937;
+  border-right: 1px solid #1F2937;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+.faucet-stream {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, transparent, rgba(16, 185, 129, 0.8), #34D399, rgba(16, 185, 129, 0.8), transparent);
+  animation: faucet-drop 1.5s linear infinite;
+  pointer-events: none;
+}
+
+/* Y si quieres el stream horizontal (como una barra de carga de Superfluid) */
+.superfluid-horizontal-stream {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #10B981, transparent);
+  animation: shimmer 2s infinite;
+}
 
 /* Delays */
 .delay-75 { animation-delay: 75ms; }
@@ -220,10 +290,12 @@
 }
 
 .glass-card {
+  position: relative;
   background: var(--card);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   transition: all 0.3s ease;
+  overflow: hidden; /* Necesario para que no se salga el líquido */
 }
 
 .dark .glass-card {
@@ -231,6 +303,33 @@
     0 8px 32px rgba(0, 0, 0, 0.4),
     0 0 50px rgba(52, 211, 153, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* EL EFECTO LÍQUIDO DE SUPERFLUID (Modo Claro/Día) */
+.glass-card::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 200%;
+  /* Líquido NEÓN verde grueso muy visible en modo claro */
+  background: linear-gradient(180deg, transparent 0%, rgba(28, 254, 154, 0.2) 40%, rgba(28, 254, 154, 0.7) 50%, rgba(28, 254, 154, 0.2) 60%, transparent 100%);
+  animation: faucet-drop 3s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* EL EFECTO LÍQUIDO DE SUPERFLUID (Modo Oscuro/Noche) */
+.dark .glass-card::after {
+  /* Líquido neón radiactivo en máxima intensidad */
+  background: linear-gradient(180deg, transparent 0%, rgba(28, 254, 154, 0.2) 40%, rgba(28, 254, 154, 0.8) 50%, rgba(28, 254, 154, 0.2) 60%, transparent 100%);
+}
+
+/* Asegura que el texto y botones estén por encima del agua en ambos modos */
+.glass-card > * {
+  position: relative;
+  z-index: 10;
 }
 
 .glass-card:hover {
@@ -273,7 +372,16 @@
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #10b981, #22c55e, #84cc16);
+  background: linear-gradient(135deg, #1CFE9A, #22c55e, #1CFE9A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-liquid {
+  background: linear-gradient(270deg, #1CFE9A, #6ee7b7, #1CFE9A);
+  background-size: 300% 300%;
+  animation: liquid-flow 5s ease infinite;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -316,24 +424,31 @@
    PATTERNS & OVERLAYS
    ============================================================================ */
 .grid-overlay {
-  background-image: 
-    linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
-  background-size: 24px 24px;
+  /* Efecto de líquido ambiental de fondo fluyendo (reemplaza a los rombos) */
+  background: linear-gradient(180deg, rgba(28, 254, 154, 0.01) 0%, rgba(28, 254, 154, 0.05) 50%, rgba(28, 254, 154, 0.01) 100%);
+  background-size: 100% 200%;
+  animation: ambient-liquid-flow 12s ease-in-out infinite alternate;
 }
 
 .dark .grid-overlay {
-  background-image: 
-    linear-gradient(rgba(52, 211, 153, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(52, 211, 153, 0.05) 1px, transparent 1px);
+  /* Efecto de líquido ambiental para modo noche fluyendo arriba y abajo (MÁS OSCURO) */
+  background: linear-gradient(180deg, rgba(28, 254, 154, 0.01) 0%, rgba(28, 254, 154, 0.06) 50%, rgba(28, 254, 154, 0.01) 100%);
+  background-size: 100% 200%;
+  animation: ambient-liquid-flow 15s ease-in-out infinite alternate;
 }
 
 .leaf-pattern {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cpath d='M30 5c-5 8-15 15-25 15 10 5 20 15 25 35 5-20 15-30 25-35-10 0-20-7-25-15z' fill='%2310b981' fill-opacity='0.02'/%3E%3C/svg%3E");
+  /* Efecto de líquido ambiental de fondo fluyendo (reemplaza a los ovalos) */
+  background: linear-gradient(180deg, rgba(28, 254, 154, 0.01) 0%, rgba(28, 254, 154, 0.05) 50%, rgba(28, 254, 154, 0.01) 100%);
+  background-size: 100% 200%;
+  animation: ambient-liquid-flow 12s ease-in-out infinite alternate;
 }
 
 .dark .leaf-pattern {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cpath d='M30 5c-5 8-15 15-25 15 10 5 20 15 25 35 5-20 15-30 25-35-10 0-20-7-25-15z' fill='%2334d399' fill-opacity='0.03'/%3E%3C/svg%3E");
+  /* Efecto de líquido ambiental para modo noche fluyendo arriba y abajo (MÁS OSCURO) */
+  background: linear-gradient(180deg, rgba(28, 254, 154, 0.01) 0%, rgba(28, 254, 154, 0.06) 50%, rgba(28, 254, 154, 0.01) 100%);
+  background-size: 100% 200%;
+  animation: ambient-liquid-flow 15s ease-in-out infinite alternate;
 }
 
 /* ============================================================================

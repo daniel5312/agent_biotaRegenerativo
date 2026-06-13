@@ -1,11 +1,13 @@
 {
-    "name": "Biota Orquestador v1",
-    "description": "Agente experto en suelos y regeneración biológica para Biota Protocol.",
-    "capabilities": [
-        "Cromatografía de Pfeiffer",
-        "Diagnóstico de Microorganismos de Montaña",
-        "Validación de Proof-of-Action"
-    ],
-    "author": "Daniel Vargas Hermosa",
-    "version": "1.0.0"
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Biota Orquestador v1",
+  "description": "Autonomous regenerative AI agent for Biota Protocol. Validates Proof-of-Action from IoT soil sensors and issues UBI streams to certified farmers on Celo Mainnet.",
+  "image": "https://raw.githubusercontent.com/daniel5312/agent_biotaRegenerativo/main/public/logo.png",
+  "services": [
+    { "name": "api", "endpoint": "https://biota-protocol.vercel.app/api/chat", "version": "1.0" },
+    { "name": "webhook", "endpoint": "https://biota-protocol.vercel.app/api/iot/webhook", "version": "1.0" }
+  ],
+  "supportedTrust": ["reputation", "validation"],
+  "wallet": "0x699AD5EF840764db8CEe62569455bBE6081aA6b8",
+  "tba": "0x699AD5EF840764db8CEe62569455bBE6081aA6b8"
 }
