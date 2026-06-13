@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Sprout,
   Zap,
-  Camera
+  Camera,
+  Volume2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -83,12 +84,59 @@ export function AsesoriaView() {
   const { sendTransactionAsync } = useSendTransaction()
   const { toast } = useToast()
 
-  const { messages, sendMessage, analizarCroma, isLoading } = useAgent()
+  const { messages, sendMessage, analizarImagen, isLoading } = useAgent()
   const [input, setInput] = useState("")
   const [isPaying, setIsPaying] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+
+  const speakText = (text: string) => {
+    if (!window.speechSynthesis) {
+      toast({ title: "Error", description: "Tu navegador no soporta voz.", variant: "destructive" });
+      return;
+    }
+    
+    // Si ya está hablando, actúa como botón de DETENER (Stop)
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    
+    window.speechSynthesis.cancel();
+    
+    // Limpiamos Markdown
+    const cleanText = text.replace(/[*#_`~]/g, '');
+    
+    // Chrome tiene un bug conocido donde textos muy largos rompen el TTS.
+    // Solución: Dividir el texto en oraciones (por punto, salto de línea, o coma si es muy largo)
+    const chunks = cleanText.match(/[^.!?\n]+[.!?\n]+/g) || [cleanText];
+    
+    setIsSpeaking(true);
+    let chunksPlayed = 0;
+
+    chunks.forEach((chunk) => {
+      const utterance = new SpeechSynthesisUtterance(chunk.trim());
+      utterance.lang = 'es-ES';
+      utterance.rate = 1.0;
+      
+      utterance.onend = () => {
+        chunksPlayed++;
+        if (chunksPlayed === chunks.length) {
+          setIsSpeaking(false);
+        }
+      };
+      
+      utterance.onerror = (e) => {
+        console.error("TTS Error en chunk:", e);
+        setIsSpeaking(false);
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    });
+  }
 
   const handleGatilloUBI = async () => {
     if (tokenId === null || tokenId === undefined || !address) {
@@ -175,7 +223,7 @@ export function AsesoriaView() {
       toast({ title: "✅ Pago Confirmado", description: "Inferencia Visual en proceso..." })
       
       const base64String = await compressImage(file);
-      analizarCroma(base64String, txHash);
+      analizarImagen(base64String, selectedAgent.id, txHash);
       
     } catch (error) {
       console.error(error)
@@ -370,11 +418,20 @@ export function AsesoriaView() {
                         </div>
                       )}
                       {isBot && !msg.metadata?.verdict && (
-                        <div className="mt-2 flex items-center gap-2 pt-2 border-t border-emerald-100 dark:border-emerald-700/30">
-                          <button className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:underline">
-                            Ver Mas
+                        <div className="mt-2 flex items-center justify-between pt-2 border-t border-emerald-100 dark:border-emerald-700/30">
+                          <button 
+                            onClick={() => speakText(msg.content)}
+                            className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest transition-colors ${isSpeaking ? 'text-emerald-400 animate-pulse' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800'}`}
+                          >
+                            <Volume2 className="w-3 h-3" />
+                            Escuchar
                           </button>
-                          <ChevronRight className="w-2.5 h-2.5 text-emerald-400" />
+                          <div className="flex items-center gap-1">
+                            <button className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:underline">
+                              Ver Mas
+                            </button>
+                            <ChevronRight className="w-2.5 h-2.5 text-emerald-400" />
+                          </div>
                         </div>
                       )}
                     </div>
