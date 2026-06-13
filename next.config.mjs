@@ -2,10 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone', // Optimización crítica para Vercel
-  experimental: {
-    outputFileTracingIncludes: {
-      '/api/**/*': ['./knowledge_vault/**/*'],
-    },
+  outputFileTracingIncludes: {
+    '/api/**/*': ['./knowledge_vault/**/*'],
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
