@@ -84,6 +84,8 @@ function LandingPage() {
     }
   }, []);
 
+
+
   if (!mounted) return <div className="min-h-screen bg-[#030712]" />;
 
   const handleCTA = () => {
@@ -390,9 +392,9 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    setMounted(true);
-    if (typeof window === "undefined") return;
-    const twa = (window as any).Telegram?.WebApp;
+    setMounted(true)
+    if (typeof window === "undefined") return
+    const twa = (window as any).Telegram?.WebApp
     if (twa) {
       twa.expand();
       twa.enableClosingConfirmation();

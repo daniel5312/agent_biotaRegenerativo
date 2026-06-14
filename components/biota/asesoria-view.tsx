@@ -19,13 +19,15 @@ import {
   ChevronRight,
   Sprout,
   Zap,
-  Camera
+  Camera,
+  Volume2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAgent } from "@/context/agentProvider"
+import { compressImage } from "@/lib/utils"
 import { useConnection, useWriteContract, useSendTransaction } from 'wagmi'
 import { parseEther } from 'viem'
 import { ADDRESSES, BIOTA_SCROW_ABI } from '@/lib/contracts'
@@ -82,12 +84,59 @@ export function AsesoriaView() {
   const { sendTransactionAsync } = useSendTransaction()
   const { toast } = useToast()
 
-  const { messages, sendMessage, analizarCroma, isLoading } = useAgent()
+  const { messages, sendMessage, analizarImagen, isLoading } = useAgent()
   const [input, setInput] = useState("")
   const [isPaying, setIsPaying] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+
+  const speakText = (text: string) => {
+    if (!window.speechSynthesis) {
+      toast({ title: "Error", description: "Tu navegador no soporta voz.", variant: "destructive" });
+      return;
+    }
+    
+    // Si ya está hablando, actúa como botón de DETENER (Stop)
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    
+    window.speechSynthesis.cancel();
+    
+    // Limpiamos Markdown
+    const cleanText = text.replace(/[*#_`~]/g, '');
+    
+    // Chrome tiene un bug conocido donde textos muy largos rompen el TTS.
+    // Solución: Dividir el texto en oraciones (por punto, salto de línea, o coma si es muy largo)
+    const chunks = cleanText.match(/[^.!?\n]+[.!?\n]+/g) || [cleanText];
+    
+    setIsSpeaking(true);
+    let chunksPlayed = 0;
+
+    chunks.forEach((chunk) => {
+      const utterance = new SpeechSynthesisUtterance(chunk.trim());
+      utterance.lang = 'es-ES';
+      utterance.rate = 1.0;
+      
+      utterance.onend = () => {
+        chunksPlayed++;
+        if (chunksPlayed === chunks.length) {
+          setIsSpeaking(false);
+        }
+      };
+      
+      utterance.onerror = (e) => {
+        console.error("TTS Error en chunk:", e);
+        setIsSpeaking(false);
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    });
+  }
 
   const handleGatilloUBI = async () => {
     if (tokenId === null || tokenId === undefined || !address) {
@@ -128,13 +177,13 @@ export function AsesoriaView() {
       
       const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
       
-      await sendTransactionAsync({
+      const txHash = await sendTransactionAsync({
         to: AGENT_WALLET,
         value: parseEther("0.01"),
       })
       
       toast({ title: "✅ Pago Confirmado", description: "Inferencia IA en proceso..." })
-      sendMessage(input, selectedAgent.id)
+      sendMessage(input, selectedAgent.id, txHash)
       setInput("")
     } catch (error) {
       console.error(error)
@@ -150,19 +199,42 @@ export function AsesoriaView() {
 
   const selectAgent = (agent: typeof AGENTS[0]) => {
     setSelectedAgent(agent)
-    sendMessage(agent.prompt, agent.id)
+    setInput(agent.prompt)
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const base64String = reader.result as string
-      analizarCroma(base64String)
+    try {
+      setIsPaying(true)
+      toast({ 
+        title: "Peaje x402 Biota", 
+        description: "Firma el micropago de 0.01 CELO para analizar la imagen." 
+      })
+      
+      const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
+      
+      const txHash = await sendTransactionAsync({
+        to: AGENT_WALLET,
+        value: parseEther("0.01"),
+      })
+      
+      toast({ title: "✅ Pago Confirmado", description: "Inferencia Visual en proceso..." })
+      
+      const base64String = await compressImage(file);
+      analizarImagen(base64String, selectedAgent.id, txHash);
+      
+    } catch (error) {
+      console.error(error)
+      toast({ 
+        title: "Acceso Denegado", 
+        description: "Debes pagar el peaje x402 para usar el Escáner Croma.", 
+        variant: "destructive" 
+      })
+    } finally {
+      setIsPaying(false)
     }
-    reader.readAsDataURL(file)
   }
 
   return (
@@ -301,7 +373,7 @@ export function AsesoriaView() {
                       {isBot ? <Bot className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                     </div>
                     <div className={`
-                      p-3 rounded-2xl text-[11px] leading-relaxed shadow-sm
+                      p-3 rounded-2xl text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap break-words overflow-hidden
                       ${isBot 
                         ? "bg-white dark:bg-emerald-800/50 text-emerald-950 dark:text-emerald-50 border border-emerald-200 dark:border-emerald-700/50" 
                         : "bg-emerald-600 text-white border border-emerald-500"
@@ -346,11 +418,20 @@ export function AsesoriaView() {
                         </div>
                       )}
                       {isBot && !msg.metadata?.verdict && (
-                        <div className="mt-2 flex items-center gap-2 pt-2 border-t border-emerald-100 dark:border-emerald-700/30">
-                          <button className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:underline">
-                            Ver Mas
+                        <div className="mt-2 flex items-center justify-between pt-2 border-t border-emerald-100 dark:border-emerald-700/30">
+                          <button 
+                            onClick={() => speakText(msg.content)}
+                            className={`flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest transition-colors ${isSpeaking ? 'text-emerald-400 animate-pulse' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800'}`}
+                          >
+                            <Volume2 className="w-3 h-3" />
+                            Escuchar
                           </button>
-                          <ChevronRight className="w-2.5 h-2.5 text-emerald-400" />
+                          <div className="flex items-center gap-1">
+                            <button className="text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 hover:underline">
+                              Ver Mas
+                            </button>
+                            <ChevronRight className="w-2.5 h-2.5 text-emerald-400" />
+                          </div>
                         </div>
                       )}
                     </div>

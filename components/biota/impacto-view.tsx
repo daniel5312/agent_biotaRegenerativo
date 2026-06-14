@@ -19,23 +19,21 @@ import {
   Leaf,
   BadgeCheck,
   ShieldCheck,
-  AlertCircle,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { useConnection, useReadContract } from "wagmi";
-import { useWallets, usePrivy } from "@privy-io/react-auth";
-import {
-  ADDRESSES,
-  ERC20_ABI,
-  IDENTITY_ABI,
-  formatCUSD,
-} from "@/lib/contracts";
-import { useBiotaPass } from "@/hooks/useBiotaPass";
-import { usePoA } from "@/hooks/usePoA";
-import { IdentityAction } from "@/components/biota/IdentityAction";
+  AlertCircle
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { useConnection, useReadContract, useSendTransaction } from "wagmi"
+import { parseEther } from "viem"
+import { useWallets, usePrivy } from "@privy-io/react-auth"
+import { useRef } from "react"
+import { ADDRESSES, ERC20_ABI, IDENTITY_ABI, formatCUSD } from "@/lib/contracts"
+import { useBiotaPass } from "@/hooks/useBiotaPass"
+import { usePoA } from "@/hooks/usePoA"
+import { IdentityAction } from "@/components/biota/IdentityAction"
+import { compressImage } from "@/lib/utils"
 
 export function ImpactoView() {
   const { address } = useConnection();
@@ -51,14 +49,19 @@ export function ImpactoView() {
     loteData,
     mintPassport,
     isMinting,
-    mintConfirmed,
-  } = useBiotaPass();
-  const { certificarPoA, isCertifying } = usePoA();
+    mintConfirmed
+  } = useBiotaPass()
+  const { certificarPoA, isCertifying } = usePoA()
+  const { sendTransactionAsync } = useSendTransaction()
 
-  const [selectedActions, setSelectedActions] = useState<string[]>([]);
-  const [submitted, setSubmitted] = useState(false);
-  const [creditAmount, setCreditAmount] = useState("");
-  const [requestingCredit, setRequestingCredit] = useState(false);
+  const [selectedActions, setSelectedActions] = useState<string[]>([])
+  const [submitted, setSubmitted] = useState(false)
+  const [creditAmount, setCreditAmount] = useState("")
+  const [requestingCredit, setRequestingCredit] = useState(false)
+  
+  // [VISION IA] Estado y Referencia para la imagen
+  const [imageBase64, setImageBase64] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // --- Lógica de Smart Contracts ---
   const { data: balanceValue } = useReadContract({
@@ -114,34 +117,64 @@ export function ImpactoView() {
   }, [gBalanceValue]);
 
   // --- Lógica UI v0 ---
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const base64String = await compressImage(file);
+      setImageBase64(base64String)
+    }
+  }
+
   const toggleAction = (actionId: string) => {
-    setSelectedActions((prev) =>
-      prev.includes(actionId)
-        ? prev.filter((id) => id !== actionId)
-        : [...prev, actionId],
-    );
-  };
+    if (actionId === "photo") {
+      fileInputRef.current?.click()
+    }
+    setSelectedActions(prev => 
+      prev.includes(actionId) 
+        ? prev.filter(id => id !== actionId)
+        : [...prev, actionId]
+    )
+  }
 
   const handleOracleSubmit = async () => {
-    if (selectedActions.length === 0 || !tokenId) return;
-
-    // Simplificación para la demo: usamos el primer ID seleccionado
-    const action = actions.find((a) => selectedActions.includes(a.id));
-
+    if (selectedActions.length === 0) return
+    
+    setSubmitted(true)
+    
     try {
-      await certificarPoA({
-        tokenId: tokenId,
-        nuevoCmSuelo: cmRecuperados + 10, // Incremento simulado
-        nuevoEstado: `Verificado: ${action?.label}`,
-        nuevosMetodos: "Bio-Insumos Biota",
+      // 1. Cobrar peaje x402
+      const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`;
+      const txHash = await sendTransactionAsync({
+        to: AGENT_WALLET,
+        value: parseEther("0.01"),
       });
-      setSubmitted(true);
-      setTimeout(() => {
-        setSubmitted(false);
-        setSelectedActions([]);
-      }, 2500);
+
+      // 2. Llamada real al Oráculo de Inteligencia Artificial
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentRole: 'ANALISTA_CROMA',
+          sessionMetadata: { address, tokenId: tokenId ? tokenId.toString() : null, isUbiActive: true },
+          txHash: txHash,
+          messages: [{
+            role: 'user',
+            content: 'Por favor analiza esta cromatografía de Pfeiffer de mi finca y emite un veredicto.',
+            image: imageBase64 // Se envía el base64 si existe
+          }]
+        })
+      });
+
+      if (response.ok) {
+        setTimeout(() => {
+          setSubmitted(false)
+          setSelectedActions([])
+          setImageBase64(null)
+        }, 3000)
+      }
     } catch (error) {
-      console.error("Error al certificar PoA:", error);
+      console.error("Error al contactar al oráculo:", error)
+      setSubmitted(false)
     }
   };
 
@@ -172,28 +205,10 @@ export function ImpactoView() {
   };
 
   const actions = [
-    {
-      id: "photo",
-      icon: Camera,
-      label: "Foto Compostaje",
-      reward: "+2.5 cUSD",
-      color: "from-cyan-500 to-teal-500",
-    },
-    {
-      id: "ph",
-      icon: Droplets,
-      label: "Ingresar pH",
-      reward: "+5.0 cUSD",
-      color: "from-blue-500 to-cyan-500",
-    },
-    {
-      id: "trees",
-      icon: TreePine,
-      label: "Registrar Arboles",
-      reward: "+12.0 cUSD",
-      color: "from-emerald-500 to-green-500",
-    },
-  ];
+    { id: "photo", icon: Camera, label: "Foto Cromatografía", reward: "+2.5 G$", color: "from-cyan-500 to-teal-500" },
+    { id: "ph", icon: Droplets, label: "Ingresar pH", reward: "+5.0 G$", color: "from-blue-500 to-cyan-500" },
+    { id: "trees", icon: TreePine, label: "Registrar Arboles", reward: "+12.0 G$", color: "from-emerald-500 to-green-500" },
+  ]
 
   const timeline = [
     {
@@ -393,6 +408,14 @@ export function ImpactoView() {
             </span>
           </div>
 
+          <input 
+            type="file" 
+            accept="image/*" 
+            ref={fileInputRef} 
+            onChange={handleImageUpload} 
+            className="hidden" 
+          />
+
           {/* Action Buttons */}
           <div className="grid grid-cols-3 gap-2">
             {actions.map((action) => {
@@ -434,14 +457,10 @@ export function ImpactoView() {
                   >
                     {action.label}
                   </span>
-                  <span
-                    className={`text-[8px] font-mono font-bold ${
-                      isSelected
-                        ? "text-white/90"
-                        : "text-green-700 dark:text-emerald-400"
-                    }`}
-                  >
-                    {action.reward}
+                  <span className={`text-[8px] font-mono font-bold ${
+                    isSelected ? "text-white/90" : "text-green-700 dark:text-emerald-400"
+                  }`}>
+                    {imageBase64 && action.id === "photo" ? "📸 Imagen Lista" : action.reward}
                   </span>
                 </button>
               );
@@ -451,20 +470,14 @@ export function ImpactoView() {
           {/* Submit Button */}
           <Button
             onClick={handleOracleSubmit}
-            disabled={
-              selectedActions.length === 0 ||
-              isCertifying ||
-              submitted ||
-              !hasPassport
-            }
+            disabled={selectedActions.length === 0 || isCertifying || submitted}
             className={`
               w-full h-12 font-bold text-sm transition-all cyber-btn
-              ${
-                submitted
-                  ? "bg-green-500 hover:bg-green-500"
-                  : selectedActions.length > 0 && hasPassport
-                    ? "bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:via-green-400 hover:to-teal-400 glow-md"
-                    : "bg-gray-200 dark:bg-emerald-900/30 text-gray-500 dark:text-emerald-600"
+              ${submitted 
+                ? "bg-green-500 hover:bg-green-500" 
+                : selectedActions.length > 0
+                  ? "bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:via-green-400 hover:to-teal-400 glow-md"
+                  : "bg-gray-200 dark:bg-emerald-900/30 text-gray-500 dark:text-emerald-600"
               }
             `}
           >
@@ -478,9 +491,7 @@ export function ImpactoView() {
                 On-Chain...
               </>
             ) : !hasPassport ? (
-              <>
-                <AlertCircle className="w-4 h-4 mr-2" /> Requiere Pasaporte
-              </>
+              <><AlertCircle className="w-4 h-4 mr-2" /> IA Emitirá Pasaporte</>
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" /> Enviar Evidencia

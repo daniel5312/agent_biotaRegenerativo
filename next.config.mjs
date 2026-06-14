@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone', // Optimización crítica para Vercel
+  outputFileTracingIncludes: {
+    '/api/**/*': ['./knowledge_vault/**/*'],
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
