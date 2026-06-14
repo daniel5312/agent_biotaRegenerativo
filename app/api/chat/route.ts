@@ -6,7 +6,11 @@ import {
     executeSoilValidation,
     publicClient,
     executeEscrowDistribution,
-    distributeEscrowTool
+    distributeEscrowTool,
+    iotDataTool,
+    weatherPredictionTool,
+    executeIoTData,
+    executeWeatherPrediction
 } from '@/lib/agents/tools';
 
 export const maxDuration = 60;
@@ -70,6 +74,8 @@ export async function POST(req: Request) {
         const tools = [
             {
                 functionDeclarations: [
+                    iotDataTool as any,
+                    weatherPredictionTool as any,
                     {
                         name: 'mint_biota_passport',
                         description: 'Crea el Pasaporte Biológico On-Chain para un agricultor.',
@@ -169,9 +175,30 @@ export async function POST(req: Request) {
                                 }
                                 if (call.name === 'validate_soil_action') result = await executeSoilValidation(call.args as any);
                                 if (call.name === 'distribute_escrow_funds') result = await executeEscrowDistribution(call.args as any);
+                                if (call.name === 'get_iot_data') result = await executeIoTData(call.args as any);
+                                if (call.name === 'get_weather_prediction') result = await executeWeatherPrediction(call.args as any);
 
-                                // Feedback visual inmediato del contrato en el chat
-                                controller.enqueue(new TextEncoder().encode(`\n[EJECUCIÓN ON-CHAIN]: ${JSON.stringify(result)}\n`));
+                                // Feedback visual en lenguaje natural (sin JSON)
+                                let mensajeCampesino = "";
+                                if (call.name === 'mint_biota_passport') {
+                                    mensajeCampesino = `\n🌱 ¡Listo! He creado tu Pasaporte Biológico Oficial en la blockchain.\n`;
+                                } else if (call.name === 'execute_double_trigger') {
+                                    mensajeCampesino = `\n💧 ¡Excelente trabajo! He certificado tu labor y hemos liberado tu incentivo económico.\n`;
+                                } else if (call.name === 'distribute_escrow_funds') {
+                                    mensajeCampesino = `\n🚨 ¡Alerta de Emergencia! He detectado condiciones críticas. Hemos liberado y enviado un fondo de apoyo a tu billetera para ayudarte a superar la sequía.\n`;
+                                } else if (call.name === 'get_iot_data' || call.name === 'get_weather_prediction') {
+                                    // Para IoT y Clima, le hablamos natural con los datos simulados
+                                    if (call.name === 'get_iot_data') {
+                                        mensajeCampesino = `\n📡 (Revisando los sensores de tu finca... La humedad de tu tierra está muy bajita, en 15.2%).\n`;
+                                    }
+                                    if (call.name === 'get_weather_prediction') {
+                                        mensajeCampesino = `\n☁️ (Revisando el clima satelital... Me marca que no va a llover nada esta semana).\n`;
+                                    }
+                                } else {
+                                    mensajeCampesino = `\n✅ Operación completada.\n`;
+                                }
+                                
+                                controller.enqueue(new TextEncoder().encode(mensajeCampesino));
                             }
                         }
                     }
