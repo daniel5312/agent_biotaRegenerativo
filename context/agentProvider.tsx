@@ -15,10 +15,10 @@ type Message = {
 };
 
 interface AgentContextType {
-  messages: Message[];
+  chats: Record<string, Message[]>;
   isLoading: boolean;
   agentAction: { isMinting: boolean; txHash?: string } | null;
-  sendMessage: (text: string, agentRole?: string, txHash?: string) => Promise<void>;
+  sendMessage: (text: string, agentRole: string, txHash?: string) => Promise<void>;
   analizarImagen: (imagenBase64: string, agentRole: string, txHash?: string) => Promise<void>;
 }
 
@@ -27,7 +27,7 @@ const AgentContext = createContext<AgentContextType | undefined>(undefined);
 export function AgentProvider({ children }: { children: ReactNode }) {
   const { address } = useConnection();
   const { tokenId } = useBiotaPass();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [chats, setChats] = useState<Record<string, Message[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [agentAction, setAgentAction] = useState<{ isMinting: boolean; txHash?: string } | null>(null);
 
@@ -39,23 +39,27 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     timestamp: Date.now()
   });
 
-  const sendMessage = async (text: string, agentRole?: string, txHash?: string) => {
+  const sendMessage = async (text: string, agentRole: string, txHash?: string) => {
     try {
       setIsLoading(true);
       const userMessage: Message = { role: "user", content: text };
-      const updatedMessages = [...messages, userMessage];
-      setMessages(updatedMessages);
+      
+      setChats(prev => {
+        const currentChat = prev[agentRole] || [];
+        return { ...prev, [agentRole]: [...currentChat, userMessage, { role: "assistant", content: "" }] };
+      });
 
-      // Crear un placeholder para la respuesta del bot que se irá llenando
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      // Get updated messages for the API request
+      const currentMessages = chats[agentRole] || [];
+      const messagesForApi = [...currentMessages, userMessage];
 
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-          agentRole: agentRole || "CAPATAZ",
-          sessionMetadata: getSessionMetadata(), // Inyección de contexto
+          messages: messagesForApi.map(m => ({ role: m.role, content: m.content })),
+          agentRole: agentRole,
+          sessionMetadata: getSessionMetadata(),
           txHash: txHash
         }),
       });
@@ -75,23 +79,27 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         fullContent += chunk;
 
         // Actualizar el último mensaje (el del asistente) con el contenido acumulado
-        setMessages((prev) => {
-          const newMessages = [...prev];
-          const lastIndex = newMessages.length - 1;
-          newMessages[lastIndex] = { 
-            ...newMessages[lastIndex], 
-            content: fullContent 
-          };
-          return newMessages;
+        setChats((prev) => {
+          const currentChat = prev[agentRole] || [];
+          if (currentChat.length === 0) return prev;
+          
+          const newChat = [...currentChat];
+          const lastIndex = newChat.length - 1;
+          newChat[lastIndex] = { ...newChat[lastIndex], content: fullContent };
+          
+          return { ...prev, [agentRole]: newChat };
         });
       }
 
     } catch (error) {
       console.error("Error en el Puente de Agentes:", error);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Lo siento, hubo un error conectando con el oráculo de Biota." }
-      ]);
+      setChats((prev) => {
+        const currentChat = prev[agentRole] || [];
+        return { 
+          ...prev, 
+          [agentRole]: [...currentChat, { role: "assistant", content: "Lo siento, hubo un error conectando con el oráculo de Biota." }] 
+        };
+      });
     } finally {
       setIsLoading(false);
     }
@@ -102,7 +110,11 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       const userMsg: Message = { role: "user", content: "Analizando imagen adjunta..." };
-      setMessages(prev => [...prev, userMsg, { role: "assistant", content: "Iniciando escaneo visual..." }]);
+      
+      setChats(prev => {
+        const currentChat = prev[agentRole] || [];
+        return { ...prev, [agentRole]: [...currentChat, userMsg, { role: "assistant", content: "Iniciando escaneo visual..." }] };
+      });
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -124,10 +136,13 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         const { done, value } = await reader.read();
         if (done) break;
         content += decoder.decode(value);
-        setMessages(prev => {
-          const next = [...prev];
+        setChats(prev => {
+          const currentChat = prev[agentRole] || [];
+          if (currentChat.length === 0) return prev;
+          
+          const next = [...currentChat];
           next[next.length - 1].content = content;
-          return next;
+          return { ...prev, [agentRole]: next };
         });
       }
     } catch (e) {
@@ -139,7 +154,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   return (
     <AgentContext.Provider
-      value={{ messages, isLoading, agentAction, sendMessage, analizarImagen }}
+      value={{ chats, isLoading, agentAction, sendMessage, analizarImagen }}
     >
       {children}
     </AgentContext.Provider>
