@@ -85,10 +85,11 @@ export function AsesoriaView() {
   const { sendTransactionAsync } = useSendTransaction()
   const { toast } = useToast()
 
-  const { messages, sendMessage, analizarImagen, isLoading } = useAgent()
+  const { chats, sendMessage, analizarImagen, isLoading } = useAgent()
   const [input, setInput] = useState("")
   const [isPaying, setIsPaying] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
+  const messages = chats[selectedAgent.id] || []
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
