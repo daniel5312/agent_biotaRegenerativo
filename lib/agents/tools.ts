@@ -155,6 +155,51 @@ export const soilValidationTool = {
     }
 };
 
+/**
+ * Herramienta para obtener telemetría de sensores IoT (Humedad, Temperatura del suelo).
+ */
+export const iotDataTool = {
+    name: "get_iot_data",
+    description: "Obtiene los datos en tiempo real de los sensores IoT (ESP32/LoRaWAN) instalados en la parcela del agricultor.",
+    parameters: {
+        type: "OBJECT",
+        properties: {
+            farmerAddress: { type: "STRING", description: "Dirección de la billetera del agricultor" },
+            sensorId: { type: "STRING", description: "Identificador del sensor (ej. SENSOR-01)" }
+        },
+        required: ["farmerAddress"]
+    }
+};
+
+/**
+ * Herramienta para obtener predicciones climáticas.
+ */
+export const weatherPredictionTool = {
+    name: "get_weather_prediction",
+    description: "Obtiene el pronóstico del clima actual y la probabilidad de sequía o lluvia para la ubicación.",
+    parameters: {
+        type: "OBJECT",
+        properties: {
+            latitud: { type: "NUMBER", description: "Latitud geográfica" },
+            longitud: { type: "NUMBER", description: "Longitud geográfica" }
+        },
+        required: ["latitud", "longitud"]
+    }
+};
+
+/**
+ * Herramienta del Calendario Lunar Biodinámico.
+ */
+export const lunarPhaseTool = {
+    name: "get_lunar_phase",
+    description: "Calcula la fase lunar actual y determina el movimiento de la savia en las plantas para labores biodinámicas.",
+    parameters: {
+        type: "OBJECT",
+        properties: {},
+        required: []
+    }
+};
+
 // ... (El resto de las funciones de ejecución se mantienen iguales)
 
 interface MintPassportArgs {
@@ -358,5 +403,128 @@ export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
         hash: txHashSimulated,
         distribucion: result,
         message: `El Agente Orquestador ha liberado y distribuido exitosamente ${args.totalAmount} ${args.currency}.`
+    };
+}
+
+interface IoTDataArgs {
+    farmerAddress: string;
+    sensorId?: string;
+}
+
+/**
+ * Lógica de ejecución del Mock IoT.
+ * Simula la lectura de un sensor ESP32 en el cultivo.
+ */
+export async function executeIoTData(args: IoTDataArgs) {
+    console.log(`[AGENT-TOOL] Consultando Sensor IoT para: ${args.farmerAddress}`);
+    
+    // Simulación de datos críticos de Sequía (Humedad muy baja) para probar el Seguro Paramétrico
+    return {
+        success: true,
+        sensorId: args.sensorId || "ESP32-LORA-001",
+        telemetria: {
+            humedadSueloPorcentaje: 15.2, // Nivel crítico de sequía (< 30%)
+            temperaturaAmbiente: 34.5,
+            phSuelo: 6.2,
+            estadoBombaAgua: "APAGADA"
+        },
+        timestamp: new Date().toISOString()
+    };
+}
+
+interface WeatherPredictionArgs {
+    latitud: number;
+    longitud: number;
+}
+
+/**
+ * Lógica de ejecución del clima usando Open-Meteo (Sin API Key, gratuito, ideal para Colombia).
+ */
+export async function executeWeatherPrediction(args: WeatherPredictionArgs) {
+    console.log(`[AGENT-TOOL] Consultando Clima Open-Meteo para Lat:${args.latitud}, Lon:${args.longitud}`);
+    try {
+        // Agregamos Viento, Cobertura de Nubes, Evapotranspiración (pérdida de agua) y Radiación UV
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${args.latitud}&longitude=${args.longitud}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m,cloud_cover&daily=precipitation_sum,et0_fao_evapotranspiration,uv_index_max&timezone=America%2FBogota`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // Extraer si ha llovido o lloverá
+        const lluviaHoy = data.current?.precipitation || 0;
+        const pronosticoLluvia7Dias = data.daily?.precipitation_sum || [];
+        const evapotranspiracionDiaria = data.daily?.et0_fao_evapotranspiration?.[0] || 0;
+        const totalLluviaSemana = pronosticoLluvia7Dias.reduce((a: number, b: number) => a + b, 0);
+
+        return {
+            success: true,
+            fuente: "Open-Meteo Satélite Agrícola",
+            climaActual: {
+                temperatura: data.current?.temperature_2m,
+                sensacionTermica: data.current?.apparent_temperature,
+                humedadRelativa: data.current?.relative_humidity_2m,
+                lluviaMm: lluviaHoy,
+                velocidadVientoKmh: data.current?.wind_speed_10m,
+                coberturaNubesPorcentaje: data.current?.cloud_cover
+            },
+            pronosticoDiario: {
+                evapotranspiracionFaoMm: evapotranspiracionDiaria, // Agua que pierde el suelo y la planta por evaporación
+                indiceUvMaximo: data.daily?.uv_index_max?.[0] || 0
+            },
+            pronosticoSemanal: {
+                totalLluviaEsperadaMm: totalLluviaSemana,
+                alertaSequia: totalLluviaSemana < 5
+            }
+        };
+    } catch (error: any) {
+        console.error("[AGENT-TOOL-WEATHER-ERROR]", error);
+        return { success: false, error: "No se pudo conectar con el satélite climático." };
+    }
+}
+
+/**
+ * Cálculo matemático de la fase lunar actual (Calendario Biodinámico).
+ */
+export async function executeLunarPhase() {
+    console.log(`[AGENT-TOOL] Consultando Reloj Lunar Biodinámico`);
+    // Constantes matemáticas lunares
+    const LUNAR_MONTH = 29.53058867;
+    // Una fecha de luna nueva conocida (Ej: 11 Ene 2024 11:57 UTC)
+    const KNOWN_NEW_MOON = new Date("2024-01-11T11:57:00Z").getTime();
+    const now = Date.now();
+    
+    const diff = now - KNOWN_NEW_MOON;
+    const days = diff / (1000 * 60 * 60 * 24);
+    const lunarAge = days % LUNAR_MONTH;
+    const percentage = (lunarAge / LUNAR_MONTH) * 100;
+
+    let fase = "";
+    let movimientoSavia = "";
+    let recomendacion = "";
+
+    if (percentage < 5 || percentage > 95) {
+        fase = "Luna Nueva";
+        movimientoSavia = "La savia se concentra en las raíces.";
+        recomendacion = "Ideal para podar, arrancar malezas y sembrar plantas de raíz (zanahoria, remolacha).";
+    } else if (percentage >= 5 && percentage < 45) {
+        fase = "Cuarto Creciente";
+        movimientoSavia = "La savia sube hacia el tallo y las ramas.";
+        recomendacion = "Ideal para sembrar plantas de hoja o flor. No se recomienda podar (la planta puede desangrarse).";
+    } else if (percentage >= 45 && percentage < 55) {
+        fase = "Luna Llena";
+        movimientoSavia = "La savia está concentrada en el follaje, frutos y flores.";
+        recomendacion = "Excelente para cosechar frutos (mayor jugosidad) y aplicar biofertilizantes foliares. Riesgo alto de plagas.";
+    } else {
+        fase = "Cuarto Menguante";
+        movimientoSavia = "La savia desciende hacia las raíces.";
+        recomendacion = "Fase de descanso. Ideal para aplicar abonos sólidos al suelo, hacer injertos y sembrar tubérculos.";
+    }
+
+    return {
+        success: true,
+        faseLunar: fase,
+        edadLunarDias: parseFloat(lunarAge.toFixed(2)),
+        biodinamica: {
+            savia: movimientoSavia,
+            consejo: recomendacion
+        }
     };
 }
