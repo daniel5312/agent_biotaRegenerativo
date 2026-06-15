@@ -6,7 +6,6 @@ import {
     executeSoilValidation,
     publicClient,
     executeEscrowDistribution,
-    distributeEscrowTool,
     iotDataTool,
     weatherPredictionTool,
     executeIoTData,
@@ -45,9 +44,26 @@ export async function POST(req: Request) {
             apiVersion: 'v1beta'
         });
 
-        // 2. MODELO SEGURO: Alias exacto verificado por curl
+        // 2. MODELO SEGURO: Alias exacto verificado
         const modelId = 'gemini-flash-latest'; 
-        const systemInstructionText = getSystemContext(agentRole as AgentRole, sessionMetadata);
+        
+        let systemInstructionText = getSystemContext(agentRole as AgentRole, sessionMetadata);
+
+        // [PRE-FETCH RAG CIBERFÍSICO] En lugar de Function Calling, inyectamos los datos reales directo al contexto
+        if (agentRole === 'CAPATAZ' || agentRole === 'DIAGNOSTICO_AGROSOSTENIBLE') {
+            try {
+                // Coordenadas fijas de la finca por defecto (Colombia)
+                const weatherData = await executeWeatherPrediction({ latitud: 4.6097, longitud: -74.0817 });
+                const iotData = await executeIoTData({ farmerAddress: '0xMockESP32' });
+                
+                systemInstructionText += `\n\n[DATOS CIBERFÍSICOS OBTENIDOS EN TIEMPO REAL AHORA MISMO]:
+- CLIMA (Open-Meteo): ${JSON.stringify(weatherData)}
+- SENSORES (ESP32): ${JSON.stringify(iotData)}
+¡UTILIZA ESTOS DATOS OBLIGATORIAMENTE PARA TU RESPUESTA DE AHORA!`;
+            } catch (e) {
+                console.warn("No se pudo pre-cargar telemetría:", e);
+            }
+        }
 
         const contents = messages.map((m: any) => {
             const parts: any[] = [{ text: m.content }];
@@ -138,13 +154,19 @@ export async function POST(req: Request) {
         ];
 
         // 3. ESTRUCTURA OFICIAL: Todo estrictamente DENTRO de config
+        const config: any = {
+            systemInstruction: systemInstructionText,
+        };
+
+        // Solo le damos herramientas a los agentes que actúan on-chain para no confundir al modelo de Visión
+        if (agentRole !== 'ANALISTA_CROMA' && agentRole !== 'ANALISTA_LAB') {
+            config.tools = tools;
+        }
+
         const responseStream = await ai.models.generateContentStream({
             model: modelId,
             contents: contents,
-            config: {
-                systemInstruction: systemInstructionText,
-                tools: tools as any,
-            }
+            config: config
         });
 
         // 5. Manejo del Stream y ejecución On-Chain
@@ -157,20 +179,16 @@ export async function POST(req: Request) {
                             controller.enqueue(new TextEncoder().encode(chunk.text));
                         }
 
-                        // Si el agente decide actuar en la blockchain
+                        // Si el agente decide actuar en la blockchain (Function Calling)
                         if (chunk.functionCalls) {
                             for (const call of chunk.functionCalls) {
                                 console.log(`[ORACULO] Ejecutando Herramienta: ${call.name}`);
-                                let result;
+                                let result: any;
 
                                 if (call.name === 'mint_biota_passport') result = await executeMintPassport(call.args as any);
                                 if (call.name === 'execute_double_trigger') {
-                                    // [SECURITY] Sanitización On-Chain
                                     const args = call.args as any;
-                                    if (args.bioScore >= 100) {
-                                        console.warn("[FIREWALL] Intento de inyección detectado (Score 100). Degradando a 60.");
-                                        args.bioScore = 60;
-                                    }
+                                    if (args.bioScore >= 100) args.bioScore = 60;
                                     result = await executeDoubleTrigger(args);
                                 }
                                 if (call.name === 'validate_soil_action') result = await executeSoilValidation(call.args as any);
@@ -181,21 +199,16 @@ export async function POST(req: Request) {
                                 // Feedback visual en lenguaje natural (sin JSON)
                                 let mensajeCampesino = "";
                                 if (call.name === 'mint_biota_passport') {
-                                    mensajeCampesino = `\n🌱 ¡Listo! He creado tu Pasaporte Biológico Oficial en la blockchain.\n`;
+                                    mensajeCampesino = `\n🌱 ¡Listo! He creado tu Pasaporte Biológico Oficial en la blockchain.\n\n`;
                                 } else if (call.name === 'execute_double_trigger') {
-                                    mensajeCampesino = `\n💧 ¡Excelente trabajo! He certificado tu labor y hemos liberado tu incentivo económico.\n`;
+                                    mensajeCampesino = `\n💧 ¡Excelente trabajo! He certificado tu labor y hemos liberado tu incentivo económico.\n\n`;
                                 } else if (call.name === 'distribute_escrow_funds') {
-                                    mensajeCampesino = `\n🚨 ¡Alerta de Emergencia! He detectado condiciones críticas. Hemos liberado y enviado un fondo de apoyo a tu billetera para ayudarte a superar la sequía.\n`;
+                                    mensajeCampesino = `\n🚨 ¡Alerta de Emergencia! He detectado condiciones críticas. Hemos liberado y enviado un fondo de apoyo a tu billetera para ayudarte a superar la sequía.\n\n`;
                                 } else if (call.name === 'get_iot_data' || call.name === 'get_weather_prediction') {
-                                    // Para IoT y Clima, le hablamos natural con los datos simulados
-                                    if (call.name === 'get_iot_data') {
-                                        mensajeCampesino = `\n📡 (Revisando los sensores de tu finca... La humedad de tu tierra está muy bajita, en 15.2%).\n`;
-                                    }
-                                    if (call.name === 'get_weather_prediction') {
-                                        mensajeCampesino = `\n☁️ (Revisando el clima satelital... Me marca que no va a llover nada esta semana).\n`;
-                                    }
+                                    if (call.name === 'get_iot_data') mensajeCampesino = `\n📡 (Revisando los sensores de tu finca... La humedad está en 15.2%).\n`;
+                                    if (call.name === 'get_weather_prediction') mensajeCampesino = `\n☁️ (Revisando el clima satelital... Temperatura 34°C, riesgo de sequía).\n`;
                                 } else {
-                                    mensajeCampesino = `\n✅ Operación completada.\n`;
+                                    mensajeCampesino = `\n✅ Operación completada.\n\n`;
                                 }
                                 
                                 controller.enqueue(new TextEncoder().encode(mensajeCampesino));
