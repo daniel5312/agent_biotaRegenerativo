@@ -306,7 +306,7 @@ export function AsesoriaView() {
   return (
     <div className="flex flex-col h-full mb-nav">
       {/* Top Section: Agent Selection */}
-      <div className="px-4 py-4 space-y-3 shrink-0">
+      <div className="sticky top-0 z-20 px-4 py-4 space-y-3 shrink-0 backdrop-blur-xl bg-white/50 dark:bg-[#030712]/50 shadow-sm transition-theme">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-emerald-950 dark:text-white flex items-center gap-2 transition-theme">
             <Sparkles className="w-4 h-4 text-emerald-600 animate-pulse-dot" />
@@ -361,7 +361,7 @@ export function AsesoriaView() {
       {/* Main Chat Interface */}
       <Card className="flex-1 mx-4 mb-4 glass-card overflow-hidden flex flex-col bg-emerald-100/80 dark:bg-emerald-900/30">
         {/* Chat Header */}
-        <div className="px-4 py-3 border-b border-emerald-200 dark:border-emerald-500/20 bg-white/40 dark:bg-emerald-950/40 flex items-center justify-between transition-theme">
+        <div className="sticky top-[135px] sm:top-[125px] z-10 px-4 py-3 border-b border-emerald-200 dark:border-emerald-500/20 bg-white/60 dark:bg-emerald-950/60 backdrop-blur-xl flex items-center justify-between transition-theme shadow-sm">
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${selectedAgent.color} flex items-center justify-center shadow-md`}>
               {React.createElement(selectedAgent.icon, { className: "w-4 h-4 text-white" })}
@@ -517,7 +517,7 @@ export function AsesoriaView() {
         </div>
 
         {/* Input Area */}
-        <div className="p-3 bg-white/60 dark:bg-emerald-950/60 border-t border-emerald-200 dark:border-emerald-500/20 transition-theme">
+        <div className="sticky bottom-0 z-10 p-3 bg-white/80 dark:bg-emerald-950/80 backdrop-blur-xl border-t border-emerald-200 dark:border-emerald-500/20 transition-theme shadow-[0_-10px_15px_-10px_rgba(0,0,0,0.1)]">
           <input 
             type="file" 
             ref={fileInputRef} 

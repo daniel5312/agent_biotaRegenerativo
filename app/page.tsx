@@ -407,18 +407,7 @@ export default function Page() {
 
   if (!mounted) return null;
 
-  if (!ready) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-[#fafafa] dark:bg-[#021a0e]">
-        <div className="relative">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 animate-pulse-ring" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Sprout className="w-8 h-8 text-emerald-500 animate-bounce-slow" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Eliminado el bloque de carga (la planta) para entrar directo.
 
   const isDebug =
     typeof window !== "undefined" &&
