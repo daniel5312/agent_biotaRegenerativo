@@ -25,7 +25,7 @@ export async function POST(req: Request) {
                 throw new Error("Pago x402 requerido para usar Oráculos Avanzados.");
             }
             try {
-                const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
+                const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
                 if (receipt.status !== 'success') {
                     throw new Error("Transacción fallida.");
                 }
