@@ -23,6 +23,7 @@ import {
   Database,
   ShieldCheck,
   UserCircle2,
+  LineChart,
 } from "lucide-react";
 import {
   Dialog,
@@ -375,12 +376,60 @@ function LandingPage() {
   );
 }
 
-export default function Page() {
+function RoleSelection({ onSelect }: { onSelect: (role: "PRODUCER" | "INVESTOR") => void }) {
+  return (
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#030712] flex items-center justify-center p-6 transition-colors duration-500">
+      <div className="w-full max-w-md space-y-8 animate-fade-in">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-black text-emerald-950 dark:text-white uppercase tracking-tight">Selecciona tu Perfil</h1>
+          <p className="text-sm text-stone-500 dark:text-stone-400">¿Cómo deseas interactuar con Biota Protocol?</p>
+        </div>
+
+        <div className="grid gap-4">
+          <button onClick={() => onSelect("PRODUCER")} className="group relative p-6 bg-white dark:bg-[#0a0a0a] border-2 border-stone-200 dark:border-white/10 rounded-3xl hover:border-emerald-500 dark:hover:border-emerald-500 transition-all text-left overflow-hidden shadow-sm">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+            <Sprout className="w-8 h-8 text-emerald-600 mb-4" />
+            <h3 className="text-lg font-bold text-black dark:text-white mb-1">Productor Agrícola</h3>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Mintea tu Pasaporte Biológico, recibe tu UBI y usa la IA Capataz.</p>
+          </button>
+
+          <button onClick={() => onSelect("INVESTOR")} className="group relative p-6 bg-white dark:bg-[#0a0a0a] border-2 border-stone-200 dark:border-white/10 rounded-3xl hover:border-amber-500 dark:hover:border-amber-500 transition-all text-left overflow-hidden shadow-sm">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+            <LineChart className="w-8 h-8 text-amber-600 mb-4" />
+            <h3 className="text-lg font-bold text-black dark:text-white mb-1">Inversor ReFi</h3>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Compra productos tokenizados y genera rendimientos en bóvedas DeFi.</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function App() {
   const { ready, authenticated } = usePrivy();
   const [activeTab, setActiveTab] = useState<TabId>("impacto");
   const [mounted, setMounted] = useState(false);
+  const [userRole, setUserRole] = useState<"PRODUCER" | "INVESTOR" | null>(null);
 
   useEffect(() => {
+    // cargar el rol guardado en localStorage al iniciar
+    if (typeof window !== 'undefined') {
+      const savedRole = localStorage.getItem('BIOTA_ROLE') as "PRODUCER" | "INVESTOR" | null;
+      if (savedRole) {
+        setUserRole(savedRole);
+        setActiveTab(savedRole === "PRODUCER" ? "impacto" : "mercado");
+      }
+    }
+  }, []);
+
+  const handleRoleSelect = (role: "PRODUCER" | "INVESTOR") => {
+    setUserRole(role);
+    localStorage.setItem('BIOTA_ROLE', role);
+    setActiveTab(role === "PRODUCER" ? "impacto" : "mercado");
+  };
+
+  useEffect(() => {
+    setMounted(true);
     const handleSwitchTab = (e: any) => {
       if (e.detail && typeof e.detail === "string") {
         setActiveTab(e.detail as TabId);
@@ -418,9 +467,14 @@ export default function Page() {
     return <LandingPage />;
   }
 
-  // SPA original con AppShell y Vistas
+  // Si esta autenticado pero no ha elegido rol, muestra el selector
+  if (!userRole) {
+    return <RoleSelection onSelect={handleRoleSelect} />;
+  }
+
+  // SPA original con AppShell y Vistas filtradas por rol
   return (
-    <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
+    <AppShell activeTab={activeTab} onTabChange={setActiveTab} userRole={userRole}>
       <div className="flex flex-col h-full">
         {/* ENLACES A RUTAS FÍSICAS (ECOSISTEMA TRAS BAMBALINAS) */}
         <div className="flex justify-center gap-4 py-2 px-4 bg-emerald-950/20 border-b border-emerald-900/30">
@@ -438,7 +492,7 @@ export default function Page() {
           </Link>
         </div>
 
-        <div className="flex-1 overflow-y-auto animate-fade-in pb-20">
+        <div className={`flex-1 animate-fade-in ${activeTab === "asesoria" ? "overflow-hidden" : "overflow-y-auto pb-20"}`}>
           {activeTab === "pasaporte" && <PasaporteView />}
           {activeTab === "impacto" && <ImpactoView />}
           {activeTab === "mercado" && <MercadoView />}
