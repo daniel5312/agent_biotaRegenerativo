@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useBiotaRWA } from "@/hooks/useBiotaRWA";
 import {
   ShoppingCart,
   Plus,
@@ -41,76 +42,56 @@ import { parseEther } from "viem";
 const products = [
   {
     id: 1,
-    name: "Cafe Organico",
-    origin: "Biota Lab",
-    price: 1,
-    rating: 4.9,
+    name: "Café Especial Finca La Nube",
+    origin: "Productor: Don Arturo",
+    price: 15, // equivale a 0.015 cUSD
+    defiPortion: 7, // equivale a 0.007 cUSD
+    rating: 5.0,
     verified: true,
-    stock: 99,
+    stock: 24,
     icon: Coffee,
-    category: "Granos",
+    category: "Café",
     color: "from-amber-400 to-orange-500",
   },
   {
     id: 2,
-    name: "Cacao Criollo",
-    origin: "Biota Lab",
-    price: 2,
+    name: "Cacao Fino de Aroma (500g)",
+    origin: "Productora: María",
+    price: 12,
+    defiPortion: 6,
     rating: 4.8,
     verified: true,
-    stock: 99,
+    stock: 15,
     icon: Leaf,
     category: "Cacao",
     color: "from-amber-600 to-yellow-700",
   },
   {
     id: 3,
-    name: "Miel Nativa",
-    origin: "Biota Lab",
-    price: 3,
-    rating: 4.7,
+    name: "Miel Melipona Pura",
+    origin: "Comunidad El Carmen",
+    price: 20,
+    defiPortion: 10,
+    rating: 4.9,
     verified: true,
-    stock: 99,
+    stock: 10,
     icon: Flower2,
     category: "Miel",
     color: "from-yellow-400 to-amber-500",
   },
   {
     id: 4,
-    name: "Panela Organica",
-    origin: "Biota Lab",
-    price: 4,
-    rating: 4.6,
-    verified: false,
-    stock: 99,
-    icon: Mountain,
-    category: "Panela",
-    color: "from-orange-400 to-red-500",
-  },
-  {
-    id: 5,
-    name: "Aguacate Hass",
-    origin: "Biota Lab",
-    price: 5,
-    rating: 4.8,
+    name: "Edición Biota: Café Geisha",
+    origin: "Reserva Biota",
+    price: 30,
+    defiPortion: 15,
+    rating: 5.0,
     verified: true,
-    stock: 99,
-    icon: Apple,
-    category: "Frutas",
-    color: "from-green-400 to-emerald-500",
-  },
-  {
-    id: 6,
-    name: "Platano Verde",
-    origin: "Biota Lab",
-    price: 6,
-    rating: 4.5,
-    verified: false,
-    stock: 99,
-    icon: Sprout,
-    category: "Frutas",
-    color: "from-lime-400 to-green-500",
-  },
+    stock: 5,
+    icon: Mountain,
+    category: "Café",
+    color: "from-purple-500 to-indigo-500",
+  }
 ];
 
 const currencies = [
@@ -127,6 +108,12 @@ export function MercadoView() {
   const [selectedCurrency, setSelectedCurrency] = useState("cUSD");
   const [paid, setPaid] = useState(false);
   const [successTx, setSuccessTx] = useState<{ hash: string; amount: string; currency: string } | null>(null);
+  // [refi] estado local para mostrar u ocultar el panel de metadata del nft rwa de un producto
+  const [expandedNFT, setExpandedNFT] = useState<number | null>(null);
+
+  // [erc-1155] cargamos los datos on-chain del cafe con id=1 (el café especial finca la nube)
+  // si el contrato no está desplegado aún, el hook devuelve datos demo para el hackathon
+  const { coffeeData, isLive, investorBalance } = useBiotaRWA(1n);
 
   // 1. Configuración de Pago (Wagmi Hooks)
   const { mutate: writeSplitter, isPending: isTokenPaying, data: payHash } = useWriteContract();
@@ -371,11 +358,22 @@ export function MercadoView() {
                   <h3 className="text-xs font-bold text-emerald-950 dark:text-white leading-tight">
                     {product.name}
                   </h3>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
                     <span className="text-sm font-bold text-emerald-950 dark:text-white font-mono">
-                      {product.price}{" "}
-                      <span className="text-[7px] badge-copm">COPm</span>
+                      {(product.price * 0.001).toFixed(2)} <span className="text-[7px]">cUSD</span>
                     </span>
+                    <span className="text-[8px] text-emerald-700 dark:text-emerald-400 mt-0.5 bg-emerald-100 dark:bg-emerald-900/50 px-1 py-0.5 rounded-sm w-fit">
+                      Goteo DeFi: {(product.defiPortion * 0.001).toFixed(2)} {selectedCurrency}
+                    </span>
+                    {/* boton para ver la metadata completa del nft rwa del producto */}
+                    {product.id === 1 && (
+                      <button
+                        onClick={() => setExpandedNFT(expandedNFT === product.id ? null : product.id)}
+                        className="mt-1 text-[7px] font-bold text-amber-700 dark:text-amber-400 underline underline-offset-1 text-left"
+                      >
+                        {expandedNFT === product.id ? '▲ Ocultar' : '▼ Ver Certificado RWA'}
+                      </button>
+                    )}
                   </div>
 
                   {qty === 0 ? (
@@ -404,6 +402,58 @@ export function MercadoView() {
                     </div>
                   )}
                 </div>
+                {/* panel de metadata del nft rwa - muestra el certificado completo del cafe on-chain */}
+                {expandedNFT === product.id && (
+                  <div className="mx-3 mb-3 p-3 bg-emerald-950/10 dark:bg-emerald-900/40 rounded-xl border border-emerald-400/30 space-y-1.5 animate-fade-in">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-widest">🌱 Certificado NFT RWA</span>
+                      {/* bandera verde o naranja segun si los datos son de la blockchain o demo */}
+                      <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-full ${isLive ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-black'}`}>
+                        {isLive ? '⛓ On-Chain' : '📋 Demo'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-[8px]">
+                      <div>
+                        <span className="text-emerald-600/70 dark:text-emerald-400/60 block">Finca</span>
+                        <span className="font-bold text-emerald-950 dark:text-white">{coffeeData.finca}</span>
+                      </div>
+                      <div>
+                        <span className="text-emerald-600/70 dark:text-emerald-400/60 block">Municipio</span>
+                        <span className="font-bold text-emerald-950 dark:text-white">{coffeeData.municipio}</span>
+                      </div>
+                      <div>
+                        <span className="text-emerald-600/70 dark:text-emerald-400/60 block">Vereda</span>
+                        <span className="font-bold text-emerald-950 dark:text-white">{coffeeData.vereda}</span>
+                      </div>
+                      <div>
+                        <span className="text-emerald-600/70 dark:text-emerald-400/60 block">Productor</span>
+                        <span className="font-bold text-emerald-950 dark:text-white">{coffeeData.nombreProductor}</span>
+                      </div>
+                      <div>
+                        <span className="text-emerald-600/70 dark:text-emerald-400/60 block">Variedad</span>
+                        <span className="font-bold text-emerald-950 dark:text-white">{coffeeData.variedad}</span>
+                      </div>
+                      <div>
+                        <span className="text-emerald-600/70 dark:text-emerald-400/60 block">Altura</span>
+                        <span className="font-bold text-emerald-950 dark:text-white">{coffeeData.alturaMsnm.toString()} msnm</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-emerald-600/70 dark:text-emerald-400/60 block">Tonos de Perfil</span>
+                        <span className="font-bold text-emerald-950 dark:text-white">{coffeeData.tonosPerfil}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-emerald-600/70 dark:text-emerald-400/60 block">Etapa Biota</span>
+                        <span className="font-bold text-amber-700 dark:text-amber-400">{coffeeData.etapaBiota}</span>
+                      </div>
+                      {investorBalance > 0 && (
+                        <div className="col-span-2 mt-1 p-1.5 bg-emerald-500/20 rounded-lg">
+                          <span className="text-[8px] font-black text-emerald-700 dark:text-emerald-300">🏆 Tienes {investorBalance} NFT(s) de este lote</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               </CardContent>
             </Card>
           );
@@ -431,11 +481,11 @@ export function MercadoView() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[8px] text-emerald-600/60 uppercase font-bold">
-                    Resumen Impacto (4%)
+                  <p className="text-[8px] text-emerald-700/80 dark:text-emerald-300 uppercase font-bold">
+                    Productor: {((cartTotal / 2) * 0.001).toFixed(2)} {selectedCurrency}
                   </p>
-                  <p className="text-[9px] font-bold text-teal-600 dark:text-emerald-400">
-                    Mujeres del Carmen + Pool Biota
+                  <p className="text-[9px] font-bold text-teal-600 dark:text-emerald-400 flex items-center justify-end gap-1">
+                    <Zap className="w-2.5 h-2.5" /> Bóveda DeFi: {((cartTotal / 2) * 0.001).toFixed(2)}
                   </p>
                   <p className="text-xs font-bold text-emerald-950 dark:text-white">
                     {cartCount} items
