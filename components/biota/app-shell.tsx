@@ -26,18 +26,25 @@ interface AppShellProps {
   activeTab: TabId
   onTabChange: (tab: TabId) => void
   isMiniPay?: boolean
+  userRole?: "PRODUCER" | "INVESTOR"
 }
 
-const tabs: { id: TabId; labelEs: string; labelEn: string; icon: typeof Leaf }[] = [
-  { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout },
-  { id: "impacto", labelEs: "Impacto", labelEn: "Impact", icon: Leaf },
-  { id: "mercado", labelEs: "Mercado", labelEn: "Market", icon: ShoppingBag },
-  { id: "seguridad", labelEs: "Vigil", labelEn: "Vigil", icon: Shield },
-  { id: "academia", labelEs: "Escuela", labelEn: "School", icon: GraduationCap },
-  { id: "asesoria", labelEs: "Asesores", labelEn: "Advisors", icon: Users },
+const allTabs = [
+  // el productor mintea su nft en celo para identidad
+  { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout, roles: ["PRODUCER"] },
+  // ambos ven impacto, pero el productor clamea y el inversor monitorea su goteo
+  { id: "impacto", labelEs: "Impacto", labelEn: "Impact", icon: Leaf, roles: ["PRODUCER", "INVESTOR"] },
+  // el inversor compra rwas y fondea liquidez defi
+  { id: "mercado", labelEs: "Mercado", labelEn: "Market", icon: ShoppingBag, roles: ["INVESTOR"] },
+  // trazabilidad y reputacion on-chain para dar seguridad al capital
+  { id: "seguridad", labelEs: "Vigil", labelEn: "Vigil", icon: Shield, roles: ["INVESTOR"] },
+  // educacion regenerativa tokenizada (aprender para ganar)
+  { id: "academia", labelEs: "Escuela", labelEn: "School", icon: GraduationCap, roles: ["PRODUCER"] },
+  // inteligencia artificial multimodal pagada via x402
+  { id: "asesoria", labelEs: "Asesores", labelEn: "Advisors", icon: Users, roles: ["PRODUCER"] },
 ];
 
-export function AppShell({ children, activeTab, onTabChange, isMiniPay = true }: AppShellProps) {
+export function AppShell({ children, activeTab, onTabChange, isMiniPay = true, userRole = "PRODUCER" }: AppShellProps) {
   const { theme, setTheme } = useTheme()
   const { logout, authenticated } = usePrivy()
   const { address } = useConnection()
@@ -181,7 +188,7 @@ export function AppShell({ children, activeTab, onTabChange, isMiniPay = true }:
           
           <div className="glass backdrop-blur-xl border-t-0 pb-safe bg-emerald-100/90 dark:bg-emerald-950/60 transition-theme">
             <div className="flex items-center justify-around px-2 py-2">
-              {tabs.map((tab) => {
+              {allTabs.filter(tab => tab.roles.includes(userRole)).map((tab) => {
                 const Icon = tab.icon
                 const isActive = activeTab === tab.id
                 return (
