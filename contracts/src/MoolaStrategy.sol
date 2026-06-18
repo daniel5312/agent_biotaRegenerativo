@@ -57,17 +57,14 @@ interface IMoolaLendingPool {
 contract MoolaStrategy is IYieldStrategy, Ownable {
 
     // -------------------------------------------------------
-    // DIRECCIONES FIJAS EN CELO MAINNET
+    // DIRECCIONES ENCHUFABLES (inmutables para ahorrar gas)
     // -------------------------------------------------------
 
-    // [MOOLA] La "puerta de entrada" al protocolo Moola en Celo Mainnet.
-    // Aquí se deposita y se retira. Es el contrato principal de Moola.
-    IMoolaLendingPool public constant LENDING_POOL =
-        IMoolaLendingPool(0x970b12522CA9b4054807a2c5B736149a5BE6f670);
+    // [MOOLA] La "puerta de entrada" al protocolo Moola.
+    IMoolaLendingPool public immutable LENDING_POOL;
 
-    // [CELO] El token estable nativo de Celo que vamos a depositar.
-    // cUSD es el "dólar de Celo", siempre vale ~$1 USD.
-    address public constant CUSD = 0x765DE816845861e75A25fCA122bb6898B8B1282a;
+    // [CELO] El token base que vamos a depositar (ej: cUSD).
+    address public immutable ASSET;
 
     // -------------------------------------------------------
     // [PRO PATTERN] mToken como immutable — el patrón de producción real.
@@ -75,36 +72,37 @@ contract MoolaStrategy is IYieldStrategy, Ownable {
     // 'immutable' en Solidity significa que se fija UNA SOLA VEZ en el constructor
     // y luego se graba directamente en el bytecode del contrato (no en el storage).
     //
-    // Ventajas sobre consultar el DataProvider en runtime:
+    // Ventajas:
     //   ✅ Cero gas extra en getBalance (no hace llamadas externas)
     //   ✅ Sin dependencia de contratos externos que pueden fallar o cambiar
     //   ✅ La dirección se verifica una vez al desplegar (auditabilidad total)
-    //   ✅ Es lo que usan Yearn Finance, Beefy, y la mayoría de protocolos serios
-    //
-    // Para cUSD en Moola Celo Mainnet:
-    //   cUSD (depositado) → mcUSD (recibido) = 0x918146359264C492BD6934071c6Bd31C854EDBc3
+    //   ✅ 100% Testnet friendly (puedes probarlo con mocks)
     address public immutable M_TOKEN;
 
     // -------------------------------------------------------
     // EVENTOS: registran actividad on-chain para el frontend y exploradores.
     // -------------------------------------------------------
 
-    // se emite cada vez que un inversor deposita en Moola a través de Biota.
     event DepositedToMoola(address indexed investor, address indexed token, uint256 amount);
-
-    // se emite cuando un inversor retira sus fondos + intereses de Moola.
     event WithdrawnFromMoola(address indexed investor, address indexed token, uint256 amount);
 
     // -------------------------------------------------------
     // CONSTRUCTOR
     // -------------------------------------------------------
-    // @param _mToken  la dirección del mToken que Moola entrega al depositar.
-    //                 para cUSD → pasar 0x918146359264C492BD6934071c6Bd31C854EDBc3
-    //                 para cEUR → pasar la dirección del mcEUR
-    // [REUTILIZABLE] este mismo contrato puede soportar múltiples activos de Moola
-    //               simplemente desplegando una instancia por cada par (token, mToken).
-    constructor(address _mToken) Ownable(msg.sender) {
+    // @param _lendingPool La dirección del LendingPool de Moola
+    // @param _asset       La dirección del token base (ej: cUSD)
+    // @param _mToken      La dirección del mToken (ej: mcUSD)
+    constructor(
+        address _lendingPool,
+        address _asset,
+        address _mToken
+    ) Ownable(msg.sender) {
+        require(_lendingPool != address(0), "MoolaStrategy: LendingPool invalido");
+        require(_asset != address(0), "MoolaStrategy: Asset invalido");
         require(_mToken != address(0), "MoolaStrategy: mToken invalido");
+        
+        LENDING_POOL = IMoolaLendingPool(_lendingPool);
+        ASSET = _asset;
         M_TOKEN = _mToken;
     }
 
@@ -177,7 +175,7 @@ contract MoolaStrategy is IYieldStrategy, Ownable {
     // @param user   la wallet del inversor cuyo saldo queremos consultar
     // -------------------------------------------------------
     function getBalance(
-        address token, // mantenemos el parametro para respetar la interfaz IYieldStrategy
+        address, // se omite el nombre (token) para evitar el warning de variable no usada, pero mantenemos el tipo para respetar IYieldStrategy
         address user
     ) external view override returns (uint256) {
         // leemos directamente el balance del mToken (mcUSD) del inversor
