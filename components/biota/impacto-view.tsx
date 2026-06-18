@@ -34,6 +34,7 @@ import { useBiotaPass } from "@/hooks/useBiotaPass"
 import { usePoA } from "@/hooks/usePoA"
 import { IdentityAction } from "@/components/biota/IdentityAction"
 import { compressImage } from "@/lib/utils"
+import { BovedaInversor } from "@/components/biota/boveda-inversor"
 
 export function ImpactoView() {
   const { address } = useConnection();
@@ -62,6 +63,16 @@ export function ImpactoView() {
   // [VISION IA] Estado y Referencia para la imagen
   const [imageBase64, setImageBase64] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // [ROLES] Determinar si es inversor
+  const [userRole, setUserRole] = useState<"PRODUCER" | "INVESTOR" | null>(null);
+  
+  // Cargamos el rol al montar el componente
+  useMemo(() => {
+    if (typeof window !== "undefined") {
+      setUserRole(localStorage.getItem("BIOTA_ROLE") as "PRODUCER" | "INVESTOR" | null);
+    }
+  }, []);
 
   // --- Lógica de Smart Contracts ---
   const { data: balanceValue } = useReadContract({
@@ -236,9 +247,18 @@ export function ImpactoView() {
 
   return (
     <div className="px-4 py-4 space-y-4 mb-nav">
-      {/* ================================================================
-          FARMER HEADER
-          ================================================================ */}
+      
+      {/* VISTA DEL INVERSOR */}
+      {userRole === "INVESTOR" && (
+        <BovedaInversor />
+      )}
+
+      {/* VISTA DEL PRODUCTOR */}
+      {userRole === "PRODUCER" && (
+        <>
+          {/* ================================================================
+              FARMER HEADER
+              ================================================================ */}
       <div className="space-y-3 animate-slide-up">
         {/* Producer Card */}
         <Card className="glass-card overflow-hidden">
@@ -659,6 +679,8 @@ export function ImpactoView() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }
