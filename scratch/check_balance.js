@@ -1,23 +1,21 @@
+// scratch/check_balance.js
+require('dotenv').config({ path: '../.env' }); // Cargar variables de forma segura
 const { createPublicClient, http, formatEther } = require('viem');
 const { celo } = require('viem/chains');
+const { privateKeyToAccount } = require('viem/accounts');
 
 async function checkBalance() {
+  const privateKey = process.env.PRIVATE_KEY;
+  if (!privateKey) throw new Error("Falta PRIVATE_KEY en .env");
+
+  const account = privateKeyToAccount(privateKey);
+  
   const client = createPublicClient({
     chain: celo,
     transport: http('https://forno.celo.org')
   });
 
-  const address = ''; // From .env NEXT_PUBLIC_PERSONAL_WALLET
-  const balance = await client.getBalance({ address });
-  console.log(`Balance of ${address}: ${formatEther(balance)} CELO`);
-
-  // Also check the wallet from the PRIVATE_KEY
-  const privateKey = '0xdda8394c4d4687debd5223b2463434214b8ccf22470a9812c64ca01d173789d9';
-  // We need to derive address from PK. Let's use viem's privateKeyToAccount
-  const { privateKeyToAccount } = require('viem/accounts');
-  const account = privateKeyToAccount(privateKey);
   const balancePK = await client.getBalance({ address: account.address });
-  console.log(`Balance of Agent Wallet (${account.address}): ${formatEther(balancePK)} CELO`);
+  console.log(`Balance de la Wallet: ${formatEther(balancePK)} CELO`);
 }
-
 checkBalance().catch(console.error);

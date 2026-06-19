@@ -1,3 +1,4 @@
+import 'server-only';
 import { createWalletClient, createPublicClient, http, parseAbiItem, parseGwei, encodeFunctionData, type Address } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
