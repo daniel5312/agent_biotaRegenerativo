@@ -1,59 +1,101 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { useState, useEffect } from "react"
-import type { TabId } from "@/app/page"
-import { 
-  Leaf, 
-  ShoppingBag, 
-  GraduationCap, 
-  Users, 
-  Wifi, 
+import type { ReactNode } from "react";
+import { useState, useEffect } from "react";
+import type { TabId } from "@/app/page";
+import {
+  Leaf,
+  ShoppingBag,
+  GraduationCap,
+  Users,
+  Wifi,
   Sprout,
   Sun,
   Moon,
   Globe,
   Wallet,
   LogOut,
-  Shield
-} from "lucide-react"
-import { useTheme } from "next-themes"
-import { usePrivy } from "@privy-io/react-auth"
-import { useConnection } from "wagmi"
+  Shield,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { usePrivy } from "@privy-io/react-auth";
+import { useConnection } from "wagmi";
 
 interface AppShellProps {
-  children: ReactNode
-  activeTab: TabId
-  onTabChange: (tab: TabId) => void
-  isMiniPay?: boolean
-  userRole?: "PRODUCER" | "INVESTOR"
+  children: ReactNode;
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
+  isMiniPay?: boolean;
+  userRole?: "PRODUCER" | "INVESTOR";
 }
 
 const allTabs = [
   // el productor mintea su nft en celo para identidad
-  { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout, roles: ["PRODUCER"] },
+  {
+    id: "pasaporte",
+    labelEs: "Pasaporte",
+    labelEn: "Passport",
+    icon: Sprout,
+    roles: ["PRODUCER"],
+  },
   // ambos ven impacto, pero el productor clamea y el inversor monitorea su goteo
-  { id: "impacto", labelEs: "Impacto", labelEn: "Impact", icon: Leaf, roles: ["PRODUCER", "INVESTOR"] },
+  {
+    id: "impacto",
+    labelEs: "Impacto",
+    labelEn: "Impact",
+    icon: Leaf,
+    roles: ["PRODUCER", "INVESTOR"],
+  },
   // el inversor compra rwas y fondea liquidez defi
-  { id: "mercado", labelEs: "Mercado", labelEn: "Market", icon: ShoppingBag, roles: ["INVESTOR"] },
+  {
+    id: "mercado",
+    labelEs: "Mercado",
+    labelEn: "Market",
+    icon: ShoppingBag,
+    roles: ["INVESTOR"],
+  },
   // trazabilidad y reputacion on-chain para dar seguridad al capital
-  { id: "seguridad", labelEs: "Vigil", labelEn: "Vigil", icon: Shield, roles: ["INVESTOR"] },
+  {
+    id: "seguridad",
+    labelEs: "Vigil",
+    labelEn: "Vigil",
+    icon: Shield,
+    roles: ["INVESTOR"],
+  },
   // educacion regenerativa tokenizada (aprender para ganar)
-  { id: "academia", labelEs: "Escuela", labelEn: "School", icon: GraduationCap, roles: ["PRODUCER"] },
+  {
+    id: "academia",
+    labelEs: "Escuela",
+    labelEn: "School",
+    icon: GraduationCap,
+    roles: ["PRODUCER"],
+  },
   // inteligencia artificial multimodal pagada via x402
-  { id: "asesoria", labelEs: "Asesores", labelEn: "Advisors", icon: Users, roles: ["PRODUCER"] },
+  {
+    id: "asesoria",
+    labelEs: "Asesores",
+    labelEn: "Advisors",
+    icon: Users,
+    roles: ["PRODUCER"],
+  },
 ];
 
-export function AppShell({ children, activeTab, onTabChange, isMiniPay = true, userRole = "PRODUCER" }: AppShellProps) {
-  const { theme, setTheme } = useTheme()
-  const { logout, authenticated } = usePrivy()
-  const { address } = useConnection()
-  const [mounted, setMounted] = useState(false)
-  const [lang, setLang] = useState<"es" | "en">("es")
+export function AppShell({
+  children,
+  activeTab,
+  onTabChange,
+  isMiniPay = true,
+  userRole = "PRODUCER",
+}: AppShellProps) {
+  const { theme, setTheme } = useTheme();
+  const { logout, authenticated } = usePrivy();
+  const { address } = useConnection();
+  const [mounted, setMounted] = useState(false);
+  const [lang, setLang] = useState<"es" | "en">("es");
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   const t = {
     es: {
@@ -69,10 +111,10 @@ export function AppShell({ children, activeTab, onTabChange, isMiniPay = true, u
       minipay: "MiniPay",
       connect: "Connect",
       connected: "Connected",
-    }
-  }
+    },
+  };
 
-  if (!mounted) return null
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-0 sm:p-4 transition-theme">
@@ -85,12 +127,11 @@ export function AppShell({ children, activeTab, onTabChange, isMiniPay = true, u
 
       {/* Mobile shell container */}
       <div className="relative w-full max-w-md min-h-screen sm:min-h-[812px] sm:max-h-[812px] flex flex-col shadow-2xl sm:rounded-[2.5rem] overflow-hidden border-0 sm:border border-emerald-300/50 dark:border-emerald-500/20 bg-emerald-50/80 dark:bg-transparent dark:glass leaf-pattern transition-theme">
-        
         {/* Header */}
         <header className="flex-shrink-0 relative z-20">
           {/* Top gradient line */}
           <div className="h-1 bg-gradient-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0]" />
-          
+
           <div className="px-4 pt-3 pb-2 bg-gradient-to-b from-emerald-100 dark:from-emerald-900/20 to-emerald-50/50 dark:to-transparent transition-theme">
             <div className="flex items-center justify-between">
               {/* Brand */}
@@ -163,13 +204,25 @@ export function AppShell({ children, activeTab, onTabChange, isMiniPay = true, u
 
             {/* Token Bar - Crypto Branding */}
             <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto no-scrollbar">
-              <span className="text-[8px] text-emerald-700 dark:text-emerald-400/60 font-bold shrink-0">Powered by:</span>
+              <span className="text-[8px] text-emerald-700 dark:text-emerald-400/60 font-bold shrink-0">
+                Powered by:
+              </span>
               <div className="flex items-center gap-1">
-                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-celo shrink-0">CELO</span>
-                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-gooddollar shrink-0">G$</span>
-                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-usdm shrink-0">USDm</span>
-                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-copm shrink-0">COPm</span>
-                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-usdt shrink-0">USDT</span>
+                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-celo shrink-0">
+                  CELO
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-gooddollar shrink-0">
+                  G$
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-usdm shrink-0">
+                  USDm
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-copm shrink-0">
+                  COPm
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold badge-usdt shrink-0">
+                  USDT
+                </span>
               </div>
             </div>
           </div>
@@ -185,48 +238,55 @@ export function AppShell({ children, activeTab, onTabChange, isMiniPay = true, u
         {/* Bottom Navigation */}
         <nav className="flex-shrink-0 relative z-20">
           <div className="h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
-          
+
           <div className="glass backdrop-blur-xl border-t-0 pb-safe bg-emerald-100/90 dark:bg-emerald-950/60 transition-theme">
             <div className="flex items-center justify-around px-2 py-2">
-              {allTabs.filter(tab => tab.roles.includes(userRole)).map((tab) => {
-                const Icon = tab.icon
-                const isActive = activeTab === tab.id
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => onTabChange(tab.id)}
-                    className={`
+              {allTabs
+                .filter((tab) => tab.roles.includes(userRole))
+                .map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => onTabChange(tab.id as TabId)}
+                      className={`
                       relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-300 touch-active
-                      ${isActive 
-                        ? "text-emerald-600 dark:text-emerald-300" 
-                        : "text-gray-400 dark:text-gray-500 hover:text-emerald-500"
+                      ${
+                        isActive
+                          ? "text-emerald-600 dark:text-emerald-300"
+                          : "text-gray-400 dark:text-gray-500 hover:text-emerald-500"
                       }
                     `}
-                  >
-                    {isActive && (
-                      <div className="absolute inset-0 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-400/25 animate-fade-in transition-theme" />
-                    )}
-                    
-                    <div className="relative z-10">
-                      <Icon className={`w-5 h-5 transition-all ${
-                        isActive ? "drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" : ""
-                      }`} />
-                      
+                    >
                       {isActive && (
-                        <div className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg animate-pulse-dot" />
+                        <div className="absolute inset-0 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-400/25 animate-fade-in transition-theme" />
                       )}
-                    </div>
-                    
-                    <span className="relative z-10 text-[9px] font-semibold">
-                      {lang === "es" ? tab.labelEs : tab.labelEn}
-                    </span>
-                  </button>
-                )
-              })}
+
+                      <div className="relative z-10">
+                        <Icon
+                          className={`w-5 h-5 transition-all ${
+                            isActive
+                              ? "drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                              : ""
+                          }`}
+                        />
+
+                        {isActive && (
+                          <div className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg animate-pulse-dot" />
+                        )}
+                      </div>
+
+                      <span className="relative z-10 text-[9px] font-semibold">
+                        {lang === "es" ? tab.labelEs : tab.labelEn}
+                      </span>
+                    </button>
+                  );
+                })}
             </div>
           </div>
         </nav>
       </div>
     </div>
-  )
+  );
 }
