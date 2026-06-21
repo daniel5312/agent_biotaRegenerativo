@@ -26,43 +26,20 @@ interface AppShellProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   isMiniPay?: boolean;
-  userRole?: "PRODUCER" | "INVESTOR";
+  userRole?: "PRODUCER" | "INVESTOR" | null;
 }
 
-const allTabs = [
-  // el productor mintea su nft en celo para identidad
-  {
-    id: "pasaporte",
-    labelEs: "Pasaporte",
-    labelEn: "Passport",
-    icon: Sprout,
-    roles: ["PRODUCER"],
-  },
-  // ambos ven impacto, pero el productor clamea y el inversor monitorea su goteo
-  {
-    id: "impacto",
-    labelEs: "Impacto",
-    labelEn: "Impact",
-    icon: Leaf,
-    roles: ["PRODUCER", "INVESTOR"],
-  },
-  // el inversor compra rwas y fondea liquidez defi
-  {
-    id: "mercado",
-    labelEs: "Mercado",
-    labelEn: "Market",
-    icon: ShoppingBag,
-    roles: ["INVESTOR"],
-  },
-  // trazabilidad y reputacion on-chain para dar seguridad al capital
-  {
-    id: "seguridad",
-    labelEs: "Vigil",
-    labelEn: "Vigil",
-    icon: Shield,
-    roles: ["INVESTOR"],
-  },
-  // educacion regenerativa tokenizada (aprender para ganar)
+const tabs: {
+  id: TabId;
+  labelEs: string;
+  labelEn: string;
+  icon: typeof Leaf;
+  roles: ("PRODUCER" | "INVESTOR")[];
+}[] = [
+  { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout, roles: ["PRODUCER"] },
+  { id: "impacto", labelEs: "Impacto", labelEn: "Impact", icon: Leaf, roles: ["PRODUCER", "INVESTOR"] },
+  { id: "mercado", labelEs: "Tienda", labelEn: "Market", icon: ShoppingBag, roles: ["PRODUCER", "INVESTOR"] },
+  { id: "seguridad", labelEs: "Vigil", labelEn: "Vigil", icon: Shield, roles: ["PRODUCER", "INVESTOR"] },
   {
     id: "academia",
     labelEs: "Escuela",
@@ -70,14 +47,7 @@ const allTabs = [
     icon: GraduationCap,
     roles: ["PRODUCER"],
   },
-  // inteligencia artificial multimodal pagada via x402
-  {
-    id: "asesoria",
-    labelEs: "Asesores",
-    labelEn: "Advisors",
-    icon: Users,
-    roles: ["PRODUCER"],
-  },
+  { id: "asesoria", labelEs: "Asesores", labelEn: "Advisors", icon: Users, roles: ["PRODUCER"] },
 ];
 
 export function AppShell({
@@ -241,16 +211,16 @@ export function AppShell({
 
           <div className="glass backdrop-blur-xl border-t-0 pb-safe bg-emerald-100/90 dark:bg-emerald-950/60 transition-theme">
             <div className="flex items-center justify-around px-2 py-2">
-              {allTabs
-                .filter((tab) => tab.roles.includes(userRole))
+              {tabs
+                .filter(tab => !userRole || tab.roles.includes(userRole))
                 .map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => onTabChange(tab.id as TabId)}
-                      className={`
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`
                       relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-300 touch-active
                       ${
                         isActive
@@ -258,31 +228,31 @@ export function AppShell({
                           : "text-gray-400 dark:text-gray-500 hover:text-emerald-500"
                       }
                     `}
-                    >
+                  >
+                    {isActive && (
+                      <div className="absolute inset-0 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-400/25 animate-fade-in transition-theme" />
+                    )}
+
+                    <div className="relative z-10">
+                      <Icon
+                        className={`w-5 h-5 transition-all ${
+                          isActive
+                            ? "drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                            : ""
+                        }`}
+                      />
+
                       {isActive && (
-                        <div className="absolute inset-0 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-400/25 animate-fade-in transition-theme" />
+                        <div className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg animate-pulse-dot" />
                       )}
+                    </div>
 
-                      <div className="relative z-10">
-                        <Icon
-                          className={`w-5 h-5 transition-all ${
-                            isActive
-                              ? "drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]"
-                              : ""
-                          }`}
-                        />
-
-                        {isActive && (
-                          <div className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg animate-pulse-dot" />
-                        )}
-                      </div>
-
-                      <span className="relative z-10 text-[9px] font-semibold">
-                        {lang === "es" ? tab.labelEs : tab.labelEn}
-                      </span>
-                    </button>
-                  );
-                })}
+                    <span className="relative z-10 text-[9px] font-semibold">
+                      {lang === "es" ? tab.labelEs : tab.labelEn}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </nav>
