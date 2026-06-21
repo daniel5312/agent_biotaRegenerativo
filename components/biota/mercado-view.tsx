@@ -44,8 +44,8 @@ const products = [
     id: 1,
     name: "Café Especial Finca La Nube",
     origin: "Productor: Don Arturo",
-    price: 15, // equivale a 0.015 cUSD
-    defiPortion: 7, // equivale a 0.007 cUSD
+    price: 10, // 0.01 cUSD
+    defiPortion: 4, // 0.004 cUSD
     rating: 5.0,
     verified: true,
     stock: 24,
@@ -57,8 +57,8 @@ const products = [
     id: 2,
     name: "Cacao Fino de Aroma (500g)",
     origin: "Productora: María",
-    price: 12,
-    defiPortion: 6,
+    price: 1, // 0.001 cUSD
+    defiPortion: 0.4,
     rating: 4.8,
     verified: true,
     stock: 15,
@@ -70,8 +70,8 @@ const products = [
     id: 3,
     name: "Miel Melipona Pura",
     origin: "Comunidad El Carmen",
-    price: 20,
-    defiPortion: 10,
+    price: 2, // 0.002 cUSD
+    defiPortion: 0.8,
     rating: 4.9,
     verified: true,
     stock: 10,
@@ -83,8 +83,8 @@ const products = [
     id: 4,
     name: "Edición Biota: Café Geisha",
     origin: "Reserva Biota",
-    price: 30,
-    defiPortion: 15,
+    price: 5, // 0.005 cUSD
+    defiPortion: 2,
     rating: 5.0,
     verified: true,
     stock: 5,
