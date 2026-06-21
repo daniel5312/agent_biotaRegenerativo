@@ -9,13 +9,18 @@ import { ADDRESSES, ERC20_ABI, formatCUSD } from "@/lib/contracts";
 export function BovedaInversor() {
   const { address, isConnected } = useConnection();
 
-  // [DEFI] Leer el saldo de mcUSD directamente del token en Celo Mainnet
+  // [DEFI] Leer el saldo directamente de la estrategia Aave V3
   const { data: mcUSDBalance } = useReadContract({
     chainId: 42220,
-    address: "0x918146359264C492BD6934071c6Bd31C854EDBc3", // mcUSD token
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
+    address: "0x20715fe5e81cdeb6ed4be84403a1a6d7c67d4997", // AaveStrategy address
+    abi: [{
+      "inputs": [{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"user","type":"address"}],
+      "name":"getBalance",
+      "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+      "stateMutability":"view","type":"function"
+    }],
+    functionName: "getBalance",
+    args: address ? ["0x765DE816845861e75A25fCA122bb6898B8B1282a", address] : undefined, // cUSD address
     query: {
       enabled: !!address,
       refetchInterval: 10000, // refrescar cada 10s para ver crecer el yield
@@ -29,7 +34,7 @@ export function BovedaInversor() {
   const isDemo = !mcUSDBalance || mcUSDBalance === 0n;
   const displayCUSD = isDemo ? 15.08 : Number(formatCUSD(mcUSDBalance));
   const displayCOP = displayCUSD * TASA_COP;
-  const yieldMensualCOP = displayCOP * 0.04 / 12; // 4% APY estimado
+  const yieldMensualCOP = displayCOP * 0.05 / 12; // 5% APY estimado
 
   if (!isConnected) {
     return (
@@ -59,7 +64,7 @@ export function BovedaInversor() {
               </h2>
               <p className="text-[10px] text-emerald-700 dark:text-emerald-400/80 font-bold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Moola Market (Celo)
+                Rendimiento actual: ~5% APY respaldado por Aave V3
               </p>
             </div>
           </div>
