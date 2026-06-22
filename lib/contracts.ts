@@ -35,8 +35,8 @@ export const ADDRESSES = {
   BIOTA_SCROW: '0xB63B6B681E61a646624E0642c250fFE928098EC1' as Address,
   BIOTA_SPLITTER: '0xf4019e82d7882E37D8f371d9aB4a65e978868125' as Address,
   BIOTA_UBI: '0xE060D49fd545323A7602D7b005E0813594E57356' as Address,
-  // [REFI] contrato rwa del café: se rellena con la dirección del proxy después del despliegue en celo mainnet
-  BIOTA_RWA: '0x0000000000000000000000000000000000000000' as Address,
+  // [REFI] contrato rwa del café
+  BIOTA_RWA: '0xbc0C65E81f62D9710BAc959581CaF66B741518e1' as Address,
 
   /* === CELO SEPOLIA (FUTURE USE) ===
   BIOTA_PASSPORT_SEP: '0x...' as Address,
@@ -144,6 +144,17 @@ export const BIOTA_RWA_ABI = [
   {
     inputs: [{ name: 'productId', type: 'uint256' }],
     name: 'claimPhysicalCoffee',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // [DEFI] el inversor retira su capital + rendimiento de la estrategia
+  {
+    inputs: [
+      { name: '_token', type: 'address' },
+      { name: '_amount', type: 'uint256' }
+    ],
+    name: 'withdrawYield',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
