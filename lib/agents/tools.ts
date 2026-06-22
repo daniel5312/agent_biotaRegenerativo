@@ -361,10 +361,18 @@ export async function executeDoubleTrigger(args: DoubleTriggerArgs) {
     }
 }
 
+interface CartItem {
+    productId: string;
+    qty: number;
+    price: number;
+    sellerAddress: string;
+}
+
 interface DistributeEscrowArgs {
     totalAmount: number;
     currency: string;
-    producerAddress: string;
+    buyerAddress?: string;
+    cartDetails?: CartItem[];
 }
 
 /**
@@ -374,15 +382,54 @@ interface DistributeEscrowArgs {
 export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
     console.log(`[AGENT-ESCROW-CORE] 🧠 Iniciando distribución autónoma de ${args.totalAmount} ${args.currency}`);
 
-    // Matemáticas de Distribución
-    const amounts = {
-        producer: (args.totalAmount * 0.85).toFixed(4),    // 85% al productor
-        poolBiota: (args.totalAmount * 0.04).toFixed(4),   // 4% Pool Biota Regenerativa
-        donations: (args.totalAmount * 0.06).toFixed(4),   // 6% Mujeres/Kenia (o 3% Fondeo Login si es CELO)
-        treasury: (args.totalAmount * 0.05).toFixed(4),    // 5% Tesorería Biota (DApp)
+    // Billeteras de destino configuradas
+    const WALLETS = {
+        DAPP_BIOTA: "0x9bc43f955ce11948e4fD6EAC28d46875Fba9f5F9",
+        INVERSIONES_DAPP: "0x95A4dabdFa310993Ff836639b7521F47FE0aDb11",
+        POOL_PRODUCTOR: "0xb6Fb8C69FeD8FC27750c58B2DCA293cc12662A12",
+        COLECTIVA_MUJERES: "0x0d43131f1577310d6349baf9d6da4fc1cd39764c",
+        AAVE_STRATEGY: "0x20715fe5e81cdeb6ed4be84403a1a6d7c67d4997" // Bóveda Inversor
     };
 
-    console.log("[AGENT-ESCROW-CORE] 🧮 Splits Calculados:", amounts);
+    // Cálculos de porcentajes base (Total 100%)
+    // 85% -> Productores (calculado por carrito)
+    // 4% -> Bóveda Aave V3 (Inversor)
+    // 3% -> DApp Tesorería
+    // 2% -> Inversiones DApp
+    // 3% -> Pool Productor Biota
+    // 3% -> Donaciones Mujeres
+    const amounts = {
+        aaveVault: (args.totalAmount * 0.04).toFixed(4),
+        treasury: (args.totalAmount * 0.03).toFixed(4),
+        inversiones: (args.totalAmount * 0.02).toFixed(4),
+        poolBiota: (args.totalAmount * 0.03).toFixed(4),
+        donations: (args.totalAmount * 0.03).toFixed(4),
+    };
+
+    // Calcular el pago a los productores desde el carrito
+    const producerPayments: Record<string, string> = {};
+    if (args.cartDetails && args.cartDetails.length > 0) {
+        // Se calcula el total real del carrito para hacer la proporción
+        const cartTotalValue = args.cartDetails.reduce((sum, item) => sum + (item.qty * item.price), 0);
+        
+        args.cartDetails.forEach(item => {
+            const itemTotal = item.qty * item.price;
+            // El productor recibe el 85% del valor de su producto en el carrito
+            const producerShare = (itemTotal * 0.001 * 0.85).toFixed(4); // Se multiplica por 0.001 porque los precios en tienda están escalados
+            
+            if (producerPayments[item.sellerAddress]) {
+                producerPayments[item.sellerAddress] = (Number(producerPayments[item.sellerAddress]) + Number(producerShare)).toFixed(4);
+            } else {
+                producerPayments[item.sellerAddress] = producerShare;
+            }
+        });
+    } else {
+        // Fallback en caso de que no haya carrito
+        console.warn("[AGENT-ESCROW] ⚠️ No se recibieron detalles del carrito. Los fondos de producción quedan en standby.");
+    }
+
+    console.log("[AGENT-ESCROW-CORE] 🧮 Splits Calculados Generales:", amounts);
+    console.log("[AGENT-ESCROW-CORE] 👨‍🌾 Splits a Productores:", producerPayments);
 
     const txHashSimulated = `0xescrow_${Date.now().toString(16)}`;
 
@@ -391,19 +438,22 @@ export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
         totalLiberado: args.totalAmount,
         moneda: args.currency,
         beneficiarios: {
-            campesinoProductor: { address: args.producerAddress, amount: amounts.producer },
-            poolRegenerativo: { address: ADDRESSES.BIOTA_SCROW, amount: amounts.poolBiota },
-            tesoreriaBiota: { address: ADDRESSES.DAPP_BIOTA, amount: amounts.treasury },
+            productores: producerPayments,
+            bovedaInversorAave: { address: WALLETS.AAVE_STRATEGY, amount: amounts.aaveVault, owner: args.buyerAddress },
+            tesoreriaBiota: { address: WALLETS.DAPP_BIOTA, amount: amounts.treasury },
+            inversionesBiota: { address: WALLETS.INVERSIONES_DAPP, amount: amounts.inversiones },
+            poolRegenerativo: { address: WALLETS.POOL_PRODUCTOR, amount: amounts.poolBiota },
+            donaciones: { address: WALLETS.COLECTIVA_MUJERES, amount: amounts.donations }
         },
         estado: "LIBERADO"
     };
 
     return {
         success: true,
-        simulation: true,
+        simulation: true, // Modo Zero-Gas habilitado temporalmente para pruebas visuales
         hash: txHashSimulated,
         distribucion: result,
-        message: `El Agente Orquestador ha liberado y distribuido exitosamente ${args.totalAmount} ${args.currency}.`
+        message: `El Agente Orquestador ha distribuido exitosamente ${args.totalAmount} ${args.currency} a la Bóveda Aave, Productores y DApp.`
     };
 }
 
