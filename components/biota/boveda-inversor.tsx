@@ -3,11 +3,12 @@
 import { useMemo } from "react";
 import { Wallet, TrendingUp, Leaf, Sprout, ArrowRightLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { useConnection, useReadContract } from "wagmi";
-import { ADDRESSES, ERC20_ABI, formatCUSD } from "@/lib/contracts";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { ADDRESSES, ERC20_ABI, BIOTA_RWA_ABI, formatCUSD } from "@/lib/contracts";
+import { Button } from "@/components/ui/button";
 
 export function BovedaInversor() {
-  const { address, isConnected } = useConnection();
+  const { address, isConnected } = useAccount();
 
   // [DEFI] Leer el saldo directamente de la estrategia Aave V3
   const { data: mcUSDBalance } = useReadContract({
@@ -35,6 +36,21 @@ export function BovedaInversor() {
   const displayCUSD = isDemo ? 15.08 : Number(formatCUSD(mcUSDBalance));
   const displayCOP = displayCUSD * TASA_COP;
   const yieldMensualCOP = displayCOP * 0.05 / 12; // 5% APY estimado
+
+  // [TICKET-103] Lógica de Retiro (Withdraw)
+  const { mutate: writeWithdraw, data: withdrawHash, isPending: isWithdrawing } = useWriteContract();
+  const { isLoading: isConfirmingWithdraw, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({ hash: withdrawHash });
+
+  const handleWithdraw = () => {
+    writeWithdraw({
+      address: ADDRESSES.BIOTA_RWA,
+      abi: BIOTA_RWA_ABI,
+      functionName: "withdrawYield",
+      args: [ADDRESSES.CUSD, typeMaxUint256], // Pasamos max uint256 para retirar todo
+    });
+  };
+
+  const typeMaxUint256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935n;
 
   if (!isConnected) {
     return (
@@ -66,6 +82,17 @@ export function BovedaInversor() {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Rendimiento actual: ~5% APY respaldado por Aave V3
               </p>
+            </div>
+            
+            <div className="ml-auto">
+              <Button 
+                size="sm" 
+                onClick={handleWithdraw}
+                disabled={isDemo || isWithdrawing || isConfirmingWithdraw}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+              >
+                {isWithdrawing || isConfirmingWithdraw ? 'Retirando...' : 'Retirar Fondos'}
+              </Button>
             </div>
           </div>
 
