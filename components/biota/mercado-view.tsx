@@ -20,6 +20,7 @@ import {
   Sparkles,
   ShieldCheck,
   Loader2,
+  Package
 } from "lucide-react";
 import {
   useConnection,
@@ -52,6 +53,7 @@ const products = [
     icon: Coffee,
     category: "Café",
     color: "from-amber-400 to-orange-500",
+    sellerAddress: "0x6178B5B1447B2E48E0283cd19f0D8eEF2e7C8C1E",
   },
   {
     id: 2,
@@ -65,6 +67,7 @@ const products = [
     icon: Leaf,
     category: "Cacao",
     color: "from-amber-600 to-yellow-700",
+    sellerAddress: "0xD9c10131d92f50335569a48A4b58d74f1865Da01",
   },
   {
     id: 3,
@@ -78,6 +81,7 @@ const products = [
     icon: Flower2,
     category: "Miel",
     color: "from-yellow-400 to-amber-500",
+    sellerAddress: "0x211ee91C9c02945f9E3e69465185BbfED64AeF64",
   },
   {
     id: 4,
@@ -91,6 +95,35 @@ const products = [
     icon: Mountain,
     category: "Café",
     color: "from-purple-500 to-indigo-500",
+    sellerAddress: "0x9D0a0486AFb60FCD23BEc635B9bE2EADBd8FB835",
+  },
+  {
+    id: 5,
+    name: "Kit Bocashi Biota (1kg)",
+    origin: "Insumos DApp",
+    price: 10, // 0.01 cUSD
+    defiPortion: 4,
+    rating: 5.0,
+    verified: true,
+    stock: 50,
+    icon: Sprout,
+    category: "Insumos",
+    color: "from-green-500 to-emerald-700",
+    sellerAddress: "0x9bc43f955ce11948e4fD6EAC28d46875Fba9f5F9",
+  },
+  {
+    id: 6,
+    name: "Consultoría Agroecológica (1h)",
+    origin: "Servicios DApp",
+    price: 10, // 0.01 cUSD
+    defiPortion: 4,
+    rating: 5.0,
+    verified: true,
+    stock: 100,
+    icon: Package,
+    category: "Servicios",
+    color: "from-blue-500 to-indigo-700",
+    sellerAddress: "0x9bc43f955ce11948e4fD6EAC28d46875Fba9f5F9",
   }
 ];
 
@@ -244,6 +277,17 @@ export function MercadoView() {
       setPaid(true)
       setSuccessTx({ hash, amount: (cartTotal * 0.001).toFixed(3), currency: selectedCurrency });
 
+      // Construir detalles del carrito para el Agente
+      const cartDetails = Object.entries(cart).map(([id, qty]) => {
+        const p = products.find(prod => prod.id === Number(id));
+        return {
+          productId: id,
+          qty,
+          price: p?.price || 0,
+          sellerAddress: p?.sellerAddress || ADDRESSES.DAPP_BIOTA
+        };
+      });
+
       // [NUEVO] ¡Despierta al Backend del Agente (Terminal)!
       fetch("/api/escrow", {
         method: "POST",
@@ -251,7 +295,8 @@ export function MercadoView() {
         body: JSON.stringify({
           totalAmount: (cartTotal * 0.001).toFixed(3),
           currency: selectedCurrency,
-          producerAddress: address
+          buyerAddress: address,
+          cartDetails
         })
       }).catch(err => console.error("Agent Wakeup Failed:", err));
 
