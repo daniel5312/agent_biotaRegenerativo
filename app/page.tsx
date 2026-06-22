@@ -15,11 +15,12 @@ import { AcademiaView } from "@/components/biota/academia-view"
 import { AsesoriaView } from "@/components/biota/asesoria-view"
 import { ImpactoView } from "@/components/biota/impacto-view"
 import { SecurityView } from "@/components/biota/security-view"
+import { BilleteraInversor } from "@/components/biota/billetera-inversor"
 
 // SI QUIERES USAR BIOTAPROTOCOL COMO INTERFAZ DESCOMENTA ESTO
 // import BiotaProtocol from "@/components/biotaProtocol"
 
-export type TabId = "pasaporte" | "mercado" | "academia" | "asesoria" | "impacto" | "seguridad"
+export type TabId = "pasaporte" | "mercado" | "academia" | "asesoria" | "impacto" | "seguridad" | "billetera"
 
 function LandingPage() {
   const { login, ready, authenticated } = usePrivy();
@@ -353,6 +354,7 @@ export default function Page() {
           {activeTab === "academia" && <AcademiaView />}
           {activeTab === "asesoria" && <AsesoriaView />}
           {activeTab === "seguridad" && <SecurityView />}
+          {activeTab === "billetera" && <BilleteraInversor />}
         </div>
       </div>
     </AppShell>
