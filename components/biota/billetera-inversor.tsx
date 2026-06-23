@@ -14,6 +14,7 @@ import { formatUnits } from "viem";
 import { ADDRESSES, ERC20_ABI } from "@/lib/contracts";
 import { IdentityAction } from "./IdentityAction";
 import { BovedaInversor } from "./boveda-inversor";
+import { PrestamosAave } from "./prestamos-aave";
 
 export function BilleteraInversor() {
   const { address } = useAccount();
@@ -134,6 +135,7 @@ export function BilleteraInversor() {
           DeFi Aave V3
         </h3>
         <BovedaInversor />
+        <PrestamosAave />
       </div>
 
     </div>
