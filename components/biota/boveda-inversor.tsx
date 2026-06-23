@@ -91,7 +91,7 @@ export function BovedaInversor() {
                 disabled={isDemo || isWithdrawing || isConfirmingWithdraw}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
               >
-                {isWithdrawing || isConfirmingWithdraw ? 'Retirando...' : 'Retirar Fondos'}
+                {isWithdrawing || isConfirmingWithdraw ? 'Reclamando...' : 'Reclamar Recompensa'}
               </Button>
             </div>
           </div>
