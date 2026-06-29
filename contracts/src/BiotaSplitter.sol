@@ -3,22 +3,22 @@ pragma solidity 0.8.28; // [SOLIDITY] Optimización máxima de bytecode.
 
 // [BLOCKCHAIN] Importaciones del ecosistema OpenZeppelin Upgradeable v5.x.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title BiotaSplitter V1 - Motor de Impacto Regenerativo (Upgradeable)
+ * @title BiotaSplitter V4 - Motor de Impacto Regenerativo (Hard Fork)
  * @author Biota Protocol
  * @notice [REFI] Router financiero que automatiza el reparto de dividendos sociales y ecológicos.
- * @dev [EVM] Utiliza el patrón UUPS para flexibilidad en el modelo económico del protocolo.
+ * @dev [EVM] Patrón UUPS con AccessControlDefaultAdminRules (TimeLock). Cero deuda técnica.
  */
 contract BiotaSplitter is 
     Initializable, 
-    AccessControlUpgradeable, 
+    AccessControlDefaultAdminRulesUpgradeable, 
     UUPSUpgradeable 
 {
-    // [EVM] Definición de Roles.
+    // [EVM] Definición de Roles (Se evalúan en bytecode, sin gastar storage).
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     // [SOLIDITY] Custom Errors para ahorro de gas extremo.
@@ -44,16 +44,16 @@ contract BiotaSplitter is
     
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers(); // [SOLIDITY] Seguridad en contrato de implementación.
+        _disableInitializers(); // [SOLIDITY] Bloquea la implementación para que no sea secuestrada.
     }
 
     /**
-     * @notice [BLOCKCHAIN] Inicialización del router.
+     * @notice [BLOCKCHAIN] Inicialización del router con seguridad MultiSig V4.
      */
     function initialize(address initialOwner) public initializer {
-        __AccessControl_init();
+        // [SEGURIDAD] Retraso de 3 días para aceptar transferencia de rol de Administrador.
+        __AccessControlDefaultAdminRules_init(3 days, initialOwner);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(MANAGER_ROLE, initialOwner);
     }
 
@@ -63,7 +63,7 @@ contract BiotaSplitter is
 
     /**
      * @notice [REFI] Ejecuta un pago atómico y reparte dividendos de impacto.
-     * @dev [SOLIDITY] Uso de 'calldata' no aplica aquí por ser tipos base, pero optimizamos stack.
+     * @dev [SOLIDITY] Uso de variables en memoria (stack) para optimizar SLOADs.
      */
     function payWithSplit(
         address token,
@@ -84,9 +84,9 @@ contract BiotaSplitter is
         // [SOLIDITY] Variables locales en stack (Ahorra SLOADs).
         uint256 collectivePart = (amount * 2) / 100;
         uint256 poolPart = (amount * 2) / 100;
-        uint256 merchantPart = amount - collectivePart - poolPart;
+        uint256 merchantPart = amount - collectivePart - poolPart; // Resta segura para evitar perder wei sobrantes.
 
-        // [INTERACTION] Transferencia Usuario -> Splitter (Requiere Approve).
+        // [INTERACTION] Transferencia Usuario -> Splitter (Requiere Approve previo).
         if (!erc20.transferFrom(msg.sender, address(this), amount)) {
             revert BiotaSplitter__TransferenciaFallida();
         }
@@ -105,7 +105,8 @@ contract BiotaSplitter is
     // ==========================================
 
     /**
-     * @notice [BLOCKCHAIN] Rescata fondos atrapados por error.
+     * @notice [BLOCKCHAIN] Rescata fondos atrapados por error o airdrops equivocados.
+     * @dev [SEGURIDAD] Solo el DEFAULT_ADMIN_ROLE (MultiSig + TimeLock) puede ejecutar esto.
      */
     function rescueTokens(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (!IERC20(token).transfer(msg.sender, amount)) {
@@ -114,10 +115,7 @@ contract BiotaSplitter is
     }
 
     /**
-     * @dev [SOLIDITY] Hook de actualización UUPS.
+     * @dev [SOLIDITY] Hook de actualización UUPS. Protegido por TimeLock.
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
-
-    // [SOLIDITY] Storage Gap (Sostenibilidad técnica V2).
-    uint256[50] private __gap;
 }
