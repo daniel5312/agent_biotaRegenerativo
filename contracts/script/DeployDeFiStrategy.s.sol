@@ -128,7 +128,7 @@ contract DeployDeFiStrategy is Script {
     // FUNCIÓN PRINCIPAL: run()
     // =========================================================
     function run() external {
-        // [SEGURIDAD] La clave privada viene del archivo .env
+        // [SEGURIDAD] Lee la llave privada del .env. Variable: ADMIN_PRIVATE_KEY
         uint256 deployerPrivateKey = vm.envUint("ADMIN_PRIVATE_KEY");
         address deployerAddress = vm.addr(deployerPrivateKey);
 
