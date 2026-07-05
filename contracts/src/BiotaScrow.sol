@@ -136,33 +136,39 @@ contract BiotaScrow is
         }
 
         // ==========================================
-        // [CROSS-CONTRACT] VALIDACIÓN DE PASAPORTE V4
+        // [FIX M-02] VALIDACIÓN DE PASAPORTE — OBLIGATORIA, NO OPCIONAL
         // ==========================================
-        if (address(passport) != address(0)) {
-            if (passport.balanceOf(farmerTarget) == 0) {
-                revert Biota__ProductorNoVerificado();
-            }
-
-            // [EVM] Obtenemos solo los booleanos de seguridad del Passport V4 (esVerificado, isHumanVerified)
-            (
-                , // verificador
-                , // areaM2
-                , // cmSueloRecuperado
-                bool esVerificado,
-                bool isHumanVerified,
-                , // fechaRegistro
-                , // ultimaActualizacion
-                , // ubicacionGeografica
-                , // estadoBiologico
-                , // hashAnalisisLab
-                , // ingredientesHash
-                  // metodosAgricolas
-            ) = passport.lotePasaporte(tokenId);
-
-            if (!esVerificado || !isHumanVerified) {
-                revert Biota__ProductorNoVerificado(); 
-            }
+        // [SEGURIDAD] El Passport DEBE estar configurado. Si el Admin no llamó
+        // setPassportContract(), el Oráculo no puede certificar nada. Esto impide que
+        // se certifiquen wallets sin identidad real en modo "pre-configuración".
+        if (address(passport) == address(0)) {
+            revert BiotaScrow__InvalidRegenerationData();
         }
+
+        if (passport.balanceOf(farmerTarget) == 0) {
+            revert Biota__ProductorNoVerificado();
+        }
+
+        // [EVM] Obtenemos solo los booleanos de seguridad del Passport V4 (esVerificado, isHumanVerified)
+        (
+            , // verificador
+            , // areaM2
+            , // cmSueloRecuperado
+            bool esVerificado,
+            bool isHumanVerified,
+            , // fechaRegistro
+            , // ultimaActualizacion
+            , // ubicacionGeografica
+            , // estadoBiologico
+            , // hashAnalisisLab
+            , // ingredientesHash
+              // metodosAgricolas
+        ) = passport.lotePasaporte(tokenId);
+
+        if (!esVerificado || !isHumanVerified) {
+            revert Biota__ProductorNoVerificado();
+        }
+
 
         // [EVM] Escritura en Storage (SSTORE optimizado en 1 bloque de 32 bytes).
         validations[actionId] = RegenerationValidation({
