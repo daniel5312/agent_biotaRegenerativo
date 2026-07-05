@@ -10,10 +10,10 @@ import {BiotaPassport} from "../src/BiotaPassport.sol";
  */
 contract AdminConfig is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("ADMIN_PRIVATE_KEY");
         
         // [BLOCKCHAIN] Dirección fija del Proxy del Pasaporte en Celo Mainnet
-        address proxyAddress = 0x89Bd1517b6feE42f0DC3Cb7C5c4453b4Ca3d0442;
+        address proxyAddress = 0xa264EA4eC58dCC02a54c9F27428aEE3E6E6A8724;
 
         vm.startBroadcast(deployerPrivateKey);
 
