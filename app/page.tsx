@@ -51,16 +51,6 @@ function LandingPage() {
     }
   }, []);
 
-  useEffect(() => {
-    const handleSwitchTab = (e: any) => {
-      if (e.detail && typeof e.detail === "string") {
-        setActiveTab(e.detail as TabId);
-        scrollToTop();
-      }
-    };
-    window.addEventListener("switch-tab", handleSwitchTab);
-    return () => window.removeEventListener("switch-tab", handleSwitchTab);
-  }, [scrollToTop]);
 
   if (!mounted) return <div className="min-h-screen bg-[#030712]" />;
 
@@ -291,6 +281,21 @@ export default function Page() {
     };
     window.addEventListener("biota-role-selected", handleRoleUpdate);
     return () => window.removeEventListener("biota-role-selected", handleRoleUpdate);
+  }, []);
+
+  // [NAVEGACIÓN] Escucha el evento global "switch-tab" que emiten los componentes hijos
+  // para cambiar de pestaña de forma programática sin prop-drilling.
+  useEffect(() => {
+    const handleSwitchTab = (e: any) => {
+      if (e.detail && typeof e.detail === "string") {
+        setActiveTab(e.detail as TabId);
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }
+    };
+    window.addEventListener("switch-tab", handleSwitchTab);
+    return () => window.removeEventListener("switch-tab", handleSwitchTab);
   }, []);
 
   useEffect(() => {
