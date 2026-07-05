@@ -40,8 +40,11 @@ contract BiotaPassport is
     // [SOLIDITY] Hash único que define quién tiene el poder de auditar tierras y aprobar lotes.
     bytes32 public constant VERIFICADOR_ROLE = keccak256("VERIFICADOR_ROLE");
     
-    // [CELO] Dirección inmutable del token GoodDollar (G$) en la Mainnet de Celo.
-    IERC20 public constant G_TOKEN = IERC20(0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A);
+    // [CELO] Dirección del token GoodDollar (G$) en Celo Mainnet. Setteable por Admin
+    // para sobrevivir migraciones futuras del token sin necesitar redesplegar el contrato.
+    // [FIX L-01] Cambiado de 'constant' a variable setteable. El contrato es upgradeable
+    // así que podría corregirse en V5, pero es mejor prática hacerlo setteable desde ahora.
+    address public gToken;
 
     // ==========================================
     // [EVM] VARIABLES DE ESTADO (Storage)
@@ -69,6 +72,7 @@ contract BiotaPassport is
     error Biota__AreaInvalida();          // [REFI] El área declarada del lote es 0 (datos inválidos).
     error Biota__TransferenciaFallida();  // [EVM] Falló el envío de CELO nativo por la red.
     error Biota__DireccionCero();         // [SOLIDITY] Evita quemar fondos enviándolos a la dirección 0x000...
+    error Biota__TesoreriaNoConfigurada(); // [FIX M-01] Las rutas de pago aún no han sido inicializadas por el Admin.
 
     // ==========================================
     // [EVM] STRUCT PACKING (Gas Optimization Avanzado)
@@ -134,6 +138,9 @@ contract BiotaPassport is
         // Otorga permisos al dueño para que también pueda fungir como ingeniero/verificador inicial.
         _grantRole(VERIFICADOR_ROLE, initialOwner);
         
+        // [CELO] Dirección por defecto del token G$ en Celo Mainnet. Setteable por Admin.
+        gToken = 0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A;
+
         // [CELO] Dirección hardcodeada por defecto del contrato de recompensas.
         engagementRewardsContract = 0x25db74CF4E7BA120526fd87e159CF656d94bAE43;
     }
@@ -174,6 +181,15 @@ contract BiotaPassport is
         emit RutasDePagoActualizadas(_refiTreasury, _mujeresCarmen, _poolLoginWallet, _biotaProductoresPool, _engagementRewards);
     }
 
+    /**
+     * @notice [FIX L-01] Permite al Admin actualizar la dirección del token G$ si GoodDollar migra.
+     * @dev Solo el Admin (MultiSig) puede cambiar esto. Protege al protocolo ante futuras migraciones del token.
+     */
+    function setGToken(address _newGToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_newGToken == address(0)) revert Biota__DireccionCero();
+        gToken = _newGToken;
+    }
+
     // ==========================================
     // [REFI] LÓGICA CORE DE NEGOCIO
     // ==========================================
@@ -192,6 +208,13 @@ contract BiotaPassport is
         string calldata _ingredientesHash,
         string calldata _metodosAgricolas
     ) external payable returns (uint256) {
+        // [FIX M-01] Guard de seguridad: las tesorerías deben estar configuradas antes de
+        // aceptar pagos. Si el Admin no ha corrido AdminConfig.s.sol, falla aquí de forma
+        // explícita y segura, sin posibilidad de perder fondos.
+        if (poolLoginWallet == address(0) || biotaProductoresPool == address(0) || refiTreasury == address(0)) {
+            revert Biota__TesoreriaNoConfigurada();
+        }
+
         // [REFI] Validación básica: Un lote no puede tener 0 metros cuadrados.
         if (_areaM2 == 0) revert Biota__AreaInvalida();
 
@@ -222,8 +245,8 @@ contract BiotaPassport is
             uint256 paraTreasury = mintPriceG - paraMujeres; 
 
             // [EVM] Requiere que el usuario haya ejecutado antes 'approve' en el contrato de G$.
-            bool s1 = G_TOKEN.transferFrom(msg.sender, refiTreasury, paraTreasury);
-            bool s2 = G_TOKEN.transferFrom(msg.sender, mujeresCarmen, paraMujeres);
+            bool s1 = IERC20(gToken).transferFrom(msg.sender, refiTreasury, paraTreasury);
+            bool s2 = IERC20(gToken).transferFrom(msg.sender, mujeresCarmen, paraMujeres);
             if (!s1 || !s2) revert Biota__PagoInsuficiente();
         }
 
