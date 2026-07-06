@@ -18,7 +18,8 @@ export default function MiniPayDashboard() {
   const { authenticated } = usePrivy();
   const { address } = useConnection();
   const { wallets } = useWallets();
-  const { messages, isLoading: isAgentLoading } = useAgent();
+  const { chats, isLoading: isAgentLoading } = useAgent();
+  const messages = Object.values(chats).flat();
 
   const [isMiniPay, setIsMiniPay] = useState(false);
 
