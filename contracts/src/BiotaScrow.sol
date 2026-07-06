@@ -1,109 +1,108 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28; // [SOLIDITY] Actualizado a la versión más reciente según requerimiento Core.
 
-// [SOLIDITY] Importación del inicializador base requerido por proxies UUPS.
+// [BLOCKCHAIN] Importaciones del ecosistema OpenZeppelin Upgradeable v5.x.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IBiotaPassport} from "./IBiotaPassport.sol";
 
 // [GOODDOLLAR] Interfaz genérica para interactuar con los Pools de GoodCollective en Celo Mainnet.
 interface IGoodCollectivePool {
-    // La función exacta que desencadena la distribución de G$ desde el Pool al agricultor.
     function distributeReward(address _recipient) external;
 }
 
-// [BLOCKCHAIN] Declaración principal del contrato inteligente BiotaScrow.
-// [EVM] Utiliza herencia múltiple inicializable (patrón Proxy) para ahorrar gas de despliegue y permitir mejoras futuras.
+/**
+ * @title BiotaScrow - Doble Gatillo Regenerativo (Hard Fork V4)
+ * @author Biota Protocol
+ * @notice [REFI] Certifica las acciones biológicas y detona los pagos en GoodDollar.
+ * @dev [EVM] UUPS blindado con AccessControlDefaultAdminRules (TimeLock).
+ */
 contract BiotaScrow is
     Initializable,
-    AccessControlUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
     UUPSUpgradeable
 {
-    // [SOLIDITY] [EVM] Uso de constante y pre-cálculo de keccak256 en tiempo de compilación.
-    // Esto ahorra gas en tiempo de ejecución al no calcular el hash dinámicamente cada vez.
+    // ==========================================
+    // [EVM] CONSTANTES Y ROLES
+    // ==========================================
+    // [SOLIDITY] Uso de constante y pre-cálculo de keccak256 en tiempo de compilación para ahorrar gas.
     bytes32 public constant AGENT_ROLE = keccak256("AGENT_ROLE");
 
-    // [BLOCKCHAIN] Identidad del contrato para visibilidad en exploradores y herramientas.
     string public constant NAME = "BiotaScrow: Doble Gatillo Regenerativo";
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "4.0.0"; // V4 Hard Fork
 
     // ==========================================
-    // [EVM] CUSTOM ERRORS (Maña de Dev Canchero)
+    // [EVM] CUSTOM ERRORS (Gas Optimization)
     // ==========================================
-    // [SOLIDITY] Reemplazar 'require("String largo")' por Custom Errors ahorra aprox ~400 de gas por cada string no guardado en bytecode.
-    error BiotaScrow__UnauthorizedOracle(address caller); // [BLOCKCHAIN] Identifica billetera que intenta usurpar a la IA.
-    error BiotaScrow__InvalidRegenerationData(); // [REFI] Falla si los datos biológicos o wallets vienen vacíos.
-    error BiotaScrow__ActionAlreadyRegistered(uint256 id); // [BLOCKCHAIN] Previene doble validación y drenaje de fondos (Doble Gasto).
-    error Biota__ProductorNoVerificado(); // [REFI] Revierta si el productor no cumple requisitos del pasaporte.
+    error BiotaScrow__UnauthorizedOracle(address caller); 
+    error BiotaScrow__InvalidRegenerationData(); 
+    error BiotaScrow__ActionAlreadyRegistered(uint256 id); 
+    error Biota__ProductorNoVerificado(); 
 
     // ==========================================
-    // [EVM] STORAGE PACKING (Optimización Extrema)
+    // [EVM] STORAGE PACKING
     // ==========================================
     // [SOLIDITY] Estructura empacada magistralmente en exactamente 32 bytes (1 slot de storage).
     struct RegenerationValidation {
-        address farmerWallet; // [BLOCKCHAIN] 20 bytes: Dirección del agricultor en Celo Sepolia (11142220).
-        uint64 validationTime; // [EVM] 8 bytes: Timestamp (alcanza para milenios sin sufrir overflow tipo Year 2038).
-        uint32 currentBioScore; // [REFI] 4 bytes: Puntaje biológico o cm de suelo regenerado. (20+8+4 = 32 bytes 🎯).
+        address farmerWallet;    // 20 bytes: Dirección del agricultor.
+        uint64 validationTime;   // 8 bytes: Timestamp.
+        uint32 currentBioScore;  // 4 bytes: Puntaje biológico o cm de suelo regenerado.
+        // 20 + 8 + 4 = 32 bytes 🎯
     }
 
-    // [SOLIDITY] Mapeo que asocia un identificador único (creado off-chain) con la estructura compactada.
     // [CELO] Almacena el historial on-chain de las regeneraciones en la red.
     mapping(uint256 => RegenerationValidation) public validations;
 
-    // [CROSS-CONTRACT] Instancia del contrato de pasaporte para validaciones de flujo de fondos.
+    // [CROSS-CONTRACT] Instancia del contrato de pasaporte (Identidad).
     IBiotaPassport public passport;
 
     // [GOODDOLLAR] Dirección del Pool de GoodCollective en Celo Mainnet.
-    // [REFI] Separación de poderes: BiotaScrow certifica, GoodCollective paga.
     address public goodCollectivePoolAddress;
 
     // ==========================================
     // [SOLIDITY] EVENTOS
     // ==========================================
-    // [CELO] Evento emitido para que el subgrafo o el backend lo escuche a muy bajo costo y libere el cUSD.
     event DoubleTriggerFired(
         uint256 indexed actionId,
         address indexed farmer,
         uint32 bioScore
     );
 
-    // [SOLIDITY] Constructor bloqueado para evitar que el contrato de Implementación Lógica sea secuestrado.
+    // ==========================================
+    // [EVM] INICIALIZACIÓN
+    // ==========================================
+    
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers(); // [EVM] Directriz crítica de seguridad en patrones Proxy UUPS.
+        _disableInitializers(); 
     }
 
-    // [SOLIDITY] Función de inicialización que reemplaza al constructor clásico.
-    // [BLOCKCHAIN] Se ejecuta una única vez mediante el modifier 'initializer' de OZ.
+    /**
+     * @notice [BLOCKCHAIN] Inicializa el Scrow con seguridad 2-Step.
+     * @param defaultAdmin MultiSig que controlará el protocolo.
+     * @param agentOracle Billetera controlada por la IA para detonar los gatillos.
+     */
     function initialize(
         address defaultAdmin,
         address agentOracle
     ) public initializer {
-        __AccessControl_init(); // [SOLIDITY] Prepara la memoria de storage para el control de acceso.
-        // [SOLIDITY] En OZ v5.x, UUPSUpgradeable ya no requiere inicialización explícita.
+        // [SEGURIDAD] Retraso de 3 días para aceptar transferencia de rol (Anti-Hackeo).
+        __AccessControlDefaultAdminRules_init(3 days, defaultAdmin);
 
-        // [BLOCKCHAIN] Asigna el rol administrador por defecto, usualmente una Multisig.
-        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        // [CELO] Otorga el rol AGENT_ROLE a la wallet controlada por el Oráculo/IA de BiotaScrow.
         _grantRole(AGENT_ROLE, agentOracle);
     }
 
-    /**
-     * @notice [BLOCKCHAIN] Configura la dirección del contrato BiotaPassport.
-     * @dev Restringido a administradores para evitar redirección maliciosa de validaciones.
-     * @param _passport Dirección del contrato que implementa IBiotaPassport.
-     */
+    // ==========================================
+    // [REFI] SETTERS ADMINISTRATIVOS
+    // ==========================================
+    
     function setPassportContract(
         address _passport
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         passport = IBiotaPassport(_passport);
     }
 
-    /**
-     * @notice [GOODDOLLAR] Conecta el oráculo con el Pool de liquidez de GoodCollective en Celo Mainnet.
-     * @param _poolAddress Dirección del contrato del Pool en Celo.
-     */
     function setGoodCollectivePool(
         address _poolAddress
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -113,70 +112,75 @@ contract BiotaScrow is
     // ==========================================
     // [REFI] EL DOBLE GATILLO ON-CHAIN
     // ==========================================
-    // [SOLIDITY] Al ser tipos de valor base (uint, address), el compilador los empuja al EVM stack directamente (más barato que memory).
-    // Si tuviéramos un array/string, usaríamos 'calldata' estricto por convención Senior.
+    
+    /**
+     * @notice [REFI] Certifica la regeneración y ejecuta el pago de UBI.
+     * @dev Restringido a AGENT_ROLE. Revisa la validez de identidad en BiotaPassport.
+     */
     function executeDoubleTrigger(
-        uint256 actionId, // [BLOCKCHAIN] ID único asociado a la acción agronómica.
-        address farmerTarget, // [CELO] Destinatario que recibirá la Renta Básica (UBI).
-        uint256 tokenId, // [REFI] ID del pasaporte para validación cross-contract.
-        uint32 fieldBioScore // [REFI] Métrica dictaminada por el Agente de IA.
+        uint256 actionId,
+        address farmerTarget, 
+        uint256 tokenId, 
+        uint32 fieldBioScore 
     ) external {
-        // [EVM] Verificación de rol usando operaciones bit a bit internas de OZ.
-        // Si no es un oráculo autorizado, ejecutamos el Custom Error (Más gas friendly que un require).
         if (!hasRole(AGENT_ROLE, msg.sender)) {
-            revert BiotaScrow__UnauthorizedOracle(msg.sender); // [SOLIDITY]
+            revert BiotaScrow__UnauthorizedOracle(msg.sender); 
         }
 
-        // [REFI] Verificación de cordura. La vida no existe en address(0) y el bioScore no puede ser 0.
         if (farmerTarget == address(0) || fieldBioScore == 0) {
-            revert BiotaScrow__InvalidRegenerationData(); // [SOLIDITY]
+            revert BiotaScrow__InvalidRegenerationData(); 
         }
 
-        // [BLOCKCHAIN] Comprueba que ese ID de acción esté limpio en el storage.
         if (validations[actionId].farmerWallet != address(0)) {
-            revert BiotaScrow__ActionAlreadyRegistered(actionId); // [SOLIDITY]
+            revert BiotaScrow__ActionAlreadyRegistered(actionId); 
         }
 
         // ==========================================
-        // [CROSS-CONTRACT] VALIDACIÓN DE PASAPORTE
+        // [FIX M-02] VALIDACIÓN DE PASAPORTE — OBLIGATORIA, NO OPCIONAL
         // ==========================================
-        // [REFI] Garantiza que el flujo de fondos solo llegue a productores con identidad verificada.
-        if (address(passport) != address(0)) {
-            // 1. Validar que posea al menos un pasaporte.
-            if (passport.balanceOf(farmerTarget) == 0) {
-                revert Biota__ProductorNoVerificado();
-            }
-
-            // 2. Validar flags de confianza del token específico.
-            (
-                , // verificador
-                bool esVerificado,
-                bool isHumanVerified,
-                , // areaM2
-                , // cmSueloRecuperado
-                , // fechaRegistro
-                  // ultimaActualizacion
-            ) = passport.lotePasaporte(tokenId);
-
-            if (!esVerificado || !isHumanVerified) {
-                revert Biota__ProductorNoVerificado(); // [GAS-OPTIMIZATION] Uso de Custom Error.
-            }
+        // [SEGURIDAD] El Passport DEBE estar configurado. Si el Admin no llamó
+        // setPassportContract(), el Oráculo no puede certificar nada. Esto impide que
+        // se certifiquen wallets sin identidad real en modo "pre-configuración".
+        if (address(passport) == address(0)) {
+            revert BiotaScrow__InvalidRegenerationData();
         }
 
-        // [EVM] Escritura en Storage (SSTORE). Como llenamos todo el slot de 32 bytes de una pasada,
-        // el compilador optimiza esto a una sola operación de escritura en caliente, salvando gas vital.
+        if (passport.balanceOf(farmerTarget) == 0) {
+            revert Biota__ProductorNoVerificado();
+        }
+
+        // [EVM] Obtenemos solo los booleanos de seguridad del Passport V4 (esVerificado, isHumanVerified)
+        (
+            , // verificador
+            , // areaM2
+            , // cmSueloRecuperado
+            bool esVerificado,
+            bool isHumanVerified,
+            , // fechaRegistro
+            , // ultimaActualizacion
+            , // ubicacionGeografica
+            , // estadoBiologico
+            , // hashAnalisisLab
+            , // ingredientesHash
+              // metodosAgricolas
+        ) = passport.lotePasaporte(tokenId);
+
+        if (!esVerificado || !isHumanVerified) {
+            revert Biota__ProductorNoVerificado();
+        }
+
+
+        // [EVM] Escritura en Storage (SSTORE optimizado en 1 bloque de 32 bytes).
         validations[actionId] = RegenerationValidation({
-            farmerWallet: farmerTarget, // [CELO] Wallet asociada.
-            validationTime: uint64(block.timestamp), // [EVM] Casteo necesario para encajar en los 8 bytes.
-            currentBioScore: fieldBioScore // [REFI] Nuevo puntaje a certificar.
+            farmerWallet: farmerTarget, 
+            validationTime: uint64(block.timestamp), 
+            currentBioScore: fieldBioScore 
         });
 
-        // [BLOCKCHAIN] Detonación del evento on-chain. El gatillo ha sido jalado.
-        emit DoubleTriggerFired(actionId, farmerTarget, fieldBioScore); // [SOLIDITY]
+        // [BLOCKCHAIN] El gatillo ha sido jalado.
+        emit DoubleTriggerFired(actionId, farmerTarget, fieldBioScore); 
 
-        // [GOODDOLLAR] dMRV Trigger: Disparamos la liberación de G$ desde el Pool externo en Celo Mainnet.
-        // [GAS-OPTIMIZATION] Envuelto en try/catch. Si el Pool se queda sin liquidez o el agricultor
-        // no cumple algún requisito interno del Pool, la certificación del impacto sigue guardándose exitosamente.
+        // [GOODDOLLAR] Disparamos la liberación de G$.
         if (goodCollectivePoolAddress != address(0)) {
             try IGoodCollectivePool(goodCollectivePoolAddress).distributeReward(farmerTarget) {} catch {}
         }
@@ -185,15 +189,9 @@ contract BiotaScrow is
     // ==========================================
     // [BLOCKCHAIN] SISTEMA DE ACTUALIZACIÓN
     // ==========================================
-    // [SOLIDITY] Hook interno de OZ requerido para autorizar que el Proxy apunte a una nueva lógica (V2).
+    
+    // [SEGURIDAD] Solo la MultiSig puede firmar una actualización de contrato.
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {
-        // [EVM] Solo el DEFAULT_ADMIN_ROLE puede firmar una actualización. El oráculo IA no tiene este poder.
-    }
-
-    // [SOLIDITY] Storage Gap: Reserva 50 slots de memoria para futuras variables.
-    // Esto evita colisiones de almacenamiento (Storage Collisions) al actualizar a una V2.
-    // Muy recomendado por OpenZeppelin para contratos base.
-    uint256[50] private __gap;
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

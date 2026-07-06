@@ -3,38 +3,33 @@ pragma solidity 0.8.28; // [SOLIDITY] Bytecode optimizado al límite.
 
 // [BLOCKCHAIN] Importaciones Superfluid + OpenZeppelin Upgradeable v5.x.
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperToken.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import {IBiotaPassport} from "./IBiotaPassport.sol";
 
-// [BLOCKCHAIN] Interfaces para interoperabilidad cross-contract.
-interface IBiotaPassport {
-    function ownerOf(uint256 tokenId) external view returns (address);
-    function lotePasaporte(uint256 tokenId) external view returns (
-        address verificador, bool esVerificado, bool isHumanVerified,
-        uint32 areaM2, uint32 cmSueloRecuperado, uint64 fechaRegistro, uint64 ultimaActualizacion
-    );
-}
-
+// [BLOCKCHAIN] Interfaz para Anti-Sybil.
 interface IIdentity {
     function getWhitelistedRoot(address account) external view returns (address);
 }
 
 /**
- * @title BiotaUBI - Bóveda de Recompensas de Impacto (Upgradeable)
+ * @title BiotaUBI - Bóveda de Recompensas de Impacto (Hard Fork V4)
  * @author Biota Protocol
  * @notice [REFI] Motor de streaming que gotea G$ a los productores basándose en su salud del suelo.
- * @dev [SUPERFLUID] Implementa flujos continuos (Constant Flow Agreement).
+ * @dev [SUPERFLUID] Implementa flujos continuos (Constant Flow Agreement). Protegido con TimeLock de 3 días.
  */
 contract BiotaUBI is 
     Initializable, 
-    AccessControlUpgradeable, 
+    AccessControlDefaultAdminRulesUpgradeable, 
     UUPSUpgradeable 
 {
     using SuperTokenV1Library for ISuperToken;
 
-    // [EVM] Variables de Estado (Storage).
+    // ==========================================
+    // [EVM] VARIABLES DE ESTADO (Storage)
+    // ==========================================
     IBiotaPassport public biotaPassport;
     IIdentity public identity;
     ISuperToken public gDollarToken;
@@ -62,11 +57,11 @@ contract BiotaUBI is
     
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers(); // [SOLIDITY] Seguridad en implementación.
+        _disableInitializers(); // [SOLIDITY] Seguridad en implementación lógica.
     }
 
     /**
-     * @notice [BLOCKCHAIN] Inicializa las dependencias del oráculo UBI.
+     * @notice [BLOCKCHAIN] Inicializa las dependencias del oráculo UBI (Seguridad Anti-Hackeo V4).
      */
     function initialize(
         address initialOwner,
@@ -74,9 +69,8 @@ contract BiotaUBI is
         address _gdIdentity,
         address _gDollarSuperToken
     ) public initializer {
-        __AccessControl_init();
-
-        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+        // [SEGURIDAD] Retraso de 3 días para aceptar la transferencia del rol de administrador
+        __AccessControlDefaultAdminRules_init(3 days, initialOwner);
 
         biotaPassport = IBiotaPassport(_biotaPassport);
         identity = IIdentity(_gdIdentity);
@@ -97,8 +91,22 @@ contract BiotaUBI is
 
         address productor = biotaPassport.ownerOf(tokenId);
 
-        // 1. [REFI] Verificación Ecológica: Validar auditoría de suelo.
-        (, bool esVerificado, , , , , ) = biotaPassport.lotePasaporte(tokenId);
+        // 1. [REFI] Verificación Ecológica: Validar auditoría de suelo con Tupla V4.
+        (
+            , // verificador
+            , // areaM2
+            , // cmSueloRecuperado
+            bool esVerificado,
+            , // isHumanVerified
+            , // fechaRegistro
+            , // ultimaActualizacion
+            , // ubicacionGeografica
+            , // estadoBiologico
+            , // hashAnalisisLab
+            , // ingredientesHash
+              // metodosAgricolas
+        ) = biotaPassport.lotePasaporte(tokenId);
+        
         if (!esVerificado) revert UBI__ImpactoNoVerificado();
 
         // 2. [GOODDOLLAR] Verificación Anti-Sybil.
@@ -140,10 +148,7 @@ contract BiotaUBI is
     // ==========================================
 
     /**
-     * @dev [SOLIDITY] Hook de actualización UUPS.
+     * @dev [SOLIDITY] Hook de actualización UUPS. Restringido por TimeLock.
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
-
-    // [SOLIDITY] Storage Gap.
-    uint256[50] private __gap;
 }

@@ -63,3 +63,8 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 logs/
+
+# --- 6. ARCHIVOS DE PRUEBA OFF-CHAIN ---
+scratch/
+scripts/*.mjs
+*.js.local

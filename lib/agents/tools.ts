@@ -1,3 +1,4 @@
+import 'server-only';
 import { createWalletClient, createPublicClient, http, parseAbiItem, parseGwei, encodeFunctionData, type Address } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
@@ -152,6 +153,51 @@ export const soilValidationTool = {
             farmerAddress: { type: "STRING", description: "Dirección del agricultor" }
         },
         required: ["ph", "materiaOrganica", "biodiversidad", "laborEjecutada"]
+    }
+};
+
+/**
+ * Herramienta para obtener telemetría de sensores IoT (Humedad, Temperatura del suelo).
+ */
+export const iotDataTool = {
+    name: "get_iot_data",
+    description: "Obtiene los datos en tiempo real de los sensores IoT (ESP32/LoRaWAN) instalados en la parcela del agricultor.",
+    parameters: {
+        type: "OBJECT",
+        properties: {
+            farmerAddress: { type: "STRING", description: "Dirección de la billetera del agricultor" },
+            sensorId: { type: "STRING", description: "Identificador del sensor (ej. SENSOR-01)" }
+        },
+        required: ["farmerAddress"]
+    }
+};
+
+/**
+ * Herramienta para obtener predicciones climáticas.
+ */
+export const weatherPredictionTool = {
+    name: "get_weather_prediction",
+    description: "Obtiene el pronóstico del clima actual y la probabilidad de sequía o lluvia para la ubicación.",
+    parameters: {
+        type: "OBJECT",
+        properties: {
+            latitud: { type: "NUMBER", description: "Latitud geográfica" },
+            longitud: { type: "NUMBER", description: "Longitud geográfica" }
+        },
+        required: ["latitud", "longitud"]
+    }
+};
+
+/**
+ * Herramienta del Calendario Lunar Biodinámico.
+ */
+export const lunarPhaseTool = {
+    name: "get_lunar_phase",
+    description: "Calcula la fase lunar actual y determina el movimiento de la savia en las plantas para labores biodinámicas.",
+    parameters: {
+        type: "OBJECT",
+        properties: {},
+        required: []
     }
 };
 
@@ -315,10 +361,18 @@ export async function executeDoubleTrigger(args: DoubleTriggerArgs) {
     }
 }
 
+interface CartItem {
+    productId: string;
+    qty: number;
+    price: number;
+    sellerAddress: string;
+}
+
 interface DistributeEscrowArgs {
     totalAmount: number;
     currency: string;
-    producerAddress: string;
+    buyerAddress?: string;
+    cartDetails?: CartItem[];
 }
 
 /**
@@ -328,15 +382,54 @@ interface DistributeEscrowArgs {
 export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
     console.log(`[AGENT-ESCROW-CORE] 🧠 Iniciando distribución autónoma de ${args.totalAmount} ${args.currency}`);
 
-    // Matemáticas de Distribución
-    const amounts = {
-        producer: (args.totalAmount * 0.85).toFixed(4),    // 85% al productor
-        poolBiota: (args.totalAmount * 0.04).toFixed(4),   // 4% Pool Biota Regenerativa
-        donations: (args.totalAmount * 0.06).toFixed(4),   // 6% Mujeres/Kenia (o 3% Fondeo Login si es CELO)
-        treasury: (args.totalAmount * 0.05).toFixed(4),    // 5% Tesorería Biota (DApp)
+    // Billeteras de destino configuradas
+    const WALLETS = {
+        DAPP_BIOTA: "0x9bc43f955ce11948e4fD6EAC28d46875Fba9f5F9",
+        INVERSIONES_DAPP: "0x95A4dabdFa310993Ff836639b7521F47FE0aDb11",
+        POOL_PRODUCTOR: "0xb6Fb8C69FeD8FC27750c58B2DCA293cc12662A12",
+        COLECTIVA_MUJERES: "0x0d43131f1577310d6349baf9d6da4fc1cd39764c",
+        AAVE_STRATEGY: "0x20715fe5e81cdeb6ed4be84403a1a6d7c67d4997" // Bóveda Inversor
     };
 
-    console.log("[AGENT-ESCROW-CORE] 🧮 Splits Calculados:", amounts);
+    // Cálculos de porcentajes base (Total 100%)
+    // 85% -> Productores (calculado por carrito)
+    // 4% -> Bóveda Aave V3 (Inversor)
+    // 3% -> DApp Tesorería
+    // 2% -> Inversiones DApp
+    // 3% -> Pool Productor Biota
+    // 3% -> Donaciones Mujeres
+    const amounts = {
+        aaveVault: (args.totalAmount * 0.04).toFixed(4),
+        treasury: (args.totalAmount * 0.03).toFixed(4),
+        inversiones: (args.totalAmount * 0.02).toFixed(4),
+        poolBiota: (args.totalAmount * 0.03).toFixed(4),
+        donations: (args.totalAmount * 0.03).toFixed(4),
+    };
+
+    // Calcular el pago a los productores desde el carrito
+    const producerPayments: Record<string, string> = {};
+    if (args.cartDetails && args.cartDetails.length > 0) {
+        // Se calcula el total real del carrito para hacer la proporción
+        const cartTotalValue = args.cartDetails.reduce((sum, item) => sum + (item.qty * item.price), 0);
+        
+        args.cartDetails.forEach(item => {
+            const itemTotal = item.qty * item.price;
+            // El productor recibe el 85% del valor de su producto en el carrito
+            const producerShare = (itemTotal * 0.001 * 0.85).toFixed(4); // Se multiplica por 0.001 porque los precios en tienda están escalados
+            
+            if (producerPayments[item.sellerAddress]) {
+                producerPayments[item.sellerAddress] = (Number(producerPayments[item.sellerAddress]) + Number(producerShare)).toFixed(4);
+            } else {
+                producerPayments[item.sellerAddress] = producerShare;
+            }
+        });
+    } else {
+        // Fallback en caso de que no haya carrito
+        console.warn("[AGENT-ESCROW] ⚠️ No se recibieron detalles del carrito. Los fondos de producción quedan en standby.");
+    }
+
+    console.log("[AGENT-ESCROW-CORE] 🧮 Splits Calculados Generales:", amounts);
+    console.log("[AGENT-ESCROW-CORE] 👨‍🌾 Splits a Productores:", producerPayments);
 
     const txHashSimulated = `0xescrow_${Date.now().toString(16)}`;
 
@@ -345,18 +438,144 @@ export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
         totalLiberado: args.totalAmount,
         moneda: args.currency,
         beneficiarios: {
-            campesinoProductor: { address: args.producerAddress, amount: amounts.producer },
-            poolRegenerativo: { address: ADDRESSES.BIOTA_SCROW, amount: amounts.poolBiota },
-            tesoreriaBiota: { address: ADDRESSES.DAPP_BIOTA, amount: amounts.treasury },
+            productores: producerPayments,
+            bovedaInversorAave: { address: WALLETS.AAVE_STRATEGY, amount: amounts.aaveVault, owner: args.buyerAddress },
+            tesoreriaBiota: { address: WALLETS.DAPP_BIOTA, amount: amounts.treasury },
+            inversionesBiota: { address: WALLETS.INVERSIONES_DAPP, amount: amounts.inversiones },
+            poolRegenerativo: { address: WALLETS.POOL_PRODUCTOR, amount: amounts.poolBiota },
+            donaciones: { address: WALLETS.COLECTIVA_MUJERES, amount: amounts.donations }
         },
         estado: "LIBERADO"
     };
 
     return {
         success: true,
-        simulation: true,
+        simulation: true, // Modo Zero-Gas habilitado temporalmente para pruebas visuales
         hash: txHashSimulated,
         distribucion: result,
-        message: `El Agente Orquestador ha liberado y distribuido exitosamente ${args.totalAmount} ${args.currency}.`
+        message: `El Agente Orquestador ha distribuido exitosamente ${args.totalAmount} ${args.currency} a la Bóveda Aave, Productores y DApp.`
+    };
+}
+
+interface IoTDataArgs {
+    farmerAddress: string;
+    sensorId?: string;
+}
+
+/**
+ * Lógica de ejecución del Mock IoT.
+ * Simula la lectura de un sensor ESP32 en el cultivo.
+ */
+export async function executeIoTData(args: IoTDataArgs) {
+    console.log(`[AGENT-TOOL] Consultando Sensor IoT para: ${args.farmerAddress}`);
+    
+    // Simulación de datos críticos de Sequía (Humedad muy baja) para probar el Seguro Paramétrico
+    return {
+        success: true,
+        sensorId: args.sensorId || "ESP32-LORA-001",
+        telemetria: {
+            humedadSueloPorcentaje: 15.2, // Nivel crítico de sequía (< 30%)
+            temperaturaAmbiente: 34.5,
+            phSuelo: 6.2,
+            estadoBombaAgua: "APAGADA"
+        },
+        timestamp: new Date().toISOString()
+    };
+}
+
+interface WeatherPredictionArgs {
+    latitud: number;
+    longitud: number;
+}
+
+/**
+ * Lógica de ejecución del clima usando Open-Meteo (Sin API Key, gratuito, ideal para Colombia).
+ */
+export async function executeWeatherPrediction(args: WeatherPredictionArgs) {
+    console.log(`[AGENT-TOOL] Consultando Clima Open-Meteo para Lat:${args.latitud}, Lon:${args.longitud}`);
+    try {
+        // Agregamos Viento, Cobertura de Nubes, Evapotranspiración (pérdida de agua) y Radiación UV
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${args.latitud}&longitude=${args.longitud}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m,cloud_cover&daily=precipitation_sum,et0_fao_evapotranspiration,uv_index_max&timezone=America%2FBogota`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // Extraer si ha llovido o lloverá
+        const lluviaHoy = data.current?.precipitation || 0;
+        const pronosticoLluvia7Dias = data.daily?.precipitation_sum || [];
+        const evapotranspiracionDiaria = data.daily?.et0_fao_evapotranspiration?.[0] || 0;
+        const totalLluviaSemana = pronosticoLluvia7Dias.reduce((a: number, b: number) => a + b, 0);
+
+        return {
+            success: true,
+            fuente: "Open-Meteo Satélite Agrícola",
+            climaActual: {
+                temperatura: data.current?.temperature_2m,
+                sensacionTermica: data.current?.apparent_temperature,
+                humedadRelativa: data.current?.relative_humidity_2m,
+                lluviaMm: lluviaHoy,
+                velocidadVientoKmh: data.current?.wind_speed_10m,
+                coberturaNubesPorcentaje: data.current?.cloud_cover
+            },
+            pronosticoDiario: {
+                evapotranspiracionFaoMm: evapotranspiracionDiaria, // Agua que pierde el suelo y la planta por evaporación
+                indiceUvMaximo: data.daily?.uv_index_max?.[0] || 0
+            },
+            pronosticoSemanal: {
+                totalLluviaEsperadaMm: totalLluviaSemana,
+                alertaSequia: totalLluviaSemana < 5
+            }
+        };
+    } catch (error: any) {
+        console.error("[AGENT-TOOL-WEATHER-ERROR]", error);
+        return { success: false, error: "No se pudo conectar con el satélite climático." };
+    }
+}
+
+/**
+ * Cálculo matemático de la fase lunar actual (Calendario Biodinámico).
+ */
+export async function executeLunarPhase() {
+    console.log(`[AGENT-TOOL] Consultando Reloj Lunar Biodinámico`);
+    // Constantes matemáticas lunares
+    const LUNAR_MONTH = 29.53058867;
+    // Una fecha de luna nueva conocida (Ej: 11 Ene 2024 11:57 UTC)
+    const KNOWN_NEW_MOON = new Date("2024-01-11T11:57:00Z").getTime();
+    const now = Date.now();
+    
+    const diff = now - KNOWN_NEW_MOON;
+    const days = diff / (1000 * 60 * 60 * 24);
+    const lunarAge = days % LUNAR_MONTH;
+    const percentage = (lunarAge / LUNAR_MONTH) * 100;
+
+    let fase = "";
+    let movimientoSavia = "";
+    let recomendacion = "";
+
+    if (percentage < 5 || percentage > 95) {
+        fase = "Luna Nueva";
+        movimientoSavia = "La savia se concentra en las raíces.";
+        recomendacion = "Ideal para podar, arrancar malezas y sembrar plantas de raíz (zanahoria, remolacha).";
+    } else if (percentage >= 5 && percentage < 45) {
+        fase = "Cuarto Creciente";
+        movimientoSavia = "La savia sube hacia el tallo y las ramas.";
+        recomendacion = "Ideal para sembrar plantas de hoja o flor. No se recomienda podar (la planta puede desangrarse).";
+    } else if (percentage >= 45 && percentage < 55) {
+        fase = "Luna Llena";
+        movimientoSavia = "La savia está concentrada en el follaje, frutos y flores.";
+        recomendacion = "Excelente para cosechar frutos (mayor jugosidad) y aplicar biofertilizantes foliares. Riesgo alto de plagas.";
+    } else {
+        fase = "Cuarto Menguante";
+        movimientoSavia = "La savia desciende hacia las raíces.";
+        recomendacion = "Fase de descanso. Ideal para aplicar abonos sólidos al suelo, hacer injertos y sembrar tubérculos.";
+    }
+
+    return {
+        success: true,
+        faseLunar: fase,
+        edadLunarDias: parseFloat(lunarAge.toFixed(2)),
+        biodinamica: {
+            savia: movimientoSavia,
+            consejo: recomendacion
+        }
     };
 }

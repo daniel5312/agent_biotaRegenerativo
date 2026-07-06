@@ -58,7 +58,12 @@ export function useSuperfluidStream(
   const SENDER = senderOverride || ADDRESSES.BIOTA_SCROW
   const RECEIVER = receiverAddress
 
-  const canSign = !!(manualProvider || (activeWallet && SENDER && activeWallet.toLowerCase() === SENDER.toLowerCase()))
+  // En Superfluid, TANTO el emisor como el receptor pueden cancelar un flujo.
+  const canSign = !!(
+    manualProvider || 
+    (activeWallet && SENDER && activeWallet.toLowerCase() === SENDER.toLowerCase()) ||
+    (activeWallet && RECEIVER && activeWallet.toLowerCase() === RECEIVER.toLowerCase())
+  )
 
   // 1. Consultar estado del flujo entre UBI -> Google
   const { data: flowData, isLoading: loadingFlow, refetch: refetchFlow } = useReadContract({

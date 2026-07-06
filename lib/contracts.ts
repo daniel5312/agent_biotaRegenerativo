@@ -35,6 +35,8 @@ export const ADDRESSES = {
   BIOTA_SCROW: '0xB63B6B681E61a646624E0642c250fFE928098EC1' as Address,
   BIOTA_SPLITTER: '0xf4019e82d7882E37D8f371d9aB4a65e978868125' as Address,
   BIOTA_UBI: '0xE060D49fd545323A7602D7b005E0813594E57356' as Address,
+  // [REFI] contrato rwa del café
+  BIOTA_RWA: '0xbc0C65E81f62D9710BAc959581CaF66B741518e1' as Address,
 
   /* === CELO SEPOLIA (FUTURE USE) ===
   BIOTA_PASSPORT_SEP: '0x...' as Address,
@@ -49,7 +51,7 @@ export const ADDRESSES = {
   FONDEO_LOGIN: '0x9158C35f1a054F25f9D45EA47107D54a2ea25945' as Address,
   AGENT_TBA: '0x699AD5EF840764db8CEe62569455bBE6081aA6b8' as Address,
   CUSD: '0x765DE816845861e75A25fCA122bb6898B8B1282a' as Address,
-  USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A8824272d2' as Address,
+  USDT: '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e' as Address,
   USDC: '0xcebA9300f2b948710d2653dD7B07f33A8B32118C' as Address,
   G$: '0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A' as Address,
   IDENTITY: '0xC361A6E67822a0EDc17D899227dd9FC50BD62F42' as Address,
@@ -107,4 +109,78 @@ export function formatFecha(ts: bigint): string {
   return new Date(Number(ts) * 1000).toLocaleDateString('es-CO', {
     year: 'numeric', month: 'short', day: 'numeric',
   });
+}
+
+// [REFI] abi minimal del contrato biota rwa erc-1155
+// expone solo las funciones que el frontend necesita para leer datos del cafe y mintear nfts
+export const BIOTA_RWA_ABI = [
+  // lee los datos on-chain de un lote de cafe (variedad, municipio, productor, etapa, etc.)
+  {
+    inputs: [{ name: 'productId', type: 'uint256' }],
+    name: 'coffeeRegistry',
+    outputs: [
+      { name: 'finca', type: 'string' },
+      { name: 'municipio', type: 'string' },
+      { name: 'vereda', type: 'string' },
+      { name: 'nombreProductor', type: 'string' },
+      { name: 'etapaBiota', type: 'string' },
+      { name: 'variedad', type: 'string' },
+      { name: 'tonosPerfil', type: 'string' },
+      { name: 'alturaMsnm', type: 'uint256' },
+      { name: 'activoParaReclamo', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  // consulta cuantos nfts de un lote tiene una billetera (erc-1155 balanceOf)
+  {
+    inputs: [{ name: 'account', type: 'address' }, { name: 'id', type: 'uint256' }],
+    name: 'balanceOf',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  // el inversor quema 1 token para recibir su cafe fisico (logistica off-chain)
+  {
+    inputs: [{ name: 'productId', type: 'uint256' }],
+    name: 'claimPhysicalCoffee',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // [DEFI] el inversor retira su capital + rendimiento de la estrategia
+  {
+    inputs: [
+      { name: '_token', type: 'address' },
+      { name: '_amount', type: 'uint256' }
+    ],
+    name: 'withdrawYield',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  // evento que se emite cuando se mintea un nft rwa a un inversor
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'investor', type: 'address' },
+      { indexed: true, name: 'productId', type: 'uint256' },
+      { indexed: false, name: 'amount', type: 'uint256' },
+    ],
+    name: 'RWAMinted',
+    type: 'event',
+  },
+] as const;
+
+// [REFI] tipo de datos que el frontend usa para representar un lote de cafe
+export interface CoffeeRWA {
+  finca: string;
+  municipio: string;
+  vereda: string;
+  nombreProductor: string;
+  etapaBiota: string;
+  variedad: string;
+  tonosPerfil: string;
+  alturaMsnm: bigint;
+  activoParaReclamo: boolean;
 }

@@ -20,7 +20,8 @@ import {
   Sprout,
   Zap,
   Camera,
-  Volume2
+  Volume2,
+  Mic
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -84,13 +85,54 @@ export function AsesoriaView() {
   const { sendTransactionAsync } = useSendTransaction()
   const { toast } = useToast()
 
-  const { messages, sendMessage, analizarImagen, isLoading } = useAgent()
+  const { chats, sendMessage, analizarImagen, isLoading } = useAgent()
   const [input, setInput] = useState("")
   const [isPaying, setIsPaying] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
+  const messages = chats[selectedAgent.id] || []
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [paidAgents, setPaidAgents] = useState<Record<string, string>>({})
+  const recognitionRef = useRef<any>(null)
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+      return
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      toast({ title: "Error", description: "Reconocimiento de voz no soportado en tu navegador.", variant: "destructive" })
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'es-ES'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setInput(prev => prev ? `${prev} ${transcript}` : transcript)
+    }
+
+    recognition.onerror = (event: any) => {
+      console.error("STT Error:", event.error)
+      setIsListening(false)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+
+    recognitionRef.current = recognition
+    recognition.start()
+    setIsListening(true)
+  }
 
   const speakText = (text: string) => {
     if (!window.speechSynthesis) {
@@ -169,21 +211,34 @@ export function AsesoriaView() {
     if (!input.trim()) return
 
     try {
-      setIsPaying(true)
-      toast({ 
-        title: "Peaje x402 Biota", 
-        description: "Firma el micropago de 0.01 CELO para consultar al Agente." 
-      })
-      
-      const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
-      
-      const txHash = await sendTransactionAsync({
-        to: AGENT_WALLET,
-        value: parseEther("0.01"),
-      })
-      
-      toast({ title: "✅ Pago Confirmado", description: "Inferencia IA en proceso..." })
-      sendMessage(input, selectedAgent.id, txHash)
+      let txHashToUse = ""
+      const isOneTimePaymentAgent = selectedAgent.id === "DIAGNOSTICO_AGROSOSTENIBLE" || selectedAgent.id === "CAPATAZ"
+
+      if (isOneTimePaymentAgent && paidAgents[selectedAgent.id]) {
+        // Usar peaje ya pagado
+        txHashToUse = paidAgents[selectedAgent.id]
+      } else {
+        setIsPaying(true)
+        toast({ 
+          title: "Peaje x402 Biota", 
+          description: "Firma el micropago de 0.01 CELO para consultar al Agente." 
+        })
+        
+        const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
+        
+        txHashToUse = await sendTransactionAsync({
+          to: AGENT_WALLET,
+          value: parseEther("0.01"),
+        })
+        
+        toast({ title: "✅ Pago Confirmado", description: "Inferencia IA en proceso..." })
+        
+        if (isOneTimePaymentAgent) {
+          setPaidAgents(prev => ({ ...prev, [selectedAgent.id]: txHashToUse }))
+        }
+      }
+
+      sendMessage(input, selectedAgent.id, txHashToUse)
       setInput("")
     } catch (error) {
       console.error(error)
@@ -207,23 +262,34 @@ export function AsesoriaView() {
     if (!file) return
 
     try {
-      setIsPaying(true)
-      toast({ 
-        title: "Peaje x402 Biota", 
-        description: "Firma el micropago de 0.01 CELO para analizar la imagen." 
-      })
-      
-      const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
-      
-      const txHash = await sendTransactionAsync({
-        to: AGENT_WALLET,
-        value: parseEther("0.01"),
-      })
-      
-      toast({ title: "✅ Pago Confirmado", description: "Inferencia Visual en proceso..." })
+      let txHashToUse = ""
+      const isOneTimePaymentAgent = selectedAgent.id === "DIAGNOSTICO_AGROSOSTENIBLE" || selectedAgent.id === "CAPATAZ"
+
+      if (isOneTimePaymentAgent && paidAgents[selectedAgent.id]) {
+        txHashToUse = paidAgents[selectedAgent.id]
+      } else {
+        setIsPaying(true)
+        toast({ 
+          title: "Peaje x402 Biota", 
+          description: "Firma el micropago de 0.01 CELO para analizar la imagen." 
+        })
+        
+        const AGENT_WALLET = (process.env.NEXT_PUBLIC_AGENT_WALLET || "0x1f90a029013609246573f8B3519C8e352333AB0C") as `0x${string}`
+        
+        txHashToUse = await sendTransactionAsync({
+          to: AGENT_WALLET,
+          value: parseEther("0.01"),
+        })
+        
+        toast({ title: "✅ Pago Confirmado", description: "Inferencia Visual en proceso..." })
+        
+        if (isOneTimePaymentAgent) {
+          setPaidAgents(prev => ({ ...prev, [selectedAgent.id]: txHashToUse }))
+        }
+      }
       
       const base64String = await compressImage(file);
-      analizarImagen(base64String, selectedAgent.id, txHash);
+      analizarImagen(base64String, selectedAgent.id, txHashToUse);
       
     } catch (error) {
       console.error(error)
@@ -238,7 +304,7 @@ export function AsesoriaView() {
   }
 
   return (
-    <div className="flex flex-col h-full mb-nav">
+    <div className="flex flex-col h-full pb-20">
       {/* Top Section: Agent Selection */}
       <div className="px-4 py-4 space-y-3 shrink-0">
         <div className="flex items-center justify-between">
@@ -467,6 +533,14 @@ export function AsesoriaView() {
               className="h-10 w-10 shrink-0 bg-white dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-600/30 text-emerald-600"
             >
               <Camera className="w-4 h-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={toggleListening}
+              className={`h-10 w-10 shrink-0 border transition-all ${isListening ? 'bg-red-500/20 text-red-500 border-red-500/50 animate-pulse' : 'bg-white dark:bg-emerald-900/50 border-emerald-200 dark:border-emerald-600/30 text-emerald-600'}`}
+            >
+              <Mic className="w-4 h-4" />
             </Button>
             <div className="relative flex-1">
               <Input
