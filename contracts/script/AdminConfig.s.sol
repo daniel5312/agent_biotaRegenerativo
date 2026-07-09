@@ -13,7 +13,7 @@ contract AdminConfig is Script {
         uint256 deployerPrivateKey = vm.envUint("ADMIN_PRIVATE_KEY");
         
         // [BLOCKCHAIN] Dirección fija del Proxy del Pasaporte en Celo Mainnet
-        address proxyAddress = 0xa264EA4eC58dCC02a54c9F27428aEE3E6E6A8724;
+        address proxyAddress = 0xF2432fa271adb07B13Aa6221d821a49Eb57de1c0;
 
         vm.startBroadcast(deployerPrivateKey);
 
