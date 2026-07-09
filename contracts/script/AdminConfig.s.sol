@@ -18,8 +18,8 @@ contract AdminConfig is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Configurar los precios dinámicos
-        // 0.01 CELO (nativo) y 0.10 G$ (El token G$ tiene 18 decimales, así que 0.10 G$ = 0.10 * 10^18)
-        BiotaPassport(proxyAddress).setMintPrices(0.01 ether, 100000000000000000);
+        // 0.01 CELO (nativo) y 10 G$ (El token G$ tiene 18 decimales, así que 10 G$ = 10 ether)
+        BiotaPassport(proxyAddress).setMintPrices(0.01 ether, 10 ether);
 
         // 2. Configurar las rutas del Router Inteligente
         BiotaPassport(proxyAddress).setTreasuryAddresses(
