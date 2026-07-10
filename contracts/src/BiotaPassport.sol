@@ -88,6 +88,9 @@ contract BiotaPassport is
     uint256 public mintPriceCelo; // Slot 6 (Ej: 0.01 ether = 10000000000000000)
     uint256 public mintPriceG;    // Slot 7 (¡OJO! 2 Decimales. 10 = 0.10 G$)
 
+    // [V4] Recompensas de Engagement (GoodDollar Claim)
+    address public engagementRewards; // Slot 8
+
     // ==========================================
     // [SOLIDITY] EVENTOS
     // ==========================================
@@ -137,12 +140,14 @@ contract BiotaPassport is
         address _refiTreasury, 
         address _mujeresCarmen, 
         address _poolLoginWallet, 
-        address _biotaProductoresPool
+        address _biotaProductoresPool,
+        address _engagementRewards
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         refiTreasury = _refiTreasury;
         mujeresCarmen = _mujeresCarmen;
         poolLoginWallet = _poolLoginWallet;
         biotaProductoresPool = _biotaProductoresPool;
+        engagementRewards = _engagementRewards;
         emit RutasDePagoActualizadas(_refiTreasury, _mujeresCarmen, _poolLoginWallet, _biotaProductoresPool);
     }
 
