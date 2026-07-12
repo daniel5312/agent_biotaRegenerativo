@@ -64,6 +64,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   // 2. Consumir el Estado Global (WalletConnect y Superfluid)
   const { 
     ubiAddress, 
+    ubiProvider,
     handleConnectUBI, 
     disconnectUBI, 
     stream, 
@@ -83,37 +84,90 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   const hasGoodDollarFunds = !!ubiAddress && ubiBalances.gd > 0n;
   const isHumanVerified = identity.hasValidIdentity || hasGoodDollarFunds;
 
-  // 5. Hook de UBI Claim — checkEntitlement + claim real
+  // 5. Hook de UBI Claim — checkEntitlement + refetch (el claim real usa ubiProvider abajo)
   const {
     entitlementFormatted,
     canClaim,
-    isClaiming,
-    claimUBI,
     claimConfirmed,
     isLoading: loadingClaim,
     refetchEntitlement,
   } = useUBIClaim(identity.whitelistedRoot as `0x${string}`, identity.whitelistedRoot)
 
-  // 6. Temporizador Simulado (24h) para UX de Reclamo
+  // 6. Lógica REAL de Claim UBI via WalletConnect (msg.sender = GoodWallet)
+  const [isClaiming, setIsClaiming] = React.useState(false);
   const [timeLeft, setTimeLeft] = React.useState<number>(0);
-  const [localCanClaim, setLocalCanClaim] = React.useState<boolean>(true);
+  
+  // GoodDollar resetea el pool diario exactamente a las 12:00 PM (Mediodía) UTC.
+  // Esta función sincroniza el reloj exactamente con el de la GoodWallet oficial.
+  const getMsUntilNextUBICycle = () => {
+    const now = new Date();
+    const nextCycle = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      12, 0, 0, 0 // 12:00 PM UTC
+    ));
+    
+    // Si ya pasaron las 12:00 PM UTC de hoy, el próximo ciclo es mañana a las 12:00 PM
+    if (now.getTime() >= nextCycle.getTime()) {
+      nextCycle.setUTCDate(nextCycle.getUTCDate() + 1);
+    }
+    
+    return nextCycle.getTime() - now.getTime();
+  };
 
+  // El estado real de si puede reclamar viene del on-chain checkEntitlement (canClaim del hook)
+  // Si canClaim es false, ya reclamó hoy y mostramos el contador real hasta las 12 PM UTC.
   React.useEffect(() => {
-    if (!localCanClaim) {
-      const targetTime = Date.now() + 24 * 60 * 60 * 1000;
+    if (!canClaim) {
+      // Arrancar el contador con el tiempo real hasta las 12 PM UTC
       const interval = setInterval(() => {
-        const remaining = targetTime - Date.now();
+        const remaining = getMsUntilNextUBICycle();
+        setTimeLeft(remaining);
         if (remaining <= 0) {
-          setTimeLeft(0);
-          setLocalCanClaim(true);
+          // Ya es el nuevo ciclo: refrescar entitlement
+          refetchEntitlement();
           clearInterval(interval);
-        } else {
-          setTimeLeft(remaining);
         }
       }, 1000);
+      // Poner el valor inicial inmediatamente
+      setTimeLeft(getMsUntilNextUBICycle());
       return () => clearInterval(interval);
     }
-  }, [localCanClaim]);
+  }, [canClaim, refetchEntitlement]);
+
+  const handleClaimUBI = React.useCallback(async () => {
+    if (!ubiAddress || !ubiProvider) {
+      toast({ title: '❌ GoodWallet no conectada', description: 'Conecta tu GoodWallet primero.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setIsClaiming(true);
+      toast({ title: '🌱 Reclamando UBI...', description: 'Firma en tu GoodWallet para recibir G$.' });
+
+      // Encodear la llamada claim() — sin argumentos
+      const claimCalldata = '0x4e71d92d'; // keccak256('claim()') slice
+
+      const txHash = await ubiProvider.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: ubiAddress,
+          to: '0x43d72Ff17701B2DA814620735C39C620Ce0ea4A1', // UBIScheme Celo Mainnet
+          data: claimCalldata,
+          chainId: '0xa4ec', // 42220 en hex
+        }],
+      });
+
+      toast({ title: '⏳ Confirmando...', description: `TX: ${String(txHash).slice(0, 12)}...` });
+      setTimeout(() => refetchEntitlement(), 5000);
+      toast({ title: '🎉 ¡UBI Reclamado!', description: 'G$ depositados en tu GoodWallet.' });
+    } catch (e: any) {
+      const msg = e?.message?.slice(0, 100) || 'Error al reclamar';
+      toast({ title: '❌ Error', description: msg, variant: 'destructive' });
+    } finally {
+      setIsClaiming(false);
+    }
+  }, [ubiAddress, ubiProvider, toast, refetchEntitlement]);
 
   const formatTime = (ms: number) => {
     if (ms <= 0) return "00:00:00";
@@ -260,27 +314,23 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
             {/* Acciones: Claim UBI o Botón Superfluid */}
             <div className="space-y-3">
 
-              {/* NUEVO: Botón Prominente de Reclamo UBI */}
+              {/* Botón Prominente de Reclamo UBI — estado real on-chain */}
               {isHumanVerified && (
                 <Button
-                  disabled={!localCanClaim}
-                  onClick={() => {
-                    console.log("Iniciando reclamo de UBI en GoodDollar...");
-                    setLocalCanClaim(false);
-                    setTimeLeft(24 * 60 * 60 * 1000);
-                  }}
+                  disabled={!canClaim || isClaiming || !ubiAddress}
+                  onClick={handleClaimUBI}
                   className={`w-full h-14 rounded-2xl text-white font-black uppercase tracking-widest shadow-lg transition-all ${
-                    localCanClaim ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/30" : "bg-stone-300 dark:bg-stone-800 text-stone-500 cursor-not-allowed"
+                    canClaim && !isClaiming && ubiAddress
+                      ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/30"
+                      : "bg-stone-300 dark:bg-stone-800 text-stone-500 cursor-not-allowed"
                   }`}
                 >
-                  {localCanClaim ? (
-                    <>
-                      <RefreshCw className="mr-2" size={16} /> Reclamar UBI Diario
-                    </>
+                  {isClaiming ? (
+                    <><Loader2 className="mr-2 animate-spin" size={16} /> Firmando en GoodWallet...</>
+                  ) : canClaim ? (
+                    <><RefreshCw className="mr-2" size={16} /> Reclamar UBI Diario {entitlementFormatted !== '0.00' ? `(${entitlementFormatted} G$)` : ''}</>
                   ) : (
-                    <>
-                      <Clock className="mr-2" size={16} /> Próximo UBI en: {formatTime(timeLeft)}
-                    </>
+                    <><Clock className="mr-2" size={16} /> Próximo UBI en: {formatTime(timeLeft)}</>
                   )}
                 </Button>
               )}
