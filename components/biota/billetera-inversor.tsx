@@ -15,6 +15,7 @@ import { ADDRESSES, ERC20_ABI } from "@/lib/contracts";
 import { IdentityAction } from "./IdentityAction";
 import { BovedaInversor } from "./boveda-inversor";
 import { PrestamosAave } from "./prestamos-aave";
+import { KoyweOnramp } from "./KoyweOnramp";
 
 export function BilleteraInversor() {
   const { address } = useAccount();
@@ -78,13 +79,17 @@ export function BilleteraInversor() {
             {celoBalance}
           </p>
         </Card>
-        <Card className="bg-white/5 border-white/5 p-6 rounded-3xl">
-          <p className="text-[10px] font-black uppercase text-stone-500 flex items-center gap-1">
-            <Coins className="w-3 h-3" /> cUSD
-          </p>
-          <p className="text-3xl font-black text-emerald-500 font-mono">
-            {cUSDBalance}
-          </p>
+        <Card className="bg-white/5 border-white/5 p-6 rounded-3xl flex flex-col justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase text-stone-500 flex items-center gap-1">
+              <Coins className="w-3 h-3" /> cUSD
+            </p>
+            <p className="text-3xl font-black text-emerald-500 font-mono mb-4">
+              {cUSDBalance}
+            </p>
+          </div>
+          {/* Botón de Recarga COP a cUSD */}
+          <KoyweOnramp />
         </Card>
       </div>
 
