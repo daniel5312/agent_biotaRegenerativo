@@ -283,8 +283,7 @@ export default function Page() {
     return () => window.removeEventListener("biota-role-selected", handleRoleUpdate);
   }, []);
 
-  // [NAVEGACIÓN] Escucha el evento global "switch-tab" que emiten los componentes hijos
-  // para cambiar de pestaña de forma programática sin prop-drilling.
+  // [NAVEGACIÓN] Escucha eventos globales para cambiar de pestaña
   useEffect(() => {
     const handleSwitchTab = (e: any) => {
       if (e.detail && typeof e.detail === "string") {

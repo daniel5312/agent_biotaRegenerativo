@@ -19,7 +19,6 @@ export default function ChatInterface() {
   const { chats, isLoading, sendMessage } = useAgent();
   const [input, setInput] = useState("");
   const [selectedRole, setSelectedRole] = useState("CAPATAZ");
-  
   const messages = chats[selectedRole] || [];
 
   const handleSend = async () => {
