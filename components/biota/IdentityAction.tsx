@@ -84,21 +84,20 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   const hasGoodDollarFunds = !!ubiAddress && ubiBalances.gd > 0n;
   const isHumanVerified = identity.hasValidIdentity || hasGoodDollarFunds;
 
-  // 5. Hook de UBI Claim — checkEntitlement + refetch (el claim real usa ubiProvider abajo)
+  // 5. Hook de UBI Claim — usamos ubiAddress (la GoodWallet conectada) como prioridad, fallback a la identidad
   const {
     entitlementFormatted,
     canClaim,
     claimConfirmed,
     isLoading: loadingClaim,
     refetchEntitlement,
-  } = useUBIClaim(identity.whitelistedRoot as `0x${string}`, identity.whitelistedRoot)
+  } = useUBIClaim(ubiAddress || (identity.whitelistedRoot as `0x${string}`), identity.whitelistedRoot)
 
   // 6. Lógica REAL de Claim UBI via WalletConnect (msg.sender = GoodWallet)
   const [isClaiming, setIsClaiming] = React.useState(false);
   const [timeLeft, setTimeLeft] = React.useState<number>(0);
   
   // GoodDollar resetea el pool diario exactamente a las 12:00 PM (Mediodía) UTC.
-  // Esta función sincroniza el reloj exactamente con el de la GoodWallet oficial.
   const getMsUntilNextUBICycle = () => {
     const now = new Date();
     const nextCycle = new Date(Date.UTC(
@@ -116,22 +115,26 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
     return nextCycle.getTime() - now.getTime();
   };
 
-  // El estado real de si puede reclamar viene del on-chain checkEntitlement (canClaim del hook)
-  // Si canClaim es false, ya reclamó hoy y mostramos el contador real hasta las 12 PM UTC.
+  // Efecto para el contador y refresco automático
   React.useEffect(() => {
     if (!canClaim) {
-      // Arrancar el contador con el tiempo real hasta las 12 PM UTC
+      // Poner el valor inicial
+      setTimeLeft(getMsUntilNextUBICycle());
+      
       const interval = setInterval(() => {
         const remaining = getMsUntilNextUBICycle();
-        setTimeLeft(remaining);
-        if (remaining <= 0) {
-          // Ya es el nuevo ciclo: refrescar entitlement
-          refetchEntitlement();
-          clearInterval(interval);
-        }
+        
+        // Si el tiempo restante de repente salta a casi 24 horas (cruzó el mediodía UTC)
+        // o estamos a menos de 5 segundos de la meta, forzamos refetch.
+        setTimeLeft((prev) => {
+          if (prev < 10000 && remaining > 80000000) {
+            console.log("¡Ciclo de GoodDollar reseteado! Verificando nuevos fondos...");
+            refetchEntitlement();
+          }
+          return remaining;
+        });
+        
       }, 1000);
-      // Poner el valor inicial inmediatamente
-      setTimeLeft(getMsUntilNextUBICycle());
       return () => clearInterval(interval);
     }
   }, [canClaim, refetchEntitlement]);
