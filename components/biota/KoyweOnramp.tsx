@@ -7,6 +7,8 @@ import { useAccount } from 'wagmi';
 
 export function KoyweOnramp() {
   const [isOpen, setIsOpen] = useState(false);
+  const [secureUrl, setSecureUrl] = useState<string | null>(null);
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
   const { address } = useAccount();
   const [isMiniPay, setIsMiniPay] = useState(false);
 
@@ -16,6 +18,31 @@ export function KoyweOnramp() {
       setIsMiniPay(true);
     }
   }, []);
+
+  const handleOpenTransak = async () => {
+    setIsOpen(true);
+    setIsLoadingUrl(true);
+    try {
+      const res = await fetch('/api/transak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address || '' })
+      });
+      const data = await res.json();
+      if (data.secureUrl) {
+        setSecureUrl(data.secureUrl);
+      } else {
+        console.error('Error fetching Transak URL:', data.error);
+        alert('Error conectando con Transak. Revisa la consola.');
+        setIsOpen(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setIsOpen(false);
+    } finally {
+      setIsLoadingUrl(false);
+    }
+  };
 
   // Si estamos en MiniPay, NO mostramos la pasarela, le decimos que use el botón nativo
   if (isMiniPay) {
@@ -30,11 +57,11 @@ export function KoyweOnramp() {
     );
   }
 
-  // Si NO estamos en MiniPay (Navegador normal, Chrome, Safari, etc) mostramos Transak en un Iframe Nativo (Cero Bugs de NPM)
+  // Si NO estamos en MiniPay (Navegador normal, Chrome, Safari, etc) mostramos Transak en un Iframe Nativo
   return (
     <>
       <Button 
-        onClick={() => setIsOpen(true)}
+        onClick={handleOpenTransak}
         className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-[10px] h-10 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 mt-4"
       >
         <ArrowDownToLine size={14} /> Recargar Pesos (Transak)
@@ -58,13 +85,17 @@ export function KoyweOnramp() {
               </button>
             </div>
 
-            {/* Iframe Nativo de Transak (A prueba de balas) */}
-            <div className="flex-1 w-full h-full bg-white">
-              <iframe 
-                src={`https://global-stg.transak.com/?apiKey=1dfcc7a1-ff51-4148-be26-5b48ce105d15&environment=STAGING&cryptoCurrencyCode=CUSD&fiatCurrency=COP&network=celo&walletAddress=${address || ''}&themeColor=10b981`}
-                className="w-full h-full border-0"
-                allow="camera; microphone; payment"
-              />
+            {/* Iframe Nativo de Transak */}
+            <div className="flex-1 w-full h-full bg-white flex items-center justify-center">
+              {isLoadingUrl ? (
+                <div className="text-stone-500 font-bold text-sm animate-pulse">Generando conexión segura con el banco...</div>
+              ) : secureUrl ? (
+                <iframe 
+                  src={secureUrl}
+                  className="w-full h-full border-0"
+                  allow="camera; microphone; payment"
+                />
+              ) : null}
             </div>
 
           </div>
