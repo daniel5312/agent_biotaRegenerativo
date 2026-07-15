@@ -44,7 +44,8 @@ export async function POST(req: Request) {
       headers: {
         'Content-Type': 'application/json',
         'access-token': accessToken,
-        'Authorization': `Bearer ${accessToken}`
+        'x-api-key': apiKey,
+        'x-user-ip': '127.0.0.1' // El IP del usuario final
       },
       body: JSON.stringify({
         widgetParams: {
