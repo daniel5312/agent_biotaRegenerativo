@@ -19,29 +19,16 @@ export function KoyweOnramp() {
     }
   }, []);
 
-  const handleOpenTransak = async () => {
-    setIsOpen(true);
-    setIsLoadingUrl(true);
-    try {
-      const res = await fetch('/api/transak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: address || '' })
-      });
-      const data = await res.json();
-      if (data.secureUrl) {
-        setSecureUrl(data.secureUrl);
-      } else {
-        console.error('Error fetching Transak URL:', data.error);
-        alert('Error conectando con Transak. Revisa la consola.');
-        setIsOpen(false);
-      }
-    } catch (e) {
-      console.error(e);
-      setIsOpen(false);
-    } finally {
-      setIsLoadingUrl(false);
-    }
+  const handleOpenFiat = () => {
+    // Agregador global de pasarelas (Tarjetas/Bancos)
+    const onrampUrl = `https://buy.onramper.com/?defaultCrypto=CUSD&networkWallets=CELO:${address || ''}`;
+    window.open(onrampUrl, '_blank');
+  };
+
+  const handleOpenSquid = () => {
+    // Intercambio Web3 puro (Cross-chain)
+    const squidUrl = `https://app.squidrouter.com/?chains=137%2C42220`;
+    window.open(squidUrl, '_blank');
   };
 
   // Si estamos en MiniPay, NO mostramos la pasarela, le decimos que use el botón nativo
@@ -57,50 +44,22 @@ export function KoyweOnramp() {
     );
   }
 
-  // Si NO estamos en MiniPay (Navegador normal, Chrome, Safari, etc) mostramos Transak en un Iframe Nativo
+  // Si NO estamos en MiniPay, mostramos ambas opciones (Fiat y Web3)
   return (
-    <>
+    <div className="grid grid-cols-2 gap-2 mt-4">
       <Button 
-        onClick={handleOpenTransak}
-        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-[10px] h-10 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 mt-4"
+        onClick={handleOpenFiat}
+        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-tighter text-[9px] h-10 rounded-xl flex items-center justify-center gap-1 shadow-lg shadow-blue-500/20"
       >
-        <ArrowDownToLine size={14} /> Recargar Pesos (Transak)
+        <CreditCard size={12} /> Comprar (Tarjeta)
       </Button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-stone-900 rounded-3xl w-full max-w-md overflow-hidden border border-white/10 shadow-2xl relative flex flex-col animate-in zoom-in-95 duration-300 h-[85vh] max-h-[750px]">
-            
-            {/* Header del Modal */}
-            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-stone-950">
-              <div className="flex items-center gap-2 text-white">
-                <CreditCard size={18} className="text-blue-500" />
-                <span className="font-black uppercase tracking-widest text-xs">Transak - Comprar cUSD</span>
-              </div>
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-stone-400 hover:text-white transition-all"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Iframe Nativo de Transak */}
-            <div className="flex-1 w-full h-full bg-white flex items-center justify-center">
-              {isLoadingUrl ? (
-                <div className="text-stone-500 font-bold text-sm animate-pulse">Generando conexión segura con el banco...</div>
-              ) : secureUrl ? (
-                <iframe 
-                  src={secureUrl}
-                  className="w-full h-full border-0"
-                  allow="camera; microphone; payment"
-                />
-              ) : null}
-            </div>
-
-          </div>
-        </div>
-      )}
-    </>
+      <Button 
+        onClick={handleOpenSquid}
+        className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-tighter text-[9px] h-10 rounded-xl flex items-center justify-center gap-1 shadow-lg shadow-purple-500/20"
+      >
+        <ArrowDownToLine size={12} /> Traer Cripto (Web3)
+      </Button>
+    </div>
   );
 }
