@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { TabId } from "@/app/page";
 import {
   Leaf,
@@ -16,10 +16,12 @@ import {
   Wallet,
   LogOut,
   Shield,
+  Copy,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePrivy } from "@privy-io/react-auth";
-import { useConnection } from "wagmi";
+import { useConnection, useBalance } from "wagmi";
+import { useToast } from "@/hooks/use-toast";
 
 interface AppShellProps {
   children: ReactNode;
@@ -61,8 +63,55 @@ export function AppShell({
   const { theme, setTheme } = useTheme();
   const { logout, authenticated } = usePrivy();
   const { address } = useConnection();
+  const { data: celoBalance, refetch: refetchBalance } = useBalance({ address });
   const [mounted, setMounted] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
+  const { toast } = useToast();
+  const isFunding = useRef(false);
+
+  // Auto-fondeo al conectarse
+  useEffect(() => {
+    const autoFund = async () => {
+      // 0.05 CELO threshold
+      const MIN_BALANCE = 50000000000000000n; 
+      
+      if (authenticated && address && celoBalance && !isFunding.current) {
+        if (celoBalance.value < MIN_BALANCE) {
+          isFunding.current = true;
+          try {
+            const res = await fetch("/api/faucet", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ address })
+            });
+            const data = await res.json();
+            if (data.success) {
+              toast({
+                title: "🤖 Biota Agent",
+                description: "Hemos fondeado tu billetera con gas (CELO) para que reclames tu UBI sin fricción.",
+                duration: 6000
+              });
+              refetchBalance();
+            }
+          } catch (error) {
+            console.error("Error en auto-fondeo:", error);
+          } finally {
+            // Permitimos reintentar si en otra ocasión recarga
+            setTimeout(() => { isFunding.current = false }, 10000);
+          }
+        }
+      }
+    };
+    autoFund();
+  }, [authenticated, address, celoBalance, toast, refetchBalance]);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (address && typeof window !== "undefined") {
+      navigator.clipboard.writeText(address);
+      toast({ title: '✅ Copiado', description: 'Dirección copiada.' });
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -149,19 +198,26 @@ export function AppShell({
 
                 {/* Wallet / MiniPay Status */}
                 {authenticated ? (
-                  <button
-                    onClick={() => logout()}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-500/40 dark:animate-glow-border transition-theme group"
-                  >
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-500/40 dark:animate-glow-border transition-theme">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-lg"></span>
                     </span>
-                    <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 tracking-wide">
-                      {address?.slice(0, 6)}...
-                    </span>
-                    <LogOut className="w-3 h-3 text-emerald-600 dark:text-emerald-300 group-hover:text-red-500 transition-colors" />
-                  </button>
+                    <button 
+                      onClick={handleCopy}
+                      className="flex items-center gap-1 hover:text-emerald-500 transition-colors"
+                      title="Copiar dirección"
+                    >
+                      <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 tracking-wide">
+                        {address?.slice(0, 6)}...
+                      </span>
+                      <Copy size={9} className="text-emerald-600 dark:text-emerald-400 opacity-70" />
+                    </button>
+                    <div className="w-px h-3 bg-emerald-300 dark:bg-emerald-700 mx-1" />
+                    <button onClick={() => logout()} title="Desconectar" className="group">
+                      <LogOut className="w-3 h-3 text-emerald-600 dark:text-emerald-300 group-hover:text-red-500 transition-colors" />
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-500/40">
                     <Wallet className="w-3 h-3 text-emerald-600 dark:text-emerald-300" />
