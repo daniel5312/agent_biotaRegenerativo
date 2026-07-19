@@ -14,7 +14,8 @@ import {
   TrendingUp,
   Droplets,
   Sprout,
-  ArrowRight
+  ArrowRight,
+  Copy
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -57,6 +58,13 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   const { user } = usePrivy()
   const { address: activeAddress } = useAccount()
   const { toast } = useToast()
+
+  const handleCopy = (text: string, label: string) => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(text)
+      toast({ title: '✅ Copiado', description: `Dirección de ${label} copiada.` })
+    }
+  }
   
   // 1. Identificar Billetera A (Login - Dinámica)
   const primaryAddress = activeAddress as `0x${string}`
@@ -185,12 +193,25 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
       {/* ── BOLSILLO 1: BILLETERA OPERATIVA (MiniPay) ── */}
       <section className="space-y-3">
-        <Card className="bg-gradient-to-br from-emerald-900 to-emerald-950 text-white shadow-xl shadow-emerald-900/20 rounded-[2.5rem] overflow-hidden border-emerald-800">
+        <Card className="bg-stone-900 text-stone-300 shadow-sm rounded-[2.5rem] overflow-hidden border-stone-800">
           <CardContent className="p-6">
             <div className="flex justify-between items-center mb-6">
-              <Badge variant="outline" className="border-emerald-700/50 text-emerald-400 bg-emerald-950/50 uppercase tracking-widest text-[9px] font-black">
-                MiniPay Operativa
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="border-stone-700 text-stone-400 bg-stone-950/50 uppercase tracking-widest text-[9px] font-black">
+                  MiniPay Operativa
+                </Badge>
+                {activeAddress && (
+                  <div 
+                    onClick={() => handleCopy(activeAddress, 'MiniPay')}
+                    className="flex items-center gap-1 cursor-pointer hover:text-emerald-400 transition-colors bg-black/20 px-2 py-0.5 rounded-md border border-stone-800"
+                  >
+                    <span className="text-[9px] font-mono opacity-70">
+                      {activeAddress.slice(0, 6)}...{activeAddress.slice(-4)}
+                    </span>
+                    <Copy size={10} className="opacity-50" />
+                  </div>
+                )}
+              </div>
               <Wallet size={16} className="text-emerald-500" />
             </div>
             
@@ -231,9 +252,15 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
               Bolsillo de Impacto (UBI)
             </h4>
             {ubiAddress && (
-              <span className="text-[7px] text-blue-500 font-mono opacity-60">
-                {ubiAddress.slice(0, 6)}...{ubiAddress.slice(-4)}
-              </span>
+              <div 
+                onClick={() => handleCopy(ubiAddress, 'GoodWallet')}
+                className="flex items-center gap-1 cursor-pointer hover:text-blue-400 transition-colors mt-0.5 w-max bg-black/20 px-1.5 py-0.5 rounded-md"
+              >
+                <span className="text-[8px] text-blue-500 font-mono opacity-80">
+                  {ubiAddress.slice(0, 6)}...{ubiAddress.slice(-4)}
+                </span>
+                <Copy size={9} className="text-blue-500 opacity-60" />
+              </div>
             )}
           </div>
           {!ubiAddress ? (
@@ -255,13 +282,13 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
           )}
         </div>
 
-        <Card className="bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-900/10 dark:to-emerald-950/20 border-blue-100 dark:border-blue-500/20 shadow-xl shadow-blue-500/5 rounded-[2.5rem] overflow-hidden relative border-2">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-50" />
+        <Card className="bg-stone-950 border-stone-800 shadow-2xl rounded-[2.5rem] overflow-hidden relative border-2">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-stone-700 to-transparent opacity-50" />
           <CardContent className="p-8 text-center space-y-6">
 
             {/* Saldo Estático de la GoodWallet */}
-            <div className="flex flex-col items-center justify-center p-4 bg-blue-500/5 rounded-3xl border border-blue-500/10">
-              <span className="text-[10px] font-black text-blue-900/40 dark:text-blue-400/60 uppercase tracking-widest mb-1">
+            <div className="flex flex-col items-center justify-center p-4 bg-stone-900 rounded-3xl border border-stone-800">
+              <span className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-1">
                 Fondo GoodDollar Disponible
               </span>
               <h2 className="text-3xl font-black text-blue-600 dark:text-blue-400">
@@ -287,18 +314,18 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
             {/* Fila de Estado: Identidad + Refresh */}
             <div className="flex items-center gap-2">
               <div className={`flex-1 flex items-center gap-3 p-3 rounded-2xl border ${
-                isHumanVerified ? "bg-white/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-500/20" : "bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-500/20"
+                isHumanVerified ? "bg-stone-900 border-stone-800" : "bg-stone-900 border-amber-900/30"
               }`}>
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  isHumanVerified ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
+                  isHumanVerified ? "bg-stone-800 text-emerald-500" : "bg-amber-950/30 text-amber-500"
                 }`}>
                   {isHumanVerified ? <ShieldCheck size={16} /> : <AlertCircle size={16} />}
                 </div>
                 <div className="text-left flex-1 min-w-0">
-                  <p className="text-[9px] font-black uppercase text-blue-950 dark:text-blue-100 truncate">
+                  <p className="text-[9px] font-black uppercase text-stone-300 truncate">
                     {isHumanVerified ? "Humano Verificado" : "Identidad Pendiente"}
                   </p>
-                  <p className="text-[8px] text-blue-900/50 dark:text-blue-400/50 uppercase font-bold tracking-tighter">
+                  <p className="text-[8px] text-stone-500 uppercase font-bold tracking-tighter">
                     {isHumanVerified ? "Acceso Total al UBI" : "Verifica tu rostro"}
                   </p>
                 </div>
@@ -308,7 +335,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
               <div 
                 role="button"
                 onClick={() => refetchEntitlement()}
-                className="w-12 h-12 rounded-2xl bg-white dark:bg-emerald-950/40 border-2 border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-blue-500 hover:bg-blue-50 transition-all active:scale-90 cursor-pointer"
+                className="w-12 h-12 rounded-2xl bg-stone-900 border-2 border-stone-800 flex items-center justify-center text-stone-400 hover:text-white hover:bg-stone-800 transition-all active:scale-90 cursor-pointer"
               >
                 <RefreshCw className={`w-5 h-5 ${loadingClaim ? 'animate-spin' : ''}`} />
               </div>
