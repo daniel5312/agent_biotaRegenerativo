@@ -45,8 +45,8 @@ const products = [
     id: 1,
     name: "Café Especial Finca La Nube",
     origin: "Productor: Don Arturo",
-    price: 10, // 0.01 cUSD
-    defiPortion: 4, // 0.004 cUSD
+    price: 2000, // 2 G$
+    defiPortion: 800, // 0.8 G$
     rating: 5.0,
     verified: true,
     stock: 24,
@@ -59,8 +59,8 @@ const products = [
     id: 2,
     name: "Cacao Fino de Aroma (500g)",
     origin: "Productora: María",
-    price: 1, // 0.001 cUSD
-    defiPortion: 0.4,
+    price: 2000, // 2 G$
+    defiPortion: 800,
     rating: 4.8,
     verified: true,
     stock: 15,
@@ -73,8 +73,8 @@ const products = [
     id: 3,
     name: "Miel Melipona Pura",
     origin: "Comunidad El Carmen",
-    price: 2, // 0.002 cUSD
-    defiPortion: 0.8,
+    price: 2000, // 2 G$
+    defiPortion: 800,
     rating: 4.9,
     verified: true,
     stock: 10,
@@ -87,8 +87,8 @@ const products = [
     id: 4,
     name: "Edición Biota: Café Geisha",
     origin: "Reserva Biota",
-    price: 5, // 0.005 cUSD
-    defiPortion: 2,
+    price: 2000, // 2 G$
+    defiPortion: 800,
     rating: 5.0,
     verified: true,
     stock: 5,
@@ -101,8 +101,8 @@ const products = [
     id: 5,
     name: "Kit Bocashi Biota (1kg)",
     origin: "Insumos DApp",
-    price: 10, // 0.01 cUSD
-    defiPortion: 4,
+    price: 2000, // 2 G$
+    defiPortion: 800,
     rating: 5.0,
     verified: true,
     stock: 50,
@@ -115,8 +115,8 @@ const products = [
     id: 6,
     name: "Consultoría Agroecológica (1h)",
     origin: "Servicios DApp",
-    price: 10, // 0.01 cUSD
-    defiPortion: 4,
+    price: 2000, // 2 G$
+    defiPortion: 800,
     rating: 5.0,
     verified: true,
     stock: 100,
@@ -138,7 +138,7 @@ const currencies = [
 export function MercadoView() {
   const { address } = useConnection();
   const [cart, setCart] = useState<Record<number, number>>({});
-  const [selectedCurrency, setSelectedCurrency] = useState("cUSD");
+  const [selectedCurrency, setSelectedCurrency] = useState("G$");
   const [paid, setPaid] = useState(false);
   const [successTx, setSuccessTx] = useState<{ hash: string; amount: string; currency: string } | null>(null);
   // [refi] estado local para mostrar u ocultar el panel de metadata del nft rwa de un producto
@@ -405,7 +405,7 @@ export function MercadoView() {
                   </h3>
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-emerald-950 dark:text-white font-mono">
-                      {(product.price * 0.001).toFixed(2)} <span className="text-[7px]">cUSD</span>
+                      {(product.price * 0.001).toFixed(2)} <span className="text-[7px]">{selectedCurrency}</span>
                     </span>
                     <span className="text-[8px] text-emerald-700 dark:text-emerald-400 mt-0.5 bg-emerald-100 dark:bg-emerald-900/50 px-1 py-0.5 rounded-sm w-fit">
                       Goteo DeFi: {(product.defiPortion * 0.001).toFixed(2)} {selectedCurrency}
