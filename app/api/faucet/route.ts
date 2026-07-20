@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createWalletClient, http, parseEther, publicActions } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
+import { ADDRESSES, ERC20_ABI } from '@/lib/contracts';
 
 export async function POST(req: Request) {
     try {
@@ -29,20 +30,29 @@ export async function POST(req: Request) {
 
         console.log(`[FAUCET] Iniciando fondeo automático a ${address}...`);
 
-        // Enviar 0.1 CELO (1 CELO dividido entre 10 usuarios)
+        // 1. Enviar 0.1 CELO (Gas)
         const amountToFunde = "0.1";
-        
-        const hash = await client.sendTransaction({
+        const hashCelo = await client.sendTransaction({
             to: address as `0x${string}`,
             value: parseEther(amountToFunde),
         });
+        console.log(`[FAUCET] ✅ CELO enviado. Hash: ${hashCelo}`);
 
-        console.log(`[FAUCET] ✅ Fondeo exitoso. Hash: ${hash}`);
+        // 2. Enviar 10 G$ (Bono Semilla de Bienvenida)
+        const amountGD = "10";
+        const hashGD = await client.writeContract({
+            address: ADDRESSES['G$'],
+            abi: ERC20_ABI,
+            functionName: 'transfer',
+            args: [address as `0x${string}`, parseEther(amountGD)]
+        });
+        console.log(`[FAUCET] ✅ G$ enviado. Hash: ${hashGD}`);
 
         return NextResponse.json({
             success: true,
-            hash: hash,
-            message: `Fondeo de ${amountToFunde} CELO completado exitosamente.`
+            hashCelo: hashCelo,
+            hashGD: hashGD,
+            message: `Fondeo de ${amountToFunde} CELO y bono de ${amountGD} G$ completado exitosamente.`
         });
 
     } catch (error: any) {
