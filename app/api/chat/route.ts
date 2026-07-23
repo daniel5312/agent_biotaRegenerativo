@@ -9,7 +9,10 @@ import {
     iotDataTool,
     weatherPredictionTool,
     executeIoTData,
-    executeWeatherPrediction
+    executeWeatherPrediction,
+    // [REFI] Herramienta del Sprint 1: cierra el ciclo dMRV on-chain
+    validarImpactoTool,
+    executeValidarImpacto,
 } from '@/lib/agents/tools';
 
 export const maxDuration = 60;
@@ -157,6 +160,28 @@ export async function POST(req: Request) {
                             },
                             required: ['ph', 'materiaOrganica', 'biodiversidad', 'laborEjecutada']
                         }
+                    },
+                    // [REFI] SPRINT 1 — Herramienta del cierre del ciclo dMRV
+                    // Cuando Gemini detecta que el análisis es APROBADO y hay un tokenId
+                    // en sessionMetadata, invoca esta herramienta para:
+                    //   1. Subir el reporte dMRV a IPFS (todos los tipos de acción climática)
+                    //   2. Llamar validarImpacto(tokenId) en BiotaPassport on-chain
+                    // Requiere: tokenId del campesino en sessionMetadata
+                    {
+                        name: validarImpactoTool.name,
+                        description: validarImpactoTool.description,
+                        parametersJsonSchema: {
+                            type: 'object',
+                            properties: {
+                                tokenId: { type: 'number', description: 'ID del BiotaPassport NFT del campesino' },
+                                farmerWallet: { type: 'string', description: 'Dirección de la billetera del campesino (0x...)' },
+                                ubicacion: { type: 'string', description: 'Nombre de la finca o vereda' },
+                                bioScore: { type: 'number', description: 'Puntaje biológico del análisis (0-100)' },
+                                analisisTexto: { type: 'string', description: 'Resumen completo del veredicto emitido' },
+                                cmSueloNuevo: { type: 'number', description: 'Centímetros de suelo recuperado (0 si no aplica)' },
+                            },
+                            required: ['tokenId', 'farmerWallet', 'bioScore', 'analisisTexto']
+                        }
                     }
                 ]
             }
@@ -167,10 +192,9 @@ export async function POST(req: Request) {
             systemInstruction: systemInstructionText,
         };
 
-        // Solo le damos herramientas a los agentes que actúan on-chain para no confundir al modelo de Visión
-        if (agentRole !== 'ANALISTA_CROMA' && agentRole !== 'ANALISTA_LAB') {
-            config.tools = tools;
-        }
+        // Todos los agentes tienen acceso a las herramientas.
+        // Sus prompts dictaminan cuáles deben o no deben usar.
+        config.tools = tools;
 
         const responseStream = await ai.models.generateContentStream({
             model: modelId,
@@ -204,8 +228,22 @@ export async function POST(req: Request) {
                                 if (call.name === 'distribute_escrow_funds') result = await executeEscrowDistribution(call.args as any);
                                 if (call.name === 'get_iot_data') result = await executeIoTData(call.args as any);
                                 if (call.name === 'get_weather_prediction') result = await executeWeatherPrediction(call.args as any);
+                                // [REFI] SPRINT 1 — Cierre del ciclo dMRV
+                                // El Oráculo invoca esta herramienta cuando su veredicto es APROBADO.
+                                // Sube el reporte a IPFS y firma validarImpacto() on-chain.
+                                if (call.name === 'validate_biota_passport') {
+                                    // [SEGURIDAD] Inyectamos el tokenId y wallet desde sessionMetadata
+                                    // si Gemini no los infirió del contexto (fallback seguro)
+                                    const vArgs = call.args as any;
+                                    if (!vArgs.tokenId && sessionMetadata?.tokenId) {
+                                        vArgs.tokenId = Number(sessionMetadata.tokenId);
+                                    }
+                                    if (!vArgs.farmerWallet && sessionMetadata?.address) {
+                                        vArgs.farmerWallet = sessionMetadata.address;
+                                    }
+                                    result = await executeValidarImpacto(vArgs);
+                                }
 
-                                // Feedback visual en lenguaje natural (sin JSON)
                                 let mensajeCampesino = "";
                                 if (call.name === 'mint_biota_passport') {
                                     mensajeCampesino = `\n🌱 ¡Listo! He creado tu Pasaporte Biológico Oficial en la blockchain.\n\n`;
@@ -213,6 +251,18 @@ export async function POST(req: Request) {
                                     mensajeCampesino = `\n💧 ¡Excelente trabajo! He certificado tu labor y hemos liberado tu incentivo económico.\n\n`;
                                 } else if (call.name === 'distribute_escrow_funds') {
                                     mensajeCampesino = `\n🚨 ¡Alerta de Emergencia! He detectado condiciones críticas. Hemos liberado y enviado un fondo de apoyo a tu billetera para ayudarte a superar la sequía.\n\n`;
+                                } else if (call.name === 'validate_biota_passport') {
+                                    // [REFI] Mensaje especial para el cierre del ciclo dMRV
+                                    const vResult = result as any;
+                                    if (vResult?.success) {
+                                        mensajeCampesino = `\n🏆 **¡IMPACTO CERTIFICADO ON-CHAIN!**\n`
+                                            + `Tu Pasaporte Biológico #${vResult.tokenId} ha sido verificado en Celo Mainnet.\n`
+                                            + `📋 Acciones verificadas: ${vResult.tiposDeAccion?.join(', ')}\n`
+                                            + `💰 Recompensa estimada: **${vResult.totalRecompensaG$} G$**\n`
+                                            + `🔗 Reporte dMRV en IPFS: ${vResult.urlPublica}\n\n`;
+                                    } else {
+                                        mensajeCampesino = `\n⚠️ El impacto fue analizado pero no se pudo registrar on-chain automáticamente. Un verificador lo confirmará manualmente.\n\n`;
+                                    }
                                 } else if (call.name === 'get_iot_data' || call.name === 'get_weather_prediction') {
                                     if (call.name === 'get_iot_data') mensajeCampesino = `\n📡 (Revisando los sensores de tu finca... La humedad está en 15.2%).\n`;
                                     if (call.name === 'get_weather_prediction') mensajeCampesino = `\n☁️ (Revisando el clima satelital... Temperatura 34°C, riesgo de sequía).\n`;
