@@ -32,12 +32,23 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [agentAction, setAgentAction] = useState<{ isMinting: boolean; txHash?: string } | null>(null);
 
   // 1. Preparar Metadatos de Sesión (Puente de Datos)
-  const getSessionMetadata = () => ({
-    address: address,
-    tokenId: tokenId ? Number(tokenId) : null,
-    isUbiActive: !!tokenId, // Simplificación: si tiene pasaporte, asumimos flujo
-    timestamp: Date.now()
-  });
+  const getSessionMetadata = () => {
+    let farmData = null;
+    try {
+      const stored = localStorage.getItem("biota_farm_data");
+      if (stored) farmData = JSON.parse(stored);
+    } catch (e) {
+      console.error("Error leyendo farm data", e);
+    }
+
+    return {
+      address: address,
+      tokenId: tokenId ? Number(tokenId) : null,
+      isUbiActive: !!tokenId, // Simplificación: si tiene pasaporte, asumimos flujo
+      timestamp: Date.now(),
+      farmData: farmData
+    };
+  };
 
   const sendMessage = async (text: string, agentRole: string, txHash?: string) => {
     try {

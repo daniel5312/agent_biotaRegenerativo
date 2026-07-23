@@ -21,7 +21,8 @@ import {
   Zap,
   Camera,
   Volume2,
-  Mic
+  Mic,
+  Lock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -39,42 +40,42 @@ const AGENTS = [
   { 
     id: "DIAGNOSTICO_AGROSOSTENIBLE",
     name: "Onboarding", 
-    role: "Guia Biota", 
+    role: "Guía Biota", 
     icon: UserCheck, 
     color: "from-emerald-500 to-teal-400",
-    prompt: "Hola agricultor, soy tu Guia Biota. ¿Estas listo para regenerar tu tierra?"
-  },
-  { 
-    id: "CAPATAZ",
-    name: "Capataz", 
-    role: "Gestion de Campo", 
-    icon: Shield, 
-    color: "from-green-600 to-emerald-400",
-    prompt: "Capataz en linea. Reportando estado de las parcelas..."
-  },
-  { 
-    id: "DANIEL_EXPERTO",
-    name: "D. Experto", 
-    role: "Agronomo IA", 
-    icon: Microscope, 
-    color: "from-lime-500 to-emerald-500",
-    prompt: "Analizando microbiologia del suelo. ¿Que observas hoy?"
-  },
-  { 
-    id: "ANALISTA_LAB",
-    name: "Laboratorio", 
-    role: "Analisis MM", 
-    icon: Beaker, 
-    color: "from-cyan-500 to-blue-400",
-    prompt: "Camara de laboratorio activa. Listo para procesar tu receta MM."
+    prompt: "Hola agricultor, soy tu Guía Biota. ¿Estás listo para iniciar?"
   },
   { 
     id: "ANALISTA_CROMA",
     name: "Croma", 
-    role: "Visualizacion", 
+    role: "Visualización", 
     icon: BarChart3, 
     color: "from-teal-600 to-lime-400",
-    prompt: "Escaner Croma listo. Sube la foto de tu analisis de suelo."
+    prompt: "Escáner Croma listo. Sube la foto de tu análisis."
+  },
+  { 
+    id: "ANALISTA_LAB",
+    name: "Laboratorio", 
+    role: "Análisis Suelo", 
+    icon: Beaker, 
+    color: "from-cyan-500 to-blue-400",
+    prompt: "Cámara de laboratorio activa. Listo para procesar y mintear tu Pasaporte."
+  },
+  { 
+    id: "DANIEL_EXPERTO",
+    name: "D. Experto", 
+    role: "Agrónomo IA", 
+    icon: Microscope, 
+    color: "from-lime-500 to-emerald-500",
+    prompt: "Analizando tu nuevo Pasaporte. ¿Listo para tu plan de acción?"
+  },
+  { 
+    id: "CAPATAZ",
+    name: "Capataz", 
+    role: "Gestión Campo", 
+    icon: Shield, 
+    color: "from-green-600 to-emerald-400",
+    prompt: "Capataz en línea. Listo para seguir el plan del Experto."
   },
 ]
 
@@ -96,6 +97,46 @@ export function AsesoriaView() {
   const [isListening, setIsListening] = useState(false)
   const [paidAgents, setPaidAgents] = useState<Record<string, string>>({})
   const recognitionRef = useRef<any>(null)
+  
+  const [onboardingStep, setOnboardingStep] = useState(1);
+
+  // 1. Restaurar paso desde localStorage
+  useEffect(() => {
+    const savedStep = localStorage.getItem("biota_onboarding_step");
+    if (savedStep) {
+      const parsed = Number(savedStep);
+      setOnboardingStep(parsed);
+      // Seleccionar automáticamente al agente correspondiente si queremos, pero lo dejamos en 0 (Onboarding)
+    }
+  }, []);
+
+  // 2. Lógica de avance del flujo (Heurística visual del chat)
+  useEffect(() => {
+    let newStep = onboardingStep;
+    
+    if (tokenId && newStep < 4) newStep = 4;
+    
+    // Si ha enviado varios mensajes al onboarding, abrimos Croma
+    if (newStep === 1 && (chats["DIAGNOSTICO_AGROSOSTENIBLE"]?.length || 0) >= 4) newStep = 2;
+    // Si ya envió foto a Croma, abrimos Lab
+    if (newStep === 2 && (chats["ANALISTA_CROMA"]?.length || 0) >= 2) newStep = 3;
+    // Si habló con el Experto, abrimos Capataz
+    if (newStep === 4 && (chats["DANIEL_EXPERTO"]?.length || 0) >= 2) newStep = 5;
+
+    if (newStep !== onboardingStep) {
+      setOnboardingStep(newStep);
+      localStorage.setItem("biota_onboarding_step", newStep.toString());
+    }
+  }, [chats, tokenId, onboardingStep]);
+
+  const isLocked = (agentId: string) => {
+    if (agentId === "DIAGNOSTICO_AGROSOSTENIBLE") return false;
+    if (agentId === "ANALISTA_CROMA") return onboardingStep < 2 && !tokenId;
+    if (agentId === "ANALISTA_LAB") return onboardingStep < 3 && !tokenId;
+    if (agentId === "DANIEL_EXPERTO") return !tokenId;
+    if (agentId === "CAPATAZ") return !tokenId || onboardingStep < 5;
+    return false;
+  }
 
   const toggleListening = () => {
     if (isListening) {
@@ -319,25 +360,36 @@ export function AsesoriaView() {
           )}
         </div>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar snap-x">
+        <div className="flex gap-3 overflow-x-auto pb-4 snap-x">
           {AGENTS.map((agent) => {
             const Icon = agent.icon
             const isSelected = selectedAgent.id === agent.id
+            const locked = isLocked(agent.id)
+            
             return (
               <button
                 key={agent.id}
-                onClick={() => selectAgent(agent)}
+                onClick={() => !locked && selectAgent(agent)}
+                disabled={locked}
                 className={`
                   relative min-w-[100px] snap-center flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300 border touch-active
-                  ${isSelected 
-                    ? `bg-gradient-to-br ${agent.color} border-white/30 shadow-lg glow-sm` 
-                    : "bg-white dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-600/30"
+                  ${locked ? 'opacity-60 grayscale cursor-not-allowed bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800' : 
+                    isSelected 
+                      ? `bg-gradient-to-br ${agent.color} border-white/30 shadow-lg glow-sm` 
+                      : "bg-white dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-600/30"
                   }
                 `}
               >
+                {locked && (
+                  <div className="absolute top-1.5 right-1.5 bg-stone-800 text-white rounded-full p-1 shadow-md">
+                    <Lock className="w-2.5 h-2.5" />
+                  </div>
+                )}
                 <div className={`
                   w-10 h-10 rounded-xl flex items-center justify-center shadow-md
-                  ${isSelected ? "bg-white/20" : `bg-gradient-to-br ${agent.color} text-white`}
+                  ${locked ? "bg-stone-300 dark:bg-stone-800 text-stone-500" :
+                    isSelected ? "bg-white/20" : `bg-gradient-to-br ${agent.color} text-white`
+                  }
                 `}>
                   <Icon className="w-5 h-5" />
                 </div>
