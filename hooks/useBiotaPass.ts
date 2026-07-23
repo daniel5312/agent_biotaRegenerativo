@@ -97,9 +97,12 @@ export function useBiotaPass(): BiotaPassState {
     query:        { enabled: isConnected && !!address },
   })
 
+  // [GOODDOLLAR] G$ tiene 2 decimales en Celo (no 18 como ETH/CELO).
+  // rawGlowBalance viene en unidades mínimas (ej: 1000 = 10.00 G$).
+  // Dividimos entre 1e2 (100) para obtener el valor legible: 1000 / 100 = 10.00 G$
   const gDollarBalance = rawGlowBalance 
-    ? (Number(rawGlowBalance as bigint) / 1e18).toLocaleString() 
-    : '0';
+    ? (Number(rawGlowBalance as bigint) / 1e2).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+    : '0.00';
 
   const hasPassport = !!balance && (balance as bigint) > 0n
 
