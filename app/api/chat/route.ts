@@ -218,7 +218,12 @@ export async function POST(req: Request) {
                                 console.log(`[ORACULO] Ejecutando Herramienta: ${call.name}`);
                                 let result: any;
 
-                                if (call.name === 'mint_biota_passport') result = await executeMintPassport(call.args as any);
+                                if (call.name === 'mint_biota_passport') {
+                                    // [CRITICAL FIX] El contrato inteligente mintea al msg.sender. 
+                                    // Si el Oráculo lo hace, el Oráculo se queda con el NFT.
+                                    // Por lo tanto, enviamos una señal al Frontend para que el usuario firme con su propia wallet.
+                                    result = { success: true };
+                                }
                                 if (call.name === 'execute_double_trigger') {
                                     const args = call.args as any;
                                     if (args.bioScore >= 100) args.bioScore = 60;
@@ -246,7 +251,7 @@ export async function POST(req: Request) {
 
                                 let mensajeCampesino = "";
                                 if (call.name === 'mint_biota_passport') {
-                                    mensajeCampesino = `\n🌱 ¡Listo! He creado tu Pasaporte Biológico Oficial en la blockchain.\n\n`;
+                                    mensajeCampesino = `\n[ACTION:MINT_PASSPORT]\n🌱 ¡Perfecto! He preparado todos tus datos. **Por favor, aprueba la transacción en tu billetera** que acaba de aparecer en tu pantalla para crear tu Pasaporte Biológico Oficial.\n\n`;
                                 } else if (call.name === 'execute_double_trigger') {
                                     mensajeCampesino = `\n💧 ¡Excelente trabajo! He certificado tu labor y hemos liberado tu incentivo económico.\n\n`;
                                 } else if (call.name === 'distribute_escrow_funds') {

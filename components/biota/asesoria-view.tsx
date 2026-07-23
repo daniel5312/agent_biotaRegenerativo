@@ -81,12 +81,12 @@ const AGENTS = [
 
 export function AsesoriaView() {
   const { address } = useConnection()
-  const { tokenId } = useBiotaPass()
+  const { tokenId, mintPassport } = useBiotaPass()
   const { writeContractAsync, isPending: isTriggering } = useWriteContract()
   const { sendTransactionAsync } = useSendTransaction()
   const { toast } = useToast()
 
-  const { chats, sendMessage, analizarImagen, isLoading } = useAgent()
+  const { chats, sendMessage, analizarImagen, isLoading, agentAction } = useAgent()
   const [input, setInput] = useState("")
   const [isPaying, setIsPaying] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
@@ -128,6 +128,30 @@ export function AsesoriaView() {
       localStorage.setItem("biota_onboarding_step", newStep.toString());
     }
   }, [chats, tokenId, onboardingStep]);
+
+  // 3. Efecto para reaccionar al comando de minteo del LabAgent
+  useEffect(() => {
+    if (agentAction?.isMinting && !tokenId) {
+      const stored = localStorage.getItem("biota_farm_data");
+      if (stored) {
+        const farmData = JSON.parse(stored);
+        const areaCalculada = farmData.medidaTipo === "ha" ? BigInt(farmData.area) * 10000n : BigInt(farmData.area);
+        
+        toast({ title: "Minteo Requerido", description: "Confirma la transacción en tu billetera para recibir tu Pasaporte Biológico." });
+        
+        mintPassport({
+          tokenURI: "ipfs://biota",
+          ubicacionGeografica: farmData.finca,
+          areaM2: areaCalculada,
+          cmSueloRecuperado: 0n,
+          estadoBiologico: "Iniciado",
+          hashAnalisisLab: "0x",
+          ingredientesHash: farmData.nombreProductor,
+          metodosAgricolas: "Regenerativo",
+        }, "CELO");
+      }
+    }
+  }, [agentAction?.isMinting, tokenId]);
 
   const isLocked = (agentId: string) => {
     if (agentId === "DIAGNOSTICO_AGROSOSTENIBLE") return false;

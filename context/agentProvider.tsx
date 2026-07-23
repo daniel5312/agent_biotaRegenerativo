@@ -89,6 +89,12 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         const chunk = decoder.decode(value, { stream: true });
         fullContent += chunk;
 
+        let displayContent = fullContent;
+        if (displayContent.includes("[ACTION:MINT_PASSPORT]")) {
+          displayContent = displayContent.replace("[ACTION:MINT_PASSPORT]", "");
+          setAgentAction({ isMinting: true });
+        }
+
         // Actualizar el último mensaje (el del asistente) con el contenido acumulado
         setChats((prev) => {
           const currentChat = prev[agentRole] || [];
@@ -96,7 +102,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           
           const newChat = [...currentChat];
           const lastIndex = newChat.length - 1;
-          newChat[lastIndex] = { ...newChat[lastIndex], content: fullContent };
+          newChat[lastIndex] = { ...newChat[lastIndex], content: displayContent };
           
           return { ...prev, [agentRole]: newChat };
         });
