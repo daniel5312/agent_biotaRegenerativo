@@ -54,20 +54,12 @@ export function VerificadorDashboard() {
   });
 
   // ── Guard de Rol: verificar si la wallet conectada es VERIFICADOR_ROLE ───
-  // [SOLIDITY] hasRole(VERIFICADOR_ROLE, address) retorna true/false
-  // VERIFICADOR_ROLE = keccak256("VERIFICADOR_ROLE") → calculado en el contrato
   const { data: esVerificadorRol } = useReadContract({
     chainId: 42220,
     address: ADDRESSES.BIOTA_PASSPORT,
     abi: BIOTA_PASSPORT_ABI,
-    functionName: "hasRole",
-    // [SOLIDITY] VERIFICADOR_ROLE es una constante del contrato. La leemos dinámicamente.
-    args: verificadorAddress
-      ? [
-          "0x5d3f8462c5dc4b1e5d59b7a1a8e1bc58b9e6b2d1d3e4f5a6b7c8d9e0f1a2b3c4" as `0x${string}`,
-          verificadorAddress
-        ]
-      : undefined,
+    functionName: "isVerificador",
+    args: verificadorAddress ? [verificadorAddress] : undefined,
     query: { enabled: !!verificadorAddress },
   });
 
@@ -99,9 +91,9 @@ export function VerificadorDashboard() {
       verificador: passport[0] as string,     // address verificador
       esVerificado: passport[1] as boolean,   // bool esVerificado
       isHumanVerified: passport[2] as boolean,// bool isHumanVerified
-      areaM2: passport[3] as bigint,          // uint32 areaM2
-      cmSuelo: passport[4] as bigint,         // uint32 cmSueloRecuperado
-      fecha: passport[5] as bigint,           // uint64 fechaRegistro
+      areaM2: BigInt(passport[3] as any),          // uint32 areaM2
+      cmSuelo: BigInt(passport[4] as any),         // uint32 cmSueloRecuperado
+      fecha: BigInt(passport[5] as any),           // uint64 fechaRegistro
       ubicacion: (passport[7] as string) || "No especificada",   // string ubicacionGeografica
       estado: (passport[8] as string) || "N/A",                  // string estadoBiologico
       hashAnalisis: (passport[9] as string) || "—",              // string hashAnalisisLab
