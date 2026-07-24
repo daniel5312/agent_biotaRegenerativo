@@ -139,7 +139,7 @@ export function useBiotaPass(): BiotaPassState {
   })
 
   const mintPassport = async (params: Omit<MintParams, 'recipient'>, methodOverride?: PaymentMethod) => {
-    if (!address || !authenticated) return
+    if (!address) return
     setIsMinting(true)
     try {
       // 1. Manejo de Pago según el método seleccionado
