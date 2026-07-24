@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAgent } from "@/context/agentProvider"
 import { compressImage } from "@/lib/utils"
-import { useConnection, useWriteContract, useSendTransaction } from 'wagmi'
+import { useAccount, useWriteContract, useSendTransaction } from 'wagmi'
 import { parseEther } from 'viem'
 import { ADDRESSES, BIOTA_SCROW_ABI } from '@/lib/contracts'
 import { useBiotaPass } from '@/hooks/useBiotaPass'
@@ -80,7 +80,7 @@ const AGENTS = [
 ]
 
 export function AsesoriaView() {
-  const { address } = useConnection()
+  const { address } = useAccount()
   const { tokenId, mintPassport } = useBiotaPass()
   const { writeContractAsync, isPending: isTriggering } = useWriteContract()
   const { sendTransactionAsync } = useSendTransaction()
@@ -149,6 +149,8 @@ export function AsesoriaView() {
           ingredientesHash: farmData.nombreProductor,
           metodosAgricolas: "Regenerativo",
         }, "CELO");
+      } else {
+        toast({ title: "Datos Incompletos", description: "Debes llenar el formulario en la pestaña de Pasaporte antes de poder mintearlo.", variant: "destructive" });
       }
     }
   }, [agentAction?.isMinting, tokenId]);
@@ -275,6 +277,15 @@ export function AsesoriaView() {
   const handleSend = async () => {
     if (!input.trim()) return
 
+    if (!address) {
+      toast({
+        title: "Billetera no conectada",
+        description: "Debes conectar tu billetera (MiniPay/Metamask) en la barra superior para interactuar con la IA.",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       let txHashToUse = ""
       const isOneTimePaymentAgent = selectedAgent.id === "DIAGNOSTICO_AGROSOSTENIBLE" || selectedAgent.id === "CAPATAZ"
@@ -325,6 +336,15 @@ export function AsesoriaView() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (!address) {
+      toast({
+        title: "Billetera no conectada",
+        description: "Debes conectar tu billetera para usar el Escáner Croma.",
+        variant: "destructive"
+      })
+      return
+    }
 
     try {
       let txHashToUse = ""
