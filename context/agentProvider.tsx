@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { useConnection } from "wagmi";
+import { useAccount } from "wagmi";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
 
 type Message = {
@@ -25,7 +25,7 @@ interface AgentContextType {
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
 
 export function AgentProvider({ children }: { children: ReactNode }) {
-  const { address } = useConnection();
+  const { address } = useAccount();
   const { tokenId } = useBiotaPass();
   const [chats, setChats] = useState<Record<string, Message[]>>({});
   const [isLoading, setIsLoading] = useState(false);
