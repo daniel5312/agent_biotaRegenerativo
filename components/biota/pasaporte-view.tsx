@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Coins,
   CircleDollarSign,
@@ -93,6 +93,24 @@ export function PasaporteView() {
     );
 
   const [isFauceting, setIsFauceting] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("biota_farm_data");
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        if (data.nombreProductor) setNombreProductor(data.nombreProductor);
+        if (data.telefono) setTelefono(data.telefono);
+        if (data.finca) setFinca(data.finca);
+        if (data.vereda) setVereda(data.vereda);
+        if (data.municipio) setMunicipio(data.municipio);
+        if (data.area) setArea(data.area);
+        if (data.medidaTipo) setMedidaTipo(data.medidaTipo);
+      } catch(e) {}
+    }
+    setIsLoaded(true);
+  }, []);
 
   const handleMintWithFaucet = async () => {
     try {
