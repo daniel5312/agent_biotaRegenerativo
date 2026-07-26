@@ -72,6 +72,10 @@ export function useBiotaPass(): BiotaPassState {
         const { args } = log as any
         if (args?.producer?.toLowerCase() === address?.toLowerCase() && args?.tokenId !== undefined) {
           setTokenId(BigInt(args.tokenId))
+          toast({ title: '¡Pasaporte Minteado!', description: `Tu nuevo Pasaporte #${args.tokenId} ya está activo en Celo.` })
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'pasaporte' }))
+          }
         }
       }
     },
