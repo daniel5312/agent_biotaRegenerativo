@@ -18,6 +18,7 @@ interface AgentContextType {
   chats: Record<string, Message[]>;
   isLoading: boolean;
   agentAction: { isMinting: boolean; txHash?: string } | null;
+  setAgentAction: (action: { isMinting: boolean; txHash?: string } | null) => void;
   sendMessage: (text: string, agentRole: string, txHash?: string) => Promise<void>;
   analizarImagen: (imagenBase64: string, agentRole: string, txHash?: string) => Promise<void>;
 }
@@ -89,11 +90,12 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         const chunk = decoder.decode(value, { stream: true });
         fullContent += chunk;
 
-        let displayContent = fullContent;
-        if (displayContent.includes("[ACTION:MINT_PASSPORT]")) {
-          displayContent = displayContent.replace("[ACTION:MINT_PASSPORT]", "");
+        if (fullContent.includes("[ACTION:MINT_PASSPORT]")) {
+          fullContent = fullContent.replace("[ACTION:MINT_PASSPORT]", "");
           setAgentAction({ isMinting: true });
         }
+
+        let displayContent = fullContent;
 
         // Actualizar el último mensaje (el del asistente) con el contenido acumulado
         setChats((prev) => {
@@ -171,7 +173,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   return (
     <AgentContext.Provider
-      value={{ chats, isLoading, agentAction, sendMessage, analizarImagen }}
+      value={{ chats, isLoading, agentAction, setAgentAction, sendMessage, analizarImagen }}
     >
       {children}
     </AgentContext.Provider>
