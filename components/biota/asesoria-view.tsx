@@ -86,7 +86,7 @@ export function AsesoriaView() {
   const { sendTransactionAsync } = useSendTransaction()
   const { toast } = useToast()
 
-  const { chats, sendMessage, analizarImagen, isLoading, agentAction } = useAgent()
+  const { chats, sendMessage, analizarImagen, isLoading, agentAction, setAgentAction } = useAgent()
   const [input, setInput] = useState("")
   const [isPaying, setIsPaying] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
@@ -152,8 +152,11 @@ export function AsesoriaView() {
       } else {
         toast({ title: "Datos Incompletos", description: "Debes llenar el formulario en la pestaña de Pasaporte antes de poder mintearlo.", variant: "destructive" });
       }
+      
+      // Limpiar el trigger para que pueda volver a dispararse en el futuro
+      setAgentAction(null);
     }
-  }, [agentAction?.isMinting, tokenId]);
+  }, [agentAction?.isMinting, tokenId, setAgentAction]);
 
   const isLocked = (agentId: string) => {
     if (agentId === "DIAGNOSTICO_AGROSOSTENIBLE") return false;
