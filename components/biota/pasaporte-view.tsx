@@ -36,15 +36,16 @@ import { formatUnits } from "viem";
 import { ADDRESSES, BIOTA_PASSPORT_ABI, ERC20_ABI } from "@/lib/contracts";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
 import { useToast } from "@/hooks/use-toast";
-import { IdentityAction } from "@/components/biota/IdentityAction";
+import { PrestamosAave } from "@/components/biota/prestamos-aave";
 
 export function PasaporteView() {
   const { address } = useAccount();
   const { authenticated } = usePrivy();
-  const { mintPassport, isMinting, tokenId } = useBiotaPass();
+  const { mintPassport, isMinting, tokenId, estadoBiologico } = useBiotaPass();
   const { writeContractAsync } = useWriteContract();
+  const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"finca" | "wallet">("finca");
+
   const [paymentMethod, setPaymentMethod] = useState<"G$" | "CELO">("CELO");
   const [nombreProductor, setNombreProductor] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -77,8 +78,8 @@ export function PasaporteView() {
   });
 
   const effectiveHasPassport = useMemo(
-    () => (passportRaw ? BigInt(passportRaw.toString()) > 0n : false),
-    [passportRaw],
+    () => !!tokenId || (passportRaw ? BigInt(passportRaw.toString()) > 0n : false),
+    [passportRaw, tokenId],
   );
   const gDollarBalance = gdBalanceRaw
     ? Number(formatUnits(BigInt(gdBalanceRaw.toString()), 18)).toFixed(0)
@@ -111,6 +112,21 @@ export function PasaporteView() {
     }
     setIsLoaded(true);
   }, []);
+
+  // Auto-guardado en cada cambio para evitar pérdida de datos si navegan manualmente
+  useEffect(() => {
+    if (!isLoaded) return;
+    const farmData = {
+      nombreProductor,
+      telefono,
+      finca,
+      vereda,
+      municipio,
+      area,
+      medidaTipo
+    };
+    localStorage.setItem("biota_farm_data", JSON.stringify(farmData));
+  }, [nombreProductor, telefono, finca, vereda, municipio, area, medidaTipo, isLoaded]);
 
   const handleMintWithFaucet = async () => {
     try {
@@ -148,7 +164,12 @@ export function PasaporteView() {
     }
   };
 
-  const handleSaveAndStart = () => {
+  const handleSaveAndStart = async () => {
+    if (!finca || !nombreProductor) {
+      toast({ title: "Datos Incompletos", description: "Por favor llena al menos el nombre de la Finca y el Productor.", variant: "destructive" });
+      return;
+    }
+
     const farmData = {
       nombreProductor,
       telefono,
@@ -161,221 +182,180 @@ export function PasaporteView() {
     localStorage.setItem("biota_farm_data", JSON.stringify(farmData));
     localStorage.setItem("biota_onboarding_step", "1"); 
     
-    // Redirigir a pestaña de Asesoría
-    window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'asesoria' }));
+    if (!address) {
+      toast({ title: "Conecta tu billetera", description: "Necesitas tu billetera para recibir el Sello de Entrada.", variant: "destructive" });
+      return;
+    }
+
+    if (!tokenId) {
+      // Mintear el Sello de Entrada
+      const areaCalculada = medidaTipo === "ha" ? BigInt(area) * 10000n : BigInt(area);
+      await mintPassport({
+        tokenURI: "ipfs://biota",
+        ubicacionGeografica: finca,
+        areaM2: areaCalculada,
+        cmSueloRecuperado: 0n,
+        estadoBiologico: "Iniciado",
+        hashAnalisisLab: "0x",
+        ingredientesHash: nombreProductor,
+        metodosAgricolas: "Regenerativo",
+      }, paymentMethod);
+      // Nota: La redirección a 'asesoria' ocurrirá automáticamente en useBiotaPass.ts cuando se confirme el minteo on-chain
+    } else {
+      // Si ya tiene pasaporte, simplemente avanza
+      window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'asesoria' }));
+    }
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-4 pb-20">
-      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
-        <button
-          onClick={() => setActiveTab("finca")}
-          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === "finca" ? "bg-emerald-500 text-black" : "text-stone-500"}`}
-        >
-          🚜 Mi Finca
-        </button>
-        <button
-          onClick={() => setActiveTab("wallet")}
-          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${activeTab === "wallet" ? "bg-blue-600 text-white" : "text-stone-500"}`}
-        >
-          💰 Mi Billetera
-        </button>
-      </div>
-
-      {activeTab === "finca" ? (
+      {!effectiveHasPassport ? (
+        // === VISTA PRE-MINTEO (FORMULARIO) ===
         <div className="space-y-6 animate-in fade-in duration-500">
           <h1 className="text-4xl font-black text-white italic uppercase">
-            {effectiveHasPassport ? "Mi Finca Biota" : "Registro Biota"}
+            Registro Biota
           </h1>
-
-          {effectiveHasPassport ? (
-            <Card className="glass-card bg-emerald-500/5 border-emerald-500/20 p-6 rounded-3xl">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-4 pb-4 border-b border-white/5">
-                  {/* Imagen del NFT */}
-                  <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-emerald-500/30 relative shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-                    <img 
-                      src="/logo.png" 
-                      alt="NFT Pasaporte Biota" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Fallback si no existe logo.png
-                        (e.target as HTMLImageElement).src = "https://teal-tired-jay-275.mypinata.cloud/ipfs/QmeFhX3XG7U2mD5R4fRj4vR8e8kE3W7P4yJ3N2mE8T8b5K"; 
-                      }}
-                    />
-                    <div className="absolute bottom-0 left-0 w-full bg-black/60 backdrop-blur-sm text-[8px] text-center font-mono py-0.5 text-emerald-400">
-                      ID #{tokenId ? tokenId.toString() : "001"}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-stone-500 uppercase flex items-center gap-1">
-                      Pasaporte Activo <CheckCircle2 size={10} className="text-emerald-500" />
-                    </p>
-                    <p className="text-xl font-black text-white font-mono leading-none mt-1">
-                      {finca || "Finca Biota"}
-                    </p>
-                    <p className="text-[9px] text-stone-400 mt-1 uppercase font-mono">
-                      Productor: {nombreProductor || "Verificado"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="bg-blue-600/10 p-2 rounded-2xl border border-blue-500/20">
-                    <IdentityAction tokenId={tokenId ?? undefined} />
-                  </div>
-                  
-                  <Button 
-                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black h-14 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
-                    onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'impacto' }))}
-                  >
-                    <Droplets className="w-6 h-6" /> Empezar Goteo (Superfluid)
-                  </Button>
+          <Card className="bg-white/5 border-white/10 p-8 rounded-3xl space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-stone-500">Nombre Productor</label>
+                <Input onChange={(e) => setNombreProductor(e.target.value)} value={nombreProductor} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. Juan Pérez" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-stone-500">Teléfono</label>
+                <Input onChange={(e) => setTelefono(e.target.value)} value={telefono} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. 310..." type="tel" />
+              </div>
+              <div className="md:col-span-2 space-y-1">
+                <label className="text-[10px] font-black uppercase text-stone-500">Nombre del Predio (Finca)</label>
+                <Input onChange={(e) => setFinca(e.target.value)} value={finca} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. El Edén" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-stone-500">Municipio - Vereda</label>
+                <Input onChange={(e) => setMunicipio(e.target.value)} value={municipio} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. Marinilla - La Peña" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-stone-500">Medida</label>
+                <div className="flex gap-2">
+                  <Input onChange={(e) => setArea(Number(e.target.value))} value={area} className="bg-black/40 border-white/10 h-12 rounded-2xl flex-1" type="number" placeholder="Ej. 50" />
+                  <select value={medidaTipo} onChange={(e) => setMedidaTipo(e.target.value as "m2" | "ha")} className="bg-black/40 border-white/10 h-12 rounded-2xl text-white px-3 outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="m2">m²</option>
+                    <option value="ha">Ha</option>
+                  </select>
                 </div>
               </div>
-            </Card>
-          ) : (
-            <Card className="bg-white/5 border-white/10 p-8 rounded-3xl space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-stone-500">
-                    Nombre Productor
-                  </label>
-                  <Input
-                    onChange={(e) => setNombreProductor(e.target.value)}
-                    className="bg-black/40 border-white/10 h-12 rounded-2xl"
-                    placeholder="Ej. Juan Pérez"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-stone-500">
-                    Teléfono
-                  </label>
-                  <Input
-                    onChange={(e) => setTelefono(e.target.value)}
-                    className="bg-black/40 border-white/10 h-12 rounded-2xl"
-                    placeholder="Ej. 310..."
-                    type="tel"
-                  />
-                </div>
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-[10px] font-black uppercase text-stone-500">
-                    Nombre del Predio (Finca)
-                  </label>
-                  <Input
-                    onChange={(e) => setFinca(e.target.value)}
-                    className="bg-black/40 border-white/10 h-12 rounded-2xl"
-                    placeholder="Ej. El Edén"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-stone-500">
-                    Municipio - Vereda
-                  </label>
-                  <Input
-                    onChange={(e) => setMunicipio(e.target.value)}
-                    className="bg-black/40 border-white/10 h-12 rounded-2xl"
-                    placeholder="Ej. Marinilla - La Peña"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-stone-500">
-                    Medida
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      onChange={(e) => setArea(Number(e.target.value))}
-                      className="bg-black/40 border-white/10 h-12 rounded-2xl flex-1"
-                      type="number"
-                      placeholder="Ej. 50"
-                    />
-                    <select
-                      value={medidaTipo}
-                      onChange={(e) => setMedidaTipo(e.target.value as "m2" | "ha")}
-                      className="bg-black/40 border-white/10 h-12 rounded-2xl text-white px-3 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="m2">m²</option>
-                      <option value="ha">Ha</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
+            </div>
 
-              <div className="space-y-4 pt-4 border-t border-white/5">
-                <Button
-                  onClick={handleSaveAndStart}
-                  disabled={!finca || !nombreProductor || !telefono}
-                  className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded-2xl transition-all shadow-lg shadow-emerald-500/20"
-                >
-                  <Sparkles className="w-5 h-5 mr-2" /> Iniciar Diagnóstico IA
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          <Card className="bg-white/5 border-white/10 p-6 rounded-3xl space-y-4">
-            <h3 className="text-xs font-black uppercase text-emerald-500">
-              Reportar Regeneración
-            </h3>
-            <div className="grid grid-cols-3 gap-2">
-              {["Compost", "pH", "Árboles"].map((id) => (
-                <button
-                  key={id}
-                  onClick={() => toggleAction(id)}
-                  className={`p-4 rounded-xl border text-[10px] font-black uppercase transition-all ${selectedActions.includes(id) ? "bg-emerald-500 text-black border-emerald-500" : "bg-black/20 border-white/5 text-stone-500"}`}
-                >
-                  {id}
-                </button>
-              ))}
+            <div className="space-y-4 pt-4 border-t border-white/5">
+              <Button
+                onClick={handleSaveAndStart}
+                disabled={!finca || !nombreProductor || !telefono || isMinting}
+                className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded-2xl transition-all shadow-lg shadow-emerald-500/20"
+              >
+                {isMinting ? (
+                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Creando Sello...</>
+                ) : (
+                  <><Sparkles className="w-5 h-5 mr-2" /> Obtener Sello de Entrada</>
+                )}
+              </Button>
             </div>
           </Card>
         </div>
       ) : (
+        // === VISTA POST-MINTEO (DASHBOARD) ===
         <div className="space-y-6 animate-in fade-in duration-500">
-          <h1 className="text-4xl font-black text-white italic uppercase tracking-tighter">
-            Mi <span className="text-blue-500">Billetera</span>
+          <h1 className="text-4xl font-black text-white italic uppercase">
+            Mi Finca Biota
           </h1>
-          <Card className="bg-blue-600/10 border-blue-500/20 p-8 rounded-3xl space-y-6 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <CircleDollarSign size={80} className="text-blue-400" />
-            </div>
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div>
-                <Badge className="bg-blue-600 text-white text-[9px] font-black uppercase mb-2">
-                  GoodDollar UBI
-                </Badge>
-                <p className="text-5xl font-black text-white font-mono tracking-tighter">
-                  {gDollarBalance}
-                  <span className="text-xl text-blue-400 ml-2">G$</span>
-                </p>
+
+          {/* 1. IDENTIDAD Y NFT */}
+          <Card className="glass-card bg-emerald-500/5 border-emerald-500/20 p-6 rounded-3xl">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-emerald-500/30 relative shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                  <img 
+                    src="/logo.png" 
+                    alt="NFT Pasaporte" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => (e.target as HTMLImageElement).src = "https://teal-tired-jay-275.mypinata.cloud/ipfs/QmeFhX3XG7U2mD5R4fRj4vR8e8kE3W7P4yJ3N2mE8T8b5K"}
+                  />
+                  <div className="absolute bottom-0 left-0 w-full bg-black/60 backdrop-blur-sm text-[10px] text-center font-mono py-1 text-emerald-400">
+                    ID #{tokenId ? tokenId.toString() : "001"}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-black text-stone-500 uppercase flex items-center gap-1 mb-1">
+                    Productor <CheckCircle2 size={12} className="text-emerald-500" />
+                  </p>
+                  <p className="text-2xl font-black text-white font-mono leading-none">
+                    {nombreProductor || "Verificado"}
+                  </p>
+                  <p className="text-sm text-emerald-400 mt-2 font-mono flex items-center gap-1">
+                    <MapPin size={12} /> {finca || "Finca Biota"}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {municipio && <Badge className="bg-white/10 text-stone-300 border-none font-mono text-[9px]">{municipio}</Badge>}
+                    {vereda && <Badge className="bg-white/10 text-stone-300 border-none font-mono text-[9px]">{vereda}</Badge>}
+                    {area > 0 && <Badge className="bg-emerald-500/20 text-emerald-400 border-none font-mono text-[9px]">{area} {medidaTipo}</Badge>}
+                  </div>
+                </div>
               </div>
-              <a
-                href="https://wallet.gooddollar.org/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-blue-600 text-white h-12 px-8 rounded-2xl font-black uppercase text-[10px] flex items-center gap-2 shadow-xl shadow-blue-600/20"
-              >
-                Reclamar UBI <ExternalLink className="w-4 h-4" />
-              </a>
             </div>
           </Card>
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="bg-white/5 border-white/5 p-6 rounded-3xl">
-              <p className="text-[10px] font-black uppercase text-stone-500">
-                CELO
-              </p>
-              <p className="text-3xl font-black text-amber-500 font-mono">
-                {celoBalance}
-              </p>
-            </Card>
-            <Card className="bg-white/5 border-white/5 p-6 rounded-3xl">
-              <p className="text-[10px] font-black uppercase text-stone-500">
-                Tokens
-              </p>
-              <p className="text-3xl font-black text-emerald-500 font-mono">
-                0.00
-              </p>
-            </Card>
+
+          {/* 2. PROGRESO REGENERATIVO (SELLOS) */}
+          <Card className="bg-white/5 border-white/10 p-6 rounded-3xl space-y-4">
+            <h3 className="text-xs font-black uppercase text-emerald-500 flex items-center gap-2">
+              <Sprout className="w-4 h-4" /> Progreso Regenerativo
+            </h3>
+            
+            <div className="relative pt-4 pb-2">
+              <div className="absolute top-10 left-[10%] right-[10%] h-1 bg-stone-800 rounded-full z-0" />
+              <div className="absolute top-10 left-[10%] w-[30%] h-1 bg-emerald-500 rounded-full z-0 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+
+              <div className="grid grid-cols-4 gap-2 relative z-10">
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 border-black ${estadoBiologico === "Iniciado" || estadoBiologico === "Transición" || estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "bg-emerald-500 shadow-lg shadow-emerald-500/40" : "bg-emerald-500"}`}>
+                    <span className="text-black font-black text-lg">1</span>
+                  </div>
+                  <span className="text-[9px] font-black uppercase text-emerald-500">Iniciación</span>
+                  <span className="text-[8px] text-stone-400">Sello de Entrada</span>
+                </div>
+                
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${estadoBiologico === "Transición" || estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "bg-emerald-500 text-black border-black shadow-lg shadow-emerald-500/40" : "bg-stone-800 text-stone-400 border-stone-700 opacity-60"}`}>
+                    <span className="font-black text-lg">2</span>
+                  </div>
+                  <span className={`text-[9px] font-black uppercase ${estadoBiologico === "Transición" || estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "text-emerald-500" : "text-stone-500"}`}>Transición</span>
+                  <span className="text-[8px] text-stone-600">En proceso...</span>
+                </div>
+
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "bg-emerald-500 text-black border-black shadow-lg shadow-emerald-500/40" : "bg-stone-800 text-stone-400 border-stone-700 opacity-40"}`}>
+                    <span className="font-black text-lg">3</span>
+                  </div>
+                  <span className={`text-[9px] font-black uppercase ${estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "text-emerald-500" : "text-stone-600"}`}>Sostenibilidad</span>
+                </div>
+
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${estadoBiologico === "Certificación" ? "bg-emerald-500 text-black border-black shadow-lg shadow-emerald-500/40" : "bg-stone-800 text-stone-400 border-stone-700 opacity-40"}`}>
+                    <span className="font-black text-lg">4</span>
+                  </div>
+                  <span className={`text-[9px] font-black uppercase ${estadoBiologico === "Certificación" ? "text-emerald-500" : "text-stone-600"}`}>Certificación Total</span>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              className="w-full bg-stone-800 hover:bg-stone-700 text-white font-black h-12 rounded-2xl flex items-center justify-center gap-2 mt-4"
+              onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'asesoria' }))}
+            >
+              <Sparkles className="w-4 h-4 text-emerald-500" /> Ir al Diagnóstico para Avanzar
+            </Button>
+          </Card>
+
+          {/* 3. FINANZAS / PATROCINIO (SPONSOR - AAVE) */}
+          <div className="pt-2">
+            <PrestamosAave />
           </div>
         </div>
       )}

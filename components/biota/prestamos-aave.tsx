@@ -68,7 +68,7 @@ export function PrestamosAave() {
   const currentToken = ASSETS[selectedAsset];
 
   // 1. Obtener Datos del Usuario en Aave (Poder de Préstamo)
-  const { data: accountData, refetch } = useReadContract({
+  const { data: accountData, refetch, isLoading: isLoadingAave } = useReadContract({
     chainId: 42220,
     address: AAVE_POOL_ADDRESS,
     abi: AAVE_POOL_ABI,
@@ -135,20 +135,17 @@ export function PrestamosAave() {
     });
   };
 
-  if (!isConnected) return null;
-
   return (
     <Card className="glass-card border-none bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white shadow-2xl relative overflow-hidden mt-3">
-      <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/10 blur-[60px] rounded-full pointer-events-none" />
       <CardContent className="p-4 relative z-10 space-y-4">
         
         <div className="flex justify-between items-start">
           <div>
             <Badge className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 mb-1">
-              Aave V3 Préstamos
+              Fondo de Recompensas
             </Badge>
             <h2 className="text-xl font-black flex items-center gap-2">
-              <Landmark className="w-5 h-5 text-indigo-400" /> Línea de Crédito
+              <Landmark className="w-5 h-5 text-indigo-400" /> Apalancamiento DeFi
             </h2>
           </div>
           <div className="text-right">
@@ -158,18 +155,26 @@ export function PrestamosAave() {
         </div>
 
         <div className="grid grid-cols-3 gap-2 bg-black/20 p-4 rounded-2xl border border-white/5">
-          <div>
-            <p className="text-[10px] text-stone-400 uppercase">Colateral</p>
-            <p className="text-sm font-mono font-bold">${totalCollateral.toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-stone-400 uppercase">Deuda</p>
-            <p className="text-sm font-mono font-bold text-red-400">${totalDebt.toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-stone-400 uppercase">Disponible</p>
-            <p className="text-sm font-mono font-bold text-emerald-400">${availableBorrows.toFixed(2)}</p>
-          </div>
+          {isLoadingAave ? (
+            <div className="col-span-3 text-center py-2 animate-pulse">
+              <p className="text-[10px] text-indigo-400 font-mono uppercase">Calculando liquidez disponible...</p>
+            </div>
+          ) : (
+            <>
+              <div>
+                <p className="text-[10px] text-stone-400 uppercase">Colateral</p>
+                <p className="text-sm font-mono font-bold">${totalCollateral.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-stone-400 uppercase">Deuda</p>
+                <p className="text-sm font-mono font-bold text-red-400">${totalDebt.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-stone-400 uppercase">Disponible</p>
+                <p className="text-sm font-mono font-bold text-emerald-400">${availableBorrows.toFixed(2)}</p>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="space-y-3">

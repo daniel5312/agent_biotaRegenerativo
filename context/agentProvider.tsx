@@ -90,8 +90,9 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         const chunk = decoder.decode(value, { stream: true });
         fullContent += chunk;
 
-        if (fullContent.includes("[ACTION:MINT_PASSPORT]")) {
-          fullContent = fullContent.replace("[ACTION:MINT_PASSPORT]", "");
+        const mintMatch = fullContent.match(/\[ACTION:MINT_PASSPORT\]/i);
+        if (mintMatch) {
+          fullContent = fullContent.replace(/\[ACTION:MINT_PASSPORT\]/gi, "");
           setAgentAction({ isMinting: true });
         }
 

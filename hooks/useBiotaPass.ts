@@ -13,7 +13,7 @@ import {
   type LoteData, type MintParams,
   cmToScore, formatFecha,
 } from '@/lib/contracts'
-import { parseEther, parseUnits } from 'viem'
+import { parseEther, parseUnits, parseAbiItem } from 'viem'
 import { useToast } from '@/hooks/use-toast'
 
 export type PaymentMethod = 'CELO' | 'G$'
@@ -108,6 +108,34 @@ export function useBiotaPass(): BiotaPassState {
     ? (Number(rawGlowBalance as bigint) / 1e2).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
     : '0.00';
 
+  // [NUEVO] Auto-recuperación de TokenId si el balance > 0 pero no lo tenemos en localStorage (ej. Incógnito)
+  useEffect(() => {
+    if (balance && (balance as bigint) > 0n && !tokenId && address && publicClient) {
+      const recoverTokenId = async () => {
+        try {
+          const logs = await publicClient.getLogs({
+            address: ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
+            event: parseAbiItem('event PassportMinted(uint256 indexed tokenId, address indexed producer, string ubicacion, bool pagadoConCelo)'),
+            args: { producer: address },
+            fromBlock: 0n,
+            toBlock: 'latest'
+          })
+          if (logs.length > 0) {
+            const recoveredId = logs[logs.length - 1].args.tokenId
+            if (recoveredId) {
+              setTokenId(recoveredId)
+              localStorage.setItem(`biota_tokenId_${address}`, recoveredId.toString())
+              toast({ title: "Pasaporte Recuperado", description: `Encontramos tu pasaporte #${recoveredId} en la red Celo y restauramos tu sesión.` })
+            }
+          }
+        } catch (e) {
+          console.error("Error recuperando token id", e)
+        }
+      }
+      recoverTokenId()
+    }
+  }, [balance, tokenId, address, publicClient])
+
   const hasPassport = !!balance && (balance as bigint) > 0n
 
   const { data: rawLote, isLoading: loadingLote } = useReadContract({
@@ -143,7 +171,10 @@ export function useBiotaPass(): BiotaPassState {
   })
 
   const mintPassport = async (params: Omit<MintParams, 'recipient'>, methodOverride?: PaymentMethod) => {
-    if (!address) return
+    if (!address) {
+      toast({ title: "Billetera desconectada", description: "Por favor, vuelve a conectar tu billetera (MiniPay/Metamask) en la barra superior.", variant: "destructive" });
+      return;
+    }
     setIsMinting(true)
     try {
       // 1. Manejo de Pago según el método seleccionado

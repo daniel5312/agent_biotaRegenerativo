@@ -135,6 +135,14 @@ export function AsesoriaView() {
       const stored = localStorage.getItem("biota_farm_data");
       if (stored) {
         const farmData = JSON.parse(stored);
+        
+        // Validar que realmente haya datos y no solo un objeto vacío guardado por auto-save
+        if (!farmData.finca || !farmData.nombreProductor || farmData.finca.trim() === "" || farmData.nombreProductor.trim() === "") {
+          toast({ title: "Datos Incompletos", description: "Debes llenar el formulario de tu Finca en la pestaña de Pasaporte.", variant: "destructive" });
+          setAgentAction(null);
+          return;
+        }
+
         const areaCalculada = farmData.medidaTipo === "ha" ? BigInt(farmData.area) * 10000n : BigInt(farmData.area);
         
         toast({ title: "Minteo Requerido", description: "Confirma la transacción en tu billetera para recibir tu Pasaporte Biológico." });
@@ -152,9 +160,6 @@ export function AsesoriaView() {
       } else {
         toast({ title: "Datos Incompletos", description: "Debes llenar el formulario en la pestaña de Pasaporte antes de poder mintearlo.", variant: "destructive" });
       }
-      
-      // Limpiar el trigger para que pueda volver a dispararse en el futuro
-      setAgentAction(null);
     }
   }, [agentAction?.isMinting, tokenId, setAgentAction]);
 
@@ -481,6 +486,42 @@ export function AsesoriaView() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {/* [NUEVO] Botón explícito para mintear si falla el stream */}
+            {selectedAgent.id === "LABORATORIO_CALIDAD" && !tokenId && (
+              <button
+                onClick={() => {
+                  const stored = localStorage.getItem("biota_farm_data");
+                  if (!stored) {
+                    toast({ title: "Datos Incompletos", description: "Faltan datos de tu Finca. Ve a la pestaña Pasaporte y llénalos.", variant: "destructive" });
+                    return;
+                  }
+                  const farmData = JSON.parse(stored);
+                  if (!farmData.finca || !farmData.nombreProductor) {
+                    toast({ title: "Datos Incompletos", description: "Faltan datos de tu Finca. Ve a la pestaña Pasaporte y llénalos.", variant: "destructive" });
+                    return;
+                  }
+                  if (!address) {
+                    toast({ title: "Billetera no conectada", description: "Conecta tu billetera arriba a la derecha.", variant: "destructive" });
+                    return;
+                  }
+                  const areaCalculada = farmData.medidaTipo === "ha" ? BigInt(farmData.area) * 10000n : BigInt(farmData.area);
+                  mintPassport({
+                    tokenURI: "ipfs://biota",
+                    ubicacionGeografica: farmData.finca,
+                    areaM2: areaCalculada,
+                    cmSueloRecuperado: 0n,
+                    estadoBiologico: "Iniciado",
+                    hashAnalisisLab: "0x",
+                    ingredientesHash: farmData.nombreProductor,
+                    metodosAgricolas: "Regenerativo",
+                  }, "CELO");
+                }}
+                className="mr-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black uppercase rounded-lg shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1"
+              >
+                <Sparkles className="w-3 h-3" />
+                MINTEAR PASAPORTE
+              </button>
+            )}
             <Button size="icon" variant="ghost" className="w-8 h-8 rounded-lg text-emerald-600 dark:text-emerald-400">
               <Phone className="w-3.5 h-3.5" />
             </Button>
@@ -605,6 +646,55 @@ export function AsesoriaView() {
               )
             })
           )}
+          
+          {/* [NUEVO] BOTON MANUAL DE MINTEO COMO RESPALDO */}
+          {agentAction?.isMinting && (
+            <div className="p-4 bg-emerald-500/20 border border-emerald-500/50 rounded-2xl flex flex-col items-center justify-center space-y-3 mt-4 animate-in fade-in zoom-in duration-300">
+              <Sparkles className="w-8 h-8 text-emerald-400" />
+              <p className="text-center text-emerald-100 font-medium text-sm">
+                Tu Pasaporte está listo para ser creado en la blockchain.
+              </p>
+              <button
+                onClick={() => {
+                  const stored = localStorage.getItem("biota_farm_data");
+                  if (!stored) {
+                    toast({ title: "Datos Incompletos", description: "Faltan datos de tu Finca. Ve a la pestaña Pasaporte y llénalos.", variant: "destructive" });
+                    return;
+                  }
+                  const farmData = JSON.parse(stored);
+                  if (!farmData.finca || !farmData.nombreProductor) {
+                    toast({ title: "Datos Incompletos", description: "Faltan datos de tu Finca. Ve a la pestaña Pasaporte y llénalos.", variant: "destructive" });
+                    return;
+                  }
+                  if (!address) {
+                    toast({ title: "Billetera no conectada", description: "Conecta tu billetera arriba a la derecha.", variant: "destructive" });
+                    return;
+                  }
+                  const areaCalculada = farmData.medidaTipo === "ha" ? BigInt(farmData.area) * 10000n : BigInt(farmData.area);
+                  mintPassport({
+                    tokenURI: "ipfs://biota",
+                    ubicacionGeografica: farmData.finca,
+                    areaM2: areaCalculada,
+                    cmSueloRecuperado: 0n,
+                    estadoBiologico: "Iniciado",
+                    hashAnalisisLab: "0x",
+                    ingredientesHash: farmData.nombreProductor,
+                    metodosAgricolas: "Regenerativo",
+                  }, "CELO");
+                }}
+                className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/30"
+              >
+                MINTEAR PASAPORTE AHORA
+              </button>
+              <button 
+                onClick={() => setAgentAction(null)}
+                className="text-xs text-white/50 hover:text-white underline mt-2"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
           {isLoading && (
             <div className="flex justify-start animate-fade-in">
               <div className="bg-white dark:bg-emerald-800/50 p-3 rounded-2xl flex items-center gap-2 border border-emerald-200 dark:border-emerald-700/50 shadow-sm">
