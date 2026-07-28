@@ -29,6 +29,7 @@ import {
   useAccount,
   useWriteContract,
   useReadContract,
+  useReadContracts,
   useBalance,
 } from "wagmi";
 import { usePrivy } from "@privy-io/react-auth";
@@ -47,6 +48,7 @@ export function PasaporteView() {
 
 
   const [paymentMethod, setPaymentMethod] = useState<"G$" | "CELO">("CELO");
+  const [activeTab, setActiveTab] = useState<"pasaporte" | "billetera">("pasaporte");
   const [nombreProductor, setNombreProductor] = useState("");
   const [telefono, setTelefono] = useState("");
   const [finca, setFinca] = useState("");
@@ -60,14 +62,17 @@ export function PasaporteView() {
     address: address as `0x${string}`,
     query: { enabled: !!address },
   });
-  const { data: gdBalanceRaw } = useReadContract({
-    chainId: 42220,
-    address: ADDRESSES.G$,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
+  const { data: balancesRaw } = useReadContracts({
+    contracts: [
+      { address: ADDRESSES.G$, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
+      { address: ADDRESSES.CUSD, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
+      { address: ADDRESSES.USDT, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
+      { address: ADDRESSES.USDC, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
+      { address: ADDRESSES.COPM, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
+    ],
+    query: { enabled: !!address }
   });
+
   const { data: passportRaw } = useReadContract({
     chainId: 42220,
     address: ADDRESSES.BIOTA_PASSPORT,
@@ -81,12 +86,21 @@ export function PasaporteView() {
     () => !!tokenId || (passportRaw ? BigInt(passportRaw.toString()) > 0n : false),
     [passportRaw, tokenId],
   );
-  const gDollarBalance = gdBalanceRaw
-    ? Number(formatUnits(BigInt(gdBalanceRaw.toString()), 18)).toFixed(0)
-    : "0";
-  const celoBalance = celoRes
-    ? Number(formatUnits(celoRes.value, 18)).toFixed(2)
-    : "0.00";
+
+  const celoBalanceNum = celoRes ? Number(formatUnits(celoRes.value, 18)) : 0;
+  const gdBalanceNum = balancesRaw?.[0]?.status === "success" ? Number(formatUnits(balancesRaw[0].result as bigint, 18)) : 0;
+  const cusdBalanceNum = balancesRaw?.[1]?.status === "success" ? Number(formatUnits(balancesRaw[1].result as bigint, 18)) : 0;
+  const usdtBalanceNum = balancesRaw?.[2]?.status === "success" ? Number(formatUnits(balancesRaw[2].result as bigint, 6)) : 0;
+  const usdcBalanceNum = balancesRaw?.[3]?.status === "success" ? Number(formatUnits(balancesRaw[3].result as bigint, 6)) : 0;
+  const copmBalanceNum = balancesRaw?.[4]?.status === "success" ? Number(formatUnits(balancesRaw[4].result as bigint, 18)) : 0;
+
+  const totalUsdEstimated = 
+    (celoBalanceNum * 0.60) + 
+    (gdBalanceNum * 0.00003) + 
+    cusdBalanceNum + 
+    usdtBalanceNum + 
+    usdcBalanceNum + 
+    (copmBalanceNum * 0.00024);
 
   const toggleAction = (id: string) =>
     setSelectedActions((prev) =>
@@ -263,11 +277,29 @@ export function PasaporteView() {
       ) : (
         // === VISTA POST-MINTEO (DASHBOARD) ===
         <div className="space-y-6 animate-in fade-in duration-500">
-          <h1 className="text-4xl font-black text-white italic uppercase">
-            Mi Finca Biota
-          </h1>
+          <div className="flex justify-between items-center">
+            <h1 className="text-4xl font-black text-white italic uppercase">
+              Mi Finca
+            </h1>
+            <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
+              <button 
+                onClick={() => setActiveTab("pasaporte")}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "pasaporte" ? "bg-emerald-500 text-black shadow-lg" : "text-stone-400 hover:text-white"}`}
+              >
+                Pasaporte
+              </button>
+              <button 
+                onClick={() => setActiveTab("billetera")}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "billetera" ? "bg-emerald-500 text-black shadow-lg" : "text-stone-400 hover:text-white"}`}
+              >
+                Billetera
+              </button>
+            </div>
+          </div>
 
-          {/* 1. IDENTIDAD Y NFT */}
+          {activeTab === "pasaporte" ? (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              {/* 1. IDENTIDAD Y NFT */}
           <Card className="glass-card bg-emerald-500/5 border-emerald-500/20 p-6 rounded-3xl">
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
@@ -353,10 +385,56 @@ export function PasaporteView() {
             </Button>
           </Card>
 
-          {/* 3. FINANZAS / PATROCINIO (SPONSOR - AAVE) */}
+          {/* 3. FINANZAS / PATROCINIO (SPONSOR - AAVE) - Siempre visible en Pasaporte */}
           <div className="pt-2">
             <PrestamosAave />
           </div>
+        </div>
+      ) : (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              {/* SALDOS (NUEVO DISEÑO CON ESTIMADO USD) */}
+              <div className="bg-black/20 rounded-3xl p-6 border border-white/5 space-y-4">
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  <p className="text-[10px] uppercase font-black text-stone-400">Patrimonio Total Estimado</p>
+                  <h2 className="text-4xl font-black font-mono text-emerald-400">
+                    ${totalUsdEstimated.toFixed(2)} <span className="text-sm text-stone-500">USD</span>
+                  </h2>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/5">
+                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
+                    <p className="text-[9px] uppercase font-black text-stone-400">CELO</p>
+                    <p className="text-xs font-mono font-black text-emerald-400">{celoBalanceNum.toFixed(2)}</p>
+                  </div>
+                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
+                    <p className="text-[9px] uppercase font-black text-stone-400">cUSD</p>
+                    <p className="text-xs font-mono font-black text-emerald-400">{cusdBalanceNum.toFixed(2)}</p>
+                  </div>
+                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
+                    <p className="text-[9px] uppercase font-black text-stone-400">COPm</p>
+                    <p className="text-xs font-mono font-black text-emerald-400">{copmBalanceNum.toFixed(0)}</p>
+                  </div>
+                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
+                    <p className="text-[9px] uppercase font-black text-stone-400">USDT</p>
+                    <p className="text-xs font-mono font-black text-emerald-400">{usdtBalanceNum.toFixed(2)}</p>
+                  </div>
+                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
+                    <p className="text-[9px] uppercase font-black text-stone-400">USDC</p>
+                    <p className="text-xs font-mono font-black text-emerald-400">{usdcBalanceNum.toFixed(2)}</p>
+                  </div>
+                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
+                    <p className="text-[9px] uppercase font-black text-stone-400">G$</p>
+                    <p className="text-xs font-mono font-black text-emerald-400">{gdBalanceNum.toFixed(0)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. FINANZAS / PATROCINIO (SPONSOR - AAVE) */}
+              <div className="pt-2">
+                <PrestamosAave />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
