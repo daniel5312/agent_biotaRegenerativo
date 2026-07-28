@@ -164,11 +164,7 @@ export function AsesoriaView() {
   }, [agentAction?.isMinting, tokenId, setAgentAction]);
 
   const isLocked = (agentId: string) => {
-    if (agentId === "DIAGNOSTICO_AGROSOSTENIBLE") return false;
-    if (agentId === "ANALISTA_CROMA") return onboardingStep < 2 && !tokenId;
-    if (agentId === "ANALISTA_LAB") return onboardingStep < 3 && !tokenId;
-    if (agentId === "DANIEL_EXPERTO") return !tokenId;
-    if (agentId === "CAPATAZ") return !tokenId || onboardingStep < 5;
+    // Desbloqueados permanentemente por solicitud para QA
     return false;
   }
 

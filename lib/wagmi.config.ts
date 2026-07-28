@@ -13,10 +13,12 @@ const miniPayConnector = injected({
   },
 })
 
+const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://forno.celo.org'
+
 export const wagmiConfig = createConfig({
   chains: [celo],
   transports: {
-    [celo.id]: http('https://forno.celo.org'),
+    [celo.id]: http(rpcUrl),
   },
   connectors: [
     miniPayConnector,
