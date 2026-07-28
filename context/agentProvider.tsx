@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { useConnection } from "wagmi";
+import { useAccount } from "wagmi";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
 
 type Message = {
@@ -18,6 +18,7 @@ interface AgentContextType {
   chats: Record<string, Message[]>;
   isLoading: boolean;
   agentAction: { isMinting: boolean; txHash?: string } | null;
+  setAgentAction: (action: { isMinting: boolean; txHash?: string } | null) => void;
   sendMessage: (text: string, agentRole: string, txHash?: string) => Promise<void>;
   analizarImagen: (imagenBase64: string, agentRole: string, txHash?: string) => Promise<void>;
 }
@@ -25,19 +26,30 @@ interface AgentContextType {
 const AgentContext = createContext<AgentContextType | undefined>(undefined);
 
 export function AgentProvider({ children }: { children: ReactNode }) {
-  const { address } = useConnection();
+  const { address } = useAccount();
   const { tokenId } = useBiotaPass();
   const [chats, setChats] = useState<Record<string, Message[]>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [agentAction, setAgentAction] = useState<{ isMinting: boolean; txHash?: string } | null>(null);
 
   // 1. Preparar Metadatos de Sesión (Puente de Datos)
-  const getSessionMetadata = () => ({
-    address: address,
-    tokenId: tokenId ? Number(tokenId) : null,
-    isUbiActive: !!tokenId, // Simplificación: si tiene pasaporte, asumimos flujo
-    timestamp: Date.now()
-  });
+  const getSessionMetadata = () => {
+    let farmData = null;
+    try {
+      const stored = localStorage.getItem("biota_farm_data");
+      if (stored) farmData = JSON.parse(stored);
+    } catch (e) {
+      console.error("Error leyendo farm data", e);
+    }
+
+    return {
+      address: address,
+      tokenId: tokenId ? Number(tokenId) : null,
+      isUbiActive: !!tokenId, // Simplificación: si tiene pasaporte, asumimos flujo
+      timestamp: Date.now(),
+      farmData: farmData
+    };
+  };
 
   const sendMessage = async (text: string, agentRole: string, txHash?: string) => {
     try {
@@ -78,6 +90,14 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         const chunk = decoder.decode(value, { stream: true });
         fullContent += chunk;
 
+        const mintMatch = fullContent.match(/\[ACTION:MINT_PASSPORT\]/i);
+        if (mintMatch) {
+          fullContent = fullContent.replace(/\[ACTION:MINT_PASSPORT\]/gi, "");
+          setAgentAction({ isMinting: true });
+        }
+
+        let displayContent = fullContent;
+
         // Actualizar el último mensaje (el del asistente) con el contenido acumulado
         setChats((prev) => {
           const currentChat = prev[agentRole] || [];
@@ -85,7 +105,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
           
           const newChat = [...currentChat];
           const lastIndex = newChat.length - 1;
-          newChat[lastIndex] = { ...newChat[lastIndex], content: fullContent };
+          newChat[lastIndex] = { ...newChat[lastIndex], content: displayContent };
           
           return { ...prev, [agentRole]: newChat };
         });
@@ -154,7 +174,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   return (
     <AgentContext.Provider
-      value={{ chats, isLoading, agentAction, sendMessage, analizarImagen }}
+      value={{ chats, isLoading, agentAction, setAgentAction, sendMessage, analizarImagen }}
     >
       {children}
     </AgentContext.Provider>

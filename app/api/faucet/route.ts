@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createWalletClient, http, parseEther, publicActions } from 'viem';
+import { createWalletClient, http, parseEther, parseUnits, publicActions } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 import { ADDRESSES, ERC20_ABI } from '@/lib/contracts';
@@ -38,13 +38,17 @@ export async function POST(req: Request) {
         });
         console.log(`[FAUCET] ✅ CELO enviado. Hash: ${hashCelo}`);
 
-        // 2. Enviar 10 G$ (Bono Semilla de Bienvenida)
+        // 2. Enviar 10 G$ como bono semilla de bienvenida.
+        // [CELO] IMPORTANTE: G$ (GoodDollar) tiene 2 decimales en Celo (no 18 como ETH).
+        // parseUnits("10", 2) = 1000 unidades mínimas = 10.00 G$ correctos.
+        // Si usáramos parseEther("10") enviaríamos 10^18 unidades → el transfer fallaría.
         const amountGD = "10";
         const hashGD = await client.writeContract({
             address: ADDRESSES['G$'],
             abi: ERC20_ABI,
             functionName: 'transfer',
-            args: [address as `0x${string}`, parseEther(amountGD)]
+            // [GOODDOLLAR] 2 decimales: parseUnits("10", 2) = 1000 = 10.00 G$
+            args: [address as `0x${string}`, parseUnits(amountGD, 2)]
         });
         console.log(`[FAUCET] ✅ G$ enviado. Hash: ${hashGD}`);
 

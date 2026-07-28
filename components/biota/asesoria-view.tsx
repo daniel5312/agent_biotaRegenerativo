@@ -21,7 +21,8 @@ import {
   Zap,
   Camera,
   Volume2,
-  Mic
+  Mic,
+  Lock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,7 +30,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAgent } from "@/context/agentProvider"
 import { compressImage } from "@/lib/utils"
-import { useConnection, useWriteContract, useSendTransaction } from 'wagmi'
+import { useAccount, useWriteContract, useSendTransaction } from 'wagmi'
 import { parseEther } from 'viem'
 import { ADDRESSES, BIOTA_SCROW_ABI } from '@/lib/contracts'
 import { useBiotaPass } from '@/hooks/useBiotaPass'
@@ -39,53 +40,53 @@ const AGENTS = [
   { 
     id: "DIAGNOSTICO_AGROSOSTENIBLE",
     name: "Onboarding", 
-    role: "Guia Biota", 
+    role: "Guía Biota", 
     icon: UserCheck, 
     color: "from-emerald-500 to-teal-400",
-    prompt: "Hola agricultor, soy tu Guia Biota. ¿Estas listo para regenerar tu tierra?"
-  },
-  { 
-    id: "CAPATAZ",
-    name: "Capataz", 
-    role: "Gestion de Campo", 
-    icon: Shield, 
-    color: "from-green-600 to-emerald-400",
-    prompt: "Capataz en linea. Reportando estado de las parcelas..."
-  },
-  { 
-    id: "DANIEL_EXPERTO",
-    name: "D. Experto", 
-    role: "Agronomo IA", 
-    icon: Microscope, 
-    color: "from-lime-500 to-emerald-500",
-    prompt: "Analizando microbiologia del suelo. ¿Que observas hoy?"
-  },
-  { 
-    id: "ANALISTA_LAB",
-    name: "Laboratorio", 
-    role: "Analisis MM", 
-    icon: Beaker, 
-    color: "from-cyan-500 to-blue-400",
-    prompt: "Camara de laboratorio activa. Listo para procesar tu receta MM."
+    prompt: "Hola agricultor, soy tu Guía Biota. ¿Estás listo para iniciar?"
   },
   { 
     id: "ANALISTA_CROMA",
     name: "Croma", 
-    role: "Visualizacion", 
+    role: "Visualización", 
     icon: BarChart3, 
     color: "from-teal-600 to-lime-400",
-    prompt: "Escaner Croma listo. Sube la foto de tu analisis de suelo."
+    prompt: "Escáner Croma listo. Sube la foto de tu análisis."
+  },
+  { 
+    id: "ANALISTA_LAB",
+    name: "Laboratorio", 
+    role: "Análisis Suelo", 
+    icon: Beaker, 
+    color: "from-cyan-500 to-blue-400",
+    prompt: "Cámara de laboratorio activa. Listo para procesar y mintear tu Pasaporte."
+  },
+  { 
+    id: "DANIEL_EXPERTO",
+    name: "D. Experto", 
+    role: "Agrónomo IA", 
+    icon: Microscope, 
+    color: "from-lime-500 to-emerald-500",
+    prompt: "Analizando tu nuevo Pasaporte. ¿Listo para tu plan de acción?"
+  },
+  { 
+    id: "CAPATAZ",
+    name: "Capataz", 
+    role: "Gestión Campo", 
+    icon: Shield, 
+    color: "from-green-600 to-emerald-400",
+    prompt: "Capataz en línea. Listo para seguir el plan del Experto."
   },
 ]
 
 export function AsesoriaView() {
-  const { address } = useConnection()
-  const { tokenId } = useBiotaPass()
+  const { address } = useAccount()
+  const { tokenId, mintPassport } = useBiotaPass()
   const { writeContractAsync, isPending: isTriggering } = useWriteContract()
   const { sendTransactionAsync } = useSendTransaction()
   const { toast } = useToast()
 
-  const { chats, sendMessage, analizarImagen, isLoading } = useAgent()
+  const { chats, sendMessage, analizarImagen, isLoading, agentAction, setAgentAction } = useAgent()
   const [input, setInput] = useState("")
   const [isPaying, setIsPaying] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState(AGENTS[0])
@@ -96,6 +97,80 @@ export function AsesoriaView() {
   const [isListening, setIsListening] = useState(false)
   const [paidAgents, setPaidAgents] = useState<Record<string, string>>({})
   const recognitionRef = useRef<any>(null)
+  
+  const [onboardingStep, setOnboardingStep] = useState(1);
+
+  // 1. Restaurar paso desde localStorage
+  useEffect(() => {
+    const savedStep = localStorage.getItem("biota_onboarding_step");
+    if (savedStep) {
+      const parsed = Number(savedStep);
+      setOnboardingStep(parsed);
+      // Seleccionar automáticamente al agente correspondiente si queremos, pero lo dejamos en 0 (Onboarding)
+    }
+  }, []);
+
+  // 2. Lógica de avance del flujo (Heurística visual del chat)
+  useEffect(() => {
+    let newStep = onboardingStep;
+    
+    if (tokenId && newStep < 4) newStep = 4;
+    
+    // Si ha enviado varios mensajes al onboarding, abrimos Croma
+    if (newStep === 1 && (chats["DIAGNOSTICO_AGROSOSTENIBLE"]?.length || 0) >= 4) newStep = 2;
+    // Si ya envió foto a Croma, abrimos Lab
+    if (newStep === 2 && (chats["ANALISTA_CROMA"]?.length || 0) >= 2) newStep = 3;
+    // Si habló con el Experto, abrimos Capataz
+    if (newStep === 4 && (chats["DANIEL_EXPERTO"]?.length || 0) >= 2) newStep = 5;
+
+    if (newStep !== onboardingStep) {
+      setOnboardingStep(newStep);
+      localStorage.setItem("biota_onboarding_step", newStep.toString());
+    }
+  }, [chats, tokenId, onboardingStep]);
+
+  // 3. Efecto para reaccionar al comando de minteo del LabAgent
+  useEffect(() => {
+    if (agentAction?.isMinting && !tokenId) {
+      const stored = localStorage.getItem("biota_farm_data");
+      if (stored) {
+        const farmData = JSON.parse(stored);
+        
+        // Validar que realmente haya datos y no solo un objeto vacío guardado por auto-save
+        if (!farmData.finca || !farmData.nombreProductor || farmData.finca.trim() === "" || farmData.nombreProductor.trim() === "") {
+          toast({ title: "Datos Incompletos", description: "Debes llenar el formulario de tu Finca en la pestaña de Pasaporte.", variant: "destructive" });
+          setAgentAction(null);
+          return;
+        }
+
+        const areaCalculada = farmData.medidaTipo === "ha" ? BigInt(farmData.area) * 10000n : BigInt(farmData.area);
+        
+        toast({ title: "Minteo Requerido", description: "Confirma la transacción en tu billetera para recibir tu Pasaporte Biológico." });
+        
+        mintPassport({
+          tokenURI: "ipfs://biota",
+          ubicacionGeografica: farmData.finca,
+          areaM2: areaCalculada,
+          cmSueloRecuperado: 0n,
+          estadoBiologico: "Iniciado",
+          hashAnalisisLab: "0x",
+          ingredientesHash: farmData.nombreProductor,
+          metodosAgricolas: "Regenerativo",
+        }, "CELO");
+      } else {
+        toast({ title: "Datos Incompletos", description: "Debes llenar el formulario en la pestaña de Pasaporte antes de poder mintearlo.", variant: "destructive" });
+      }
+    }
+  }, [agentAction?.isMinting, tokenId, setAgentAction]);
+
+  const isLocked = (agentId: string) => {
+    if (agentId === "DIAGNOSTICO_AGROSOSTENIBLE") return false;
+    if (agentId === "ANALISTA_CROMA") return onboardingStep < 2 && !tokenId;
+    if (agentId === "ANALISTA_LAB") return onboardingStep < 3 && !tokenId;
+    if (agentId === "DANIEL_EXPERTO") return !tokenId;
+    if (agentId === "CAPATAZ") return !tokenId || onboardingStep < 5;
+    return false;
+  }
 
   const toggleListening = () => {
     if (isListening) {
@@ -210,6 +285,15 @@ export function AsesoriaView() {
   const handleSend = async () => {
     if (!input.trim()) return
 
+    if (!address) {
+      toast({
+        title: "Billetera no conectada",
+        description: "Debes conectar tu billetera (MiniPay/Metamask) en la barra superior para interactuar con la IA.",
+        variant: "destructive"
+      })
+      return
+    }
+
     try {
       let txHashToUse = ""
       const isOneTimePaymentAgent = selectedAgent.id === "DIAGNOSTICO_AGROSOSTENIBLE" || selectedAgent.id === "CAPATAZ"
@@ -260,6 +344,15 @@ export function AsesoriaView() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (!address) {
+      toast({
+        title: "Billetera no conectada",
+        description: "Debes conectar tu billetera para usar el Escáner Croma.",
+        variant: "destructive"
+      })
+      return
+    }
 
     try {
       let txHashToUse = ""
@@ -319,25 +412,36 @@ export function AsesoriaView() {
           )}
         </div>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar snap-x">
+        <div className="flex gap-3 overflow-x-auto pb-4 snap-x">
           {AGENTS.map((agent) => {
             const Icon = agent.icon
             const isSelected = selectedAgent.id === agent.id
+            const locked = isLocked(agent.id)
+            
             return (
               <button
                 key={agent.id}
-                onClick={() => selectAgent(agent)}
+                onClick={() => !locked && selectAgent(agent)}
+                disabled={locked}
                 className={`
                   relative min-w-[100px] snap-center flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300 border touch-active
-                  ${isSelected 
-                    ? `bg-gradient-to-br ${agent.color} border-white/30 shadow-lg glow-sm` 
-                    : "bg-white dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-600/30"
+                  ${locked ? 'opacity-60 grayscale cursor-not-allowed bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800' : 
+                    isSelected 
+                      ? `bg-gradient-to-br ${agent.color} border-white/30 shadow-lg glow-sm` 
+                      : "bg-white dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-600/30"
                   }
                 `}
               >
+                {locked && (
+                  <div className="absolute top-1.5 right-1.5 bg-stone-800 text-white rounded-full p-1 shadow-md">
+                    <Lock className="w-2.5 h-2.5" />
+                  </div>
+                )}
                 <div className={`
                   w-10 h-10 rounded-xl flex items-center justify-center shadow-md
-                  ${isSelected ? "bg-white/20" : `bg-gradient-to-br ${agent.color} text-white`}
+                  ${locked ? "bg-stone-300 dark:bg-stone-800 text-stone-500" :
+                    isSelected ? "bg-white/20" : `bg-gradient-to-br ${agent.color} text-white`
+                  }
                 `}>
                   <Icon className="w-5 h-5" />
                 </div>
@@ -382,6 +486,42 @@ export function AsesoriaView() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {/* [NUEVO] Botón explícito para mintear si falla el stream */}
+            {selectedAgent.id === "LABORATORIO_CALIDAD" && !tokenId && (
+              <button
+                onClick={() => {
+                  const stored = localStorage.getItem("biota_farm_data");
+                  if (!stored) {
+                    toast({ title: "Datos Incompletos", description: "Faltan datos de tu Finca. Ve a la pestaña Pasaporte y llénalos.", variant: "destructive" });
+                    return;
+                  }
+                  const farmData = JSON.parse(stored);
+                  if (!farmData.finca || !farmData.nombreProductor) {
+                    toast({ title: "Datos Incompletos", description: "Faltan datos de tu Finca. Ve a la pestaña Pasaporte y llénalos.", variant: "destructive" });
+                    return;
+                  }
+                  if (!address) {
+                    toast({ title: "Billetera no conectada", description: "Conecta tu billetera arriba a la derecha.", variant: "destructive" });
+                    return;
+                  }
+                  const areaCalculada = farmData.medidaTipo === "ha" ? BigInt(farmData.area) * 10000n : BigInt(farmData.area);
+                  mintPassport({
+                    tokenURI: "ipfs://biota",
+                    ubicacionGeografica: farmData.finca,
+                    areaM2: areaCalculada,
+                    cmSueloRecuperado: 0n,
+                    estadoBiologico: "Iniciado",
+                    hashAnalisisLab: "0x",
+                    ingredientesHash: farmData.nombreProductor,
+                    metodosAgricolas: "Regenerativo",
+                  }, "CELO");
+                }}
+                className="mr-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black uppercase rounded-lg shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1"
+              >
+                <Sparkles className="w-3 h-3" />
+                MINTEAR PASAPORTE
+              </button>
+            )}
             <Button size="icon" variant="ghost" className="w-8 h-8 rounded-lg text-emerald-600 dark:text-emerald-400">
               <Phone className="w-3.5 h-3.5" />
             </Button>
@@ -506,6 +646,55 @@ export function AsesoriaView() {
               )
             })
           )}
+          
+          {/* [NUEVO] BOTON MANUAL DE MINTEO COMO RESPALDO */}
+          {agentAction?.isMinting && (
+            <div className="p-4 bg-emerald-500/20 border border-emerald-500/50 rounded-2xl flex flex-col items-center justify-center space-y-3 mt-4 animate-in fade-in zoom-in duration-300">
+              <Sparkles className="w-8 h-8 text-emerald-400" />
+              <p className="text-center text-emerald-100 font-medium text-sm">
+                Tu Pasaporte está listo para ser creado en la blockchain.
+              </p>
+              <button
+                onClick={() => {
+                  const stored = localStorage.getItem("biota_farm_data");
+                  if (!stored) {
+                    toast({ title: "Datos Incompletos", description: "Faltan datos de tu Finca. Ve a la pestaña Pasaporte y llénalos.", variant: "destructive" });
+                    return;
+                  }
+                  const farmData = JSON.parse(stored);
+                  if (!farmData.finca || !farmData.nombreProductor) {
+                    toast({ title: "Datos Incompletos", description: "Faltan datos de tu Finca. Ve a la pestaña Pasaporte y llénalos.", variant: "destructive" });
+                    return;
+                  }
+                  if (!address) {
+                    toast({ title: "Billetera no conectada", description: "Conecta tu billetera arriba a la derecha.", variant: "destructive" });
+                    return;
+                  }
+                  const areaCalculada = farmData.medidaTipo === "ha" ? BigInt(farmData.area) * 10000n : BigInt(farmData.area);
+                  mintPassport({
+                    tokenURI: "ipfs://biota",
+                    ubicacionGeografica: farmData.finca,
+                    areaM2: areaCalculada,
+                    cmSueloRecuperado: 0n,
+                    estadoBiologico: "Iniciado",
+                    hashAnalisisLab: "0x",
+                    ingredientesHash: farmData.nombreProductor,
+                    metodosAgricolas: "Regenerativo",
+                  }, "CELO");
+                }}
+                className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/30"
+              >
+                MINTEAR PASAPORTE AHORA
+              </button>
+              <button 
+                onClick={() => setAgentAction(null)}
+                className="text-xs text-white/50 hover:text-white underline mt-2"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
           {isLoading && (
             <div className="flex justify-start animate-fade-in">
               <div className="bg-white dark:bg-emerald-800/50 p-3 rounded-2xl flex items-center gap-2 border border-emerald-200 dark:border-emerald-700/50 shadow-sm">

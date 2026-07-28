@@ -32,6 +32,20 @@ import { useToast } from "@/hooks/use-toast";
 export function MiniPayDashboard() {
   const { address: primaryAddress } = useConnection();
   const { data: celoBalance, refetch: refetchBalance } = useBalance({ address: primaryAddress });
+  
+  // [REFI] Consultamos el balance de G$ usando useReadContract (ERC20 balanceOf)
+  const { data: rawGdBalance } = useReadContract({
+    chainId: 42220,
+    address: ADDRESSES['G$'] as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: primaryAddress ? [primaryAddress as `0x${string}`] : undefined,
+    query: { enabled: !!primaryAddress }
+  });
+  
+  // Convertimos a bigint para usar en la comparación
+  const gdBalanceValue = rawGdBalance ? (rawGdBalance as bigint) : 0n;
+  
   const { toast } = useToast();
   const isFunding = useRef(false);
 
@@ -48,7 +62,9 @@ export function MiniPayDashboard() {
       const MIN_BALANCE = 50000000000000000n; // 0.05 CELO
       
       if (primaryAddress && celoBalance && !isFunding.current) {
-        if (celoBalance.value < MIN_BALANCE) {
+        // [REFI] Condición de seguridad: Solo fondea si el usuario está en "cero" total.
+        // No tiene gas (menos de 0.05 CELO) Y no tiene nada de G$ (es una cuenta 100% nueva).
+        if (celoBalance.value < MIN_BALANCE && gdBalanceValue === 0n) {
           isFunding.current = true;
           try {
             const res = await fetch("/api/faucet", {
@@ -74,7 +90,7 @@ export function MiniPayDashboard() {
       }
     };
     autoFund();
-  }, [primaryAddress, celoBalance, toast, refetchBalance]);
+  }, [primaryAddress, celoBalance, gdBalanceValue, toast, refetchBalance]);
 
   const [viewAccount, setViewAccount] = React.useState<"primary" | "ubi">(
     "primary",
