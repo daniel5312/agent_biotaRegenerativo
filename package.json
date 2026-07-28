@@ -7,7 +7,9 @@
     "dev:minipay": "next dev & npx ngrok http 3000",
     "build": "node --max-old-space-size=4096 ./node_modules/.bin/next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:fork": "anvil --fork-url https://forno.celo.org",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@chaoschain/sdk": "^0.3.0",
@@ -79,8 +81,9 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "@tailwindcss/postcss": "^4.0.0",
-    "@types/node": "^22",
+    "@types/node": "^22.20.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.20",
