@@ -145,7 +145,7 @@ export function PasaporteView() {
   const handleMintWithFaucet = async () => {
     try {
       // 1. Verificamos si tiene saldo CELO para el gas. Si tiene muy poco, le enviamos un Faucet automático.
-      if (Number(celoBalance) < 0.1) {
+      if (celoBalanceNum < 0.1) {
         setIsFauceting(true);
         // Aquí llamaremos al Webhook de Fondeo (Paso 2)
         const res = await fetch("/api/faucet", {

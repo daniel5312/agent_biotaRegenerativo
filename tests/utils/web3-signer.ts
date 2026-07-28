@@ -23,9 +23,6 @@ export const getQASigner = () => {
   
   const account = privateKeyToAccount(formattedPk);
 
-  // Por defecto se conecta a un Fork Local (Anvil) si está corriendo, si no falla o conecta a Forno.
-  // En el ticket 301 configuraremos el Fork exacto. Por ahora apuntamos al RPC genérico o local.
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545';
 
   const client = createWalletClient({
     account,
