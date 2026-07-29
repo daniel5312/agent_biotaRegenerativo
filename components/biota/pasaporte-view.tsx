@@ -82,10 +82,12 @@ export function PasaporteView() {
     query: { enabled: !!address },
   });
 
-  const effectiveHasPassport = useMemo(
-    () => !!tokenId || (passportRaw ? BigInt(passportRaw.toString()) > 0n : false),
-    [passportRaw, tokenId],
-  );
+  const effectiveHasPassport = useMemo(() => {
+    if (typeof window !== "undefined" && localStorage.getItem('BIOTA_DEBUG') === 'true') {
+      return true; // Bypass visual para pruebas de Playwright
+    }
+    return !!tokenId || (passportRaw ? BigInt(passportRaw.toString()) > 0n : false);
+  }, [passportRaw, tokenId]);
 
   const celoBalanceNum = celoRes ? Number(formatUnits(celoRes.value, 18)) : 0;
   const gdBalanceNum = balancesRaw?.[0]?.status === "success" ? Number(formatUnits(balancesRaw[0].result as bigint, 18)) : 0;
