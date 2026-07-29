@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { loadEnvConfig } from '@next/env';
+
+// Carga el .env nativamente sin necesidad de instalar 'dotenv'
+loadEnvConfig(process.cwd());
 
 export default defineConfig({
   testDir: './tests',
