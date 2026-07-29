@@ -1,4 +1,4 @@
-import { createWalletClient, http, publicActions } from 'viem';
+import { createWalletClient, http, publicActions, testActions } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
 
@@ -28,7 +28,9 @@ export const getQASigner = () => {
     account,
     chain: celo,
     transport: http(rpcUrl),
-  }).extend(publicActions); // Para poder leer contratos (readContract)
+  })
+    .extend(publicActions)
+    .extend(testActions({ mode: 'anvil' })); // Habilita los Poderes de Dios en Anvil
 
   return { client, account, isMainnet };
 };
