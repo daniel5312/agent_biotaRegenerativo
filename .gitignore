@@ -69,3 +69,5 @@ scratch/
 scripts/*.mjs
 *.js.localplaywright-debug.png
 playwright-report/
+playwright-debug.png
+playwright-report/
