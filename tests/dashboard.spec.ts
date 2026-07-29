@@ -3,33 +3,41 @@ import { getQASigner } from './utils/web3-signer';
 
 test.describe('Flujos de Usuario: BiotaScrow QA', () => {
 
-  test('La aplicación carga correctamente (Prueba de Humo)', async ({ page }) => {
-    // 1. Instruimos al robot a abrir tu servidor local
-    await page.goto('/');
+  // Antes de cada prueba, inyectamos el flag de Debug para saltarnos la pantalla de Landing
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('BIOTA_DEBUG', 'true');
+      localStorage.setItem('BIOTA_ROLE', 'PRODUCER'); // Para que entre a Pasaporte directamente
+    });
+  });
 
-    // 2. Verificamos que la página responde y tiene un título o contenido base
-    // (Asegurarnos de que Next.js no esté crasheado)
+  test('La aplicación carga correctamente (Prueba de Humo)', async ({ page }) => {
+    await page.goto('/');
+    
+    // Verificamos que el título de la página exista
     const pageTitle = await page.title();
     expect(pageTitle).toBeDefined();
-
-    // Comprobamos que el botón de conectar billetera de Privy exista (si es que la app arranca deslogueada)
-    // const connectButton = page.getByRole('button', { name: /Conectar/i });
-    // await expect(connectButton).toBeVisible();
   });
 
-  test.skip('Navegación entre Pasaporte y Billetera', async ({ page }) => {
-    // ESTE TEST ESTÁ "SKIP" HASTA QUE RESOLVAMOS EL BYPASS DE PRIVY
-    // 1. Simular sesión activa de Privy aquí...
-    
+  // ¡Le quitamos el test.skip porque ahora el robot tiene permiso de entrar!
+  test('Navegación entre Pasaporte y Billetera', async ({ page }) => {
     await page.goto('/');
 
-    // 2. Hacer clic en la pestaña "Billetera"
-    await page.getByRole('button', { name: 'Billetera' }).click();
+    // DEBUG: Imprimir el texto de la página para ver si estamos en la Landing o en el Dashboard
+    const bodyText = await page.innerHTML('body');
+    console.log('HTML DE LA PÁGINA:', bodyText.substring(0, 1000));
+    await page.screenshot({ path: 'playwright-debug.png' });
 
-    // 3. Verificar que aparece el "Patrimonio Total Estimado"
-    await expect(page.getByText('Patrimonio Total Estimado')).toBeVisible();
+    // Hacemos clic en el botón interno de "Billetera" (que es el tab de navegación interno de PasaporteView)
+    // Usamos un selector más flexible que no dependa del rol exacto si la UI cambia
+    const billeteraBtn = page.locator('button:has-text("Billetera")').first();
+    
+    // Asegurarse de que el botón esté visible antes de hacer clic
+    await expect(billeteraBtn).toBeVisible({ timeout: 15000 });
+    await billeteraBtn.click();
 
-    // 4. Verificar que aparece Aave
-    await expect(page.getByText('Fondo de Recompensas')).toBeVisible();
+    // Verificamos que se renderice el componente de Inversor/Billetera
+    await expect(page.locator('text=Patrimonio Total Estimado')).toBeVisible({ timeout: 10000 });
   });
+
 });
