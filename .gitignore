@@ -67,4 +67,5 @@ logs/
 # --- 6. ARCHIVOS DE PRUEBA OFF-CHAIN ---
 scratch/
 scripts/*.mjs
-*.js.local
+*.js.localplaywright-debug.png
+playwright-report/
