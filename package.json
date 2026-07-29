@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:fork": "anvil --fork-url https://forno.celo.org",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:mainnet": "NEXT_PUBLIC_RPC_URL=https://forno.celo.org playwright test"
   },
   "dependencies": {
     "@chaoschain/sdk": "^0.3.0",
