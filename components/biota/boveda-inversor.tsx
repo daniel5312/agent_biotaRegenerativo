@@ -46,12 +46,10 @@ export function BovedaInversor() {
     },
   });
 
-  // [FRONTEND] Simulamos la tasa de cambio COP/USD para el UI (Fase 1: hardcoded ~4100)
+  // [FRONTEND] Simulamos la tasa de cambio COP/USD
   const TASA_COP = 4100;
 
-  // Si no hay balance real aún (o es cero), usamos un valor demo para el hackathon/pitch
-  const isDemo = !mcUSDBalance || mcUSDBalance === 0n;
-  const displayCUSD = isDemo ? 15.08 : Number(formatCUSD(mcUSDBalance));
+  const displayCUSD = mcUSDBalance ? Number(formatCUSD(mcUSDBalance)) : 0;
   const displayCOP = displayCUSD * TASA_COP;
   const yieldMensualCOP = (displayCOP * 0.05) / 12; // 5% APY estimado
 
@@ -86,11 +84,9 @@ export function BovedaInversor() {
   }
 
   return (
-    <div className="space-y-4">
+    <>
       {/* TARJETA PRINCIPAL: BÓVEDA DEFI */}
-      <Card className="glass-card overflow-hidden relative animate-slide-up">
-        {/* Glow de fondo */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/20 blur-[50px] rounded-full" />
+      <Card className="glass-card overflow-hidden relative animate-slide-up mb-3">
         <div className="h-1 bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-400" />
 
         <CardContent className="p-3 relative z-10">
@@ -112,7 +108,7 @@ export function BovedaInversor() {
               <Button
                 size="sm"
                 onClick={handleWithdraw}
-                disabled={isDemo || isWithdrawing || isConfirmingWithdraw}
+                disabled={displayCUSD === 0 || isWithdrawing || isConfirmingWithdraw}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
               >
                 {isWithdrawing || isConfirmingWithdraw
@@ -138,11 +134,6 @@ export function BovedaInversor() {
             <div className="flex items-center gap-1.5 mt-1 text-stone-500 dark:text-stone-400 font-mono text-sm">
               <ArrowRightLeft className="w-3 h-3" />≈ {displayCUSD.toFixed(2)}{" "}
               cUSD
-              {isDemo && (
-                <span className="ml-2 text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded uppercase">
-                  Demo Mode
-                </span>
-              )}
             </div>
           </div>
 
@@ -182,29 +173,6 @@ export function BovedaInversor() {
           </div>
         </CardContent>
       </Card>
-
-      {/* TARJETA DE RECLAMO DE CAFÉ FÍSICO (Próximamente) */}
-      <Card className="glass-card overflow-hidden opacity-75 hover:opacity-100 transition-opacity">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-white/5 flex items-center justify-center">
-              <Sprout className="w-5 h-5 text-stone-400" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-stone-800 dark:text-stone-300">
-                Reclamar Café Físico
-              </h3>
-              <p className="text-xs text-stone-500">Usa tu Certificado RWA</p>
-            </div>
-          </div>
-          <button
-            disabled
-            className="px-4 py-2 rounded-lg bg-stone-100 dark:bg-white/5 text-stone-400 text-xs font-bold uppercase cursor-not-allowed"
-          >
-            Próximamente
-          </button>
-        </CardContent>
-      </Card>
-    </div>
+    </>
   );
 }
