@@ -17,6 +17,7 @@ import {
   LogOut,
   Shield,
   Copy,
+  HeartHandshake,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePrivy } from "@privy-io/react-auth";
@@ -40,6 +41,7 @@ const tabs: {
 }[] = [
   { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout, roles: ["PRODUCER"] },
   { id: "billetera", labelEs: "Billetera", labelEn: "Wallet", icon: Wallet, roles: ["INVESTOR"] },
+  { id: "apoyar", labelEs: "Apoyar", labelEn: "Support", icon: HeartHandshake, roles: ["PRODUCER", "INVESTOR"] },
   { id: "impacto", labelEs: "Impacto", labelEn: "Impact", icon: Leaf, roles: ["PRODUCER", "INVESTOR"] },
   { id: "mercado", labelEs: "Tienda", labelEn: "Market", icon: ShoppingBag, roles: ["PRODUCER", "INVESTOR"] },
   { id: "seguridad", labelEs: "Vigil", labelEn: "Vigil", icon: Shield, roles: ["PRODUCER", "INVESTOR"] },
