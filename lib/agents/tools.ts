@@ -421,7 +421,8 @@ export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
         DAPP_BIOTA: "0x9bc43f955ce11948e4fD6EAC28d46875Fba9f5F9",
         INVERSIONES_DAPP: "0x95A4dabdFa310993Ff836639b7521F47FE0aDb11",
         POOL_PRODUCTOR: "0xb6Fb8C69FeD8FC27750c58B2DCA293cc12662A12",
-        COLECTIVA_MUJERES: "0x0d43131f1577310d6349baf9d6da4fc1cd39764c",
+        MUJERES_CARMEN_VIBORAL: "0x0d43131f1577310d6349baf9d6da4fc1cd39764c",
+        GOOD_COLLECTIVE_KENYA: "0x43d72Ff17701B2DA814620735C39C620Ce0ea4A1", // GoodDollar UBIScheme Pool
         AAVE_STRATEGY: "0x20715fe5e81cdeb6ed4be84403a1a6d7c67d4997" // Bóveda Inversor
     };
 
@@ -431,13 +432,15 @@ export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
     // 3% -> DApp Tesorería
     // 2% -> Inversiones DApp
     // 3% -> Pool Productor Biota
-    // 3% -> Donaciones Mujeres
+    // 1.5% -> Donaciones Mujeres Carmen de Viboral
+    // 1.5% -> GoodCollective Kenya
     const amounts = {
         aaveVault: (args.totalAmount * 0.04).toFixed(4),
         treasury: (args.totalAmount * 0.03).toFixed(4),
         inversiones: (args.totalAmount * 0.02).toFixed(4),
         poolBiota: (args.totalAmount * 0.03).toFixed(4),
-        donations: (args.totalAmount * 0.03).toFixed(4),
+        mujeresCarmenViboral: (args.totalAmount * 0.015).toFixed(4),
+        goodCollectiveKenya: (args.totalAmount * 0.015).toFixed(4),
     };
 
     // Calcular el pago a los productores desde el carrito
@@ -477,7 +480,8 @@ export async function executeEscrowDistribution(args: DistributeEscrowArgs) {
             tesoreriaBiota: { address: WALLETS.DAPP_BIOTA, amount: amounts.treasury },
             inversionesBiota: { address: WALLETS.INVERSIONES_DAPP, amount: amounts.inversiones },
             poolRegenerativo: { address: WALLETS.POOL_PRODUCTOR, amount: amounts.poolBiota },
-            donaciones: { address: WALLETS.COLECTIVA_MUJERES, amount: amounts.donations }
+            mujeresCarmenViboral: { address: WALLETS.MUJERES_CARMEN_VIBORAL, amount: amounts.mujeresCarmenViboral },
+            goodCollectiveKenya: { address: WALLETS.GOOD_COLLECTIVE_KENYA, amount: amounts.goodCollectiveKenya }
         },
         estado: "LIBERADO"
     };
