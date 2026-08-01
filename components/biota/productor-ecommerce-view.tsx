@@ -19,6 +19,7 @@ import { parseUnits } from "viem";
 import { useToast } from "@/hooks/use-toast";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
 import { useSuperfluidStream } from "@/hooks/useSuperfluidStream";
+import { useUbiFlow } from "@/context/UbiFlowContext";
 
 const DEMO_PRODUCERS = [
   {
@@ -247,6 +248,7 @@ function ProducerCard({ producer, index, selectedCurrency }: { producer: any, in
 function FundingModalContent({ producer, selectedCurrency, onClose }: { producer: any, selectedCurrency: string, onClose: () => void }) {
   const { address } = useConnection();
   const { toast } = useToast();
+  const { ubiAddress, ubiProvider, handleConnectUBI } = useUbiFlow();
   
   const [supportAmount, setSupportAmount] = useState("");
   
@@ -259,7 +261,11 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
   const { isLoading: isConfirmingPay, isSuccess: isPaySuccess } = useWaitForTransactionReceipt({ hash: payHash || nativeHash });
 
   // Superfluid Hooks (Goteo)
-  const { isActive: isStreamActive, startStream, stopStream, isPending: isStreamPending } = useSuperfluidStream(producer.wallet as `0x${string}`, address as `0x${string}`);
+  const { isActive: isStreamActive, startStream, stopStream, isPending: isStreamPending } = useSuperfluidStream(
+    producer.wallet as `0x${string}`, 
+    ubiAddress || (address as `0x${string}`),
+    ubiProvider
+  );
 
   const currentCurrencyConfig = CURRENCIES.find(c => c.id === selectedCurrency)!;
   const tokenAddress = selectedCurrency === "CELO" ? undefined : (ADDRESSES[selectedCurrency as keyof typeof ADDRESSES] as `0x${string}`);
@@ -438,7 +444,14 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
                     Redirige un goteo de Superfluid de 1,000 G$ mensuales directamente a la billetera inteligente de este productor.
                   </p>
                 </div>
-                {isStreamActive ? (
+                {!ubiAddress ? (
+                  <Button 
+                    onClick={handleConnectUBI}
+                    className="w-full h-12 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Conectar GoodWallet (WalletConnect)
+                  </Button>
+                ) : isStreamActive ? (
                   <Button 
                     onClick={stopStream}
                     disabled={isStreamPending}
