@@ -42,6 +42,8 @@ export interface StreamState {
   bufferAmount: bigint
   /** ¿La billetera conectada es la dueña del flujo (SENDER)? */
   canSign: boolean
+  /** ¿El sender tiene un goteo activo hacia alguien más? */
+  isStreamingToSomeoneElse: boolean
 }
 
 const CHAIN_ID = 42220
@@ -91,6 +93,19 @@ export function useSuperfluidStream(
     }
   })
 
+  // 2.5 Verificar Flujo Neto del Sender (para saber si le está enviando a otro productor)
+  const { data: accountFlowData, refetch: refetchAccountFlow } = useReadContract({
+    chainId: CHAIN_ID,
+    address: ADDRESSES.CFA_V1_FORWARDER,
+    abi: CFA_V1_FORWARDER_ABI,
+    functionName: 'getAccountFlowinfo',
+    args: SENDER ? [ADDRESSES.G$, SENDER] : undefined,
+    query: {
+      enabled: !!SENDER,
+      refetchInterval: 10_000,
+    }
+  })
+
   // 3. Preparar escritura
   const { writeContractAsync, data: txHash, isPending: isWriting } = useWriteContract()
 
@@ -107,10 +122,21 @@ export function useSuperfluidStream(
 
   const isActive = flowRate > 0n
 
+  const isStreamingToSomeoneElse = useMemo(() => {
+    if (!accountFlowData) return false;
+    const [, netFlowRate] = accountFlowData as [bigint, bigint, bigint, bigint];
+    // Si el flujo neto es negativo (está enviando) y el flujo hacia ESTE productor específico es 0,
+    // significa que está enviando a ALGUIEN MÁS.
+    return netFlowRate < 0n && !isActive;
+  }, [accountFlowData, isActive]);
+
   // Refrescar al confirmar éxito
   useEffect(() => {
-    if (isSuccess) refetchFlow()
-  }, [isSuccess, refetchFlow])
+    if (isSuccess) {
+      refetchFlow()
+      refetchAccountFlow()
+    }
+  }, [isSuccess, refetchFlow, refetchAccountFlow])
 
   // ── Acciones ───────────────────────────────────────────────────────────────
   
@@ -243,6 +269,7 @@ export function useSuperfluidStream(
     isPending: isWriting || isConfirming,
     lastUpdated,
     bufferAmount,
-    canSign
+    canSign,
+    isStreamingToSomeoneElse
   }
 }
