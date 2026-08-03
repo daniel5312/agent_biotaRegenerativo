@@ -71,3 +71,6 @@ scripts/*.mjs
 playwright-report/
 playwright-debug.png
 playwright-report/
+
+# Reglas privadas del agente IA
+.ai/
