@@ -262,7 +262,7 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
   const { isLoading: isConfirmingPay, isSuccess: isPaySuccess } = useWaitForTransactionReceipt({ hash: payHash || nativeHash });
 
   // Superfluid Hooks (Goteo)
-  const { isActive: isStreamActive, startStream, stopStream, isPending: isStreamPending, flowRate, lastUpdated } = useSuperfluidStream(
+  const { isActive: isStreamActive, startStream, stopStream, isPending: isStreamPending, flowRate, lastUpdated, isStreamingToSomeoneElse } = useSuperfluidStream(
     producer.wallet as `0x${string}`, 
     ubiAddress || (address as `0x${string}`),
     ubiProvider
@@ -275,6 +275,11 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
   }, [isStreamActive]);
 
   const handleStartStream = async () => {
+    if (isStreamingToSomeoneElse) {
+      const confirmMultiple = window.confirm("⚠️ Ya tienes un goteo activo hacia otro productor.\n\nSi continúas, tendrás múltiples goteos consumiendo tu saldo simultáneamente.\n\n¿Estás seguro de que quieres abrir este nuevo goteo también?");
+      if (!confirmMultiple) return;
+    }
+
     setIsOptimisticActive(true);
     try {
       await startStream();
