@@ -35,16 +35,25 @@ export async function agentExecuteDailyClaim(userAddress: string) {
     console.log(`🔐 Solicitando firma delegada a Privy Server Wallets...`);
     
     // 2. Ejecutar la transacción usando la autorización delegada
-    const { data: txHash } = await privy.walletApi.rpc({
-      walletAddress: userAddress,
+    const response = await privy.walletApi.rpc({
+      address: userAddress,
+      chainType: 'ethereum',
       method: 'eth_sendTransaction',
       caip2: 'eip155:42220', // Celo Mainnet
       params: {
-        to: UBISCHEME_ADDRESS,
-        value: 0,
-        data: txData,
+        transaction: {
+          to: UBISCHEME_ADDRESS as `0x${string}`,
+          value: "0x0",
+          data: txData as `0x${string}`,
+        }
       }
     });
+
+    if ('error' in response) {
+      throw new Error(`Privy RPC Error: ${response.error.message}`);
+    }
+
+    const txHash = response.data.hash;
 
     console.log(`✅ ¡Éxito! El Agente 8004 completó el reclamo. Hash: ${txHash}`);
     return { success: true, hash: txHash };
