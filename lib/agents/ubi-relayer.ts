@@ -12,7 +12,12 @@ import { celo } from 'viem/chains';
 // Inicialización segura del cliente Privy
 const privy = new PrivyClient(
   process.env.NEXT_PUBLIC_PRIVY_APP_ID || '',
-  process.env.PRIVY_APP_SECRET || ''
+  process.env.PRIVY_APP_SECRET || '',
+  {
+    walletApi: {
+      authorizationPrivateKey: process.env.PRIVY_AUTHORIZATION_KEY || '',
+    },
+  }
 );
 
 const publicClient = createPublicClient({
@@ -32,28 +37,46 @@ export async function agentExecuteDailyClaim(userAddress: string) {
     // El signature hash de claim() es 0x4e71d92d
     const txData = '0x4e71d92d';
 
+    console.log(`⛽ Calculando Gas y Nonce en la red...`);
+    const nonce = await publicClient.getTransactionCount({
+      address: userAddress as `0x${string}`,
+    });
+
+    // En Celo, los fees suelen ser estables, pero usamos viem para ser precisos
+    const { maxFeePerGas, maxPriorityFeePerGas } = await publicClient.estimateFeesPerGas();
+
     console.log(`🔐 Solicitando firma delegada a Privy Server Wallets...`);
     
-    // 2. Ejecutar la transacción usando la autorización delegada
+    // 2. Ejecutar la firma usando la autorización delegada (TEE)
     const response = await privy.walletApi.rpc({
       address: userAddress,
       chainType: 'ethereum',
-      method: 'eth_sendTransaction',
-      caip2: 'eip155:42220', // Celo Mainnet
+      method: 'eth_signTransaction',
       params: {
         transaction: {
           to: UBISCHEME_ADDRESS as `0x${string}`,
           value: "0x0",
           data: txData as `0x${string}`,
+          chainId: 42220,
+          nonce: nonce,
+          gasLimit: '0x30d40', // 200,000 gas limit approx para GoodDollar
+          maxFeePerGas: `0x${maxFeePerGas.toString(16)}`,
+          maxPriorityFeePerGas: `0x${maxPriorityFeePerGas.toString(16)}`,
         }
       }
     });
 
     if ('error' in response) {
-      throw new Error(`Privy RPC Error: ${response.error.message}`);
+      throw new Error(`Privy RPC Error: ${(response.error as any).message}`);
     }
 
-    const txHash = response.data.hash;
+    const signedTx = response.data.signedTransaction;
+    
+    console.log(`📡 Transmitiendo la transacción firmada a la red...`);
+    // 3. Nosotros transmitimos la transacción a la red que queramos (Celo o Anvil)
+    const txHash = await publicClient.sendRawTransaction({ 
+      serializedTransaction: signedTx as `0x${string}`
+    });
 
     console.log(`✅ ¡Éxito! El Agente 8004 completó el reclamo. Hash: ${txHash}`);
     return { success: true, hash: txHash };
