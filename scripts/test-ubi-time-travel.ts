@@ -39,20 +39,13 @@ async function main() {
   const cronSecretMatch = envFile.match(/CRON_SECRET=(.*)/);
   const cronSecret = cronSecretMatch ? cronSecretMatch[1].trim() : 'super_secret_biota_2026';
 
-  // ATENCIÓN: Cambia esta dirección por tu billetera inteligente real con la que te logueaste
-  // (La que empieza por 0x...)
-  const testAddress = "0x27a7242ecA9725fc78776A5E3F362aFE2E730962";
-
   // 4. Llamar a nuestra API local
   const response = await fetch("http://localhost:3000/api/cron/ubi", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${cronSecret}`
-    },
-    body: JSON.stringify({
-      addresses: [testAddress]
-    })
+    }
   });
 
   const data = await response.json();

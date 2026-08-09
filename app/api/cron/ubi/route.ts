@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { agentExecuteDailyClaim } from '@/lib/agents/ubi-relayer';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
@@ -21,16 +22,25 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Extraer el array de billeteras
-    const body = await request.json();
-    const addresses: string[] = body.addresses;
+    // 2. Consultar la lista maestra de agricultores activos en Supabase
+    const { data: subscriptions, error: dbError } = await supabase
+      .from('ubi_subscriptions')
+      .select('wallet_address')
+      .eq('is_active', true);
 
-    if (!addresses || !Array.isArray(addresses) || addresses.length === 0) {
+    if (dbError) {
+      console.error('Error consultando Supabase:', dbError);
       return NextResponse.json(
-        { error: 'Debe proveer un array válido de addresses.' },
-        { status: 400 }
+        { error: 'Error interno consultando la base de datos de usuarios.' },
+        { status: 500 }
       );
     }
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return NextResponse.json({ success: true, message: 'No hay campesinos activos para procesar hoy.' });
+    }
+
+    const addresses = subscriptions.map((s) => s.wallet_address);
 
     // 3. Ejecutar el Agente para cada billetera
     const results = [];
