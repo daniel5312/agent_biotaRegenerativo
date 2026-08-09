@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAccount } from "wagmi";
 import { usePrivy, useWallets, useSigners } from "@privy-io/react-auth";
+import { supabase } from "@/lib/supabase";
 import { useGoodDollarIdentity } from "@/hooks/useGoodDollarIdentity";
 import { ADDRESSES } from "@/lib/contracts";
 import { useToast } from "@/hooks/use-toast";
@@ -152,21 +153,45 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
           ],
         });
         
-        setIsAutoClaimEnabled(true);
-        toast({ title: "✅ Automatización Lista", description: "El Agente 8004 reclamará el gas y el UBI por ti." });
+        // Registrar o actualizar en Supabase
+        const { error: dbError } = await supabase
+          .from('ubi_subscriptions')
+          .upsert({ wallet_address: embeddedWallet.address, is_active: true });
+        
+        if (dbError) {
+          console.error("Error guardando en Supabase:", dbError);
+          toast({ title: "⚠️ Advertencia", description: "Delegado, pero falló el registro en DB.", variant: "destructive" });
+        } else {
+          setIsAutoClaimEnabled(true);
+          toast({ title: "✅ Automatización Lista", description: "El Agente 8004 reclamará el gas y el UBI por ti." });
+        }
       } else {
         // En una implementación real más compleja se llamaría a revokeSigners o se dejaría expirar la llave, 
         // pero por ahora simplemente desactivamos la bandera UI.
         await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Actualizar en Supabase para desactivar
+        if (embeddedWallet) {
+          await supabase
+            .from('ubi_subscriptions')
+            .upsert({ wallet_address: embeddedWallet.address, is_active: false });
+        }
+
         setIsAutoClaimEnabled(false);
         toast({ title: "🛑 Automatización Detenida", description: "Ahora debes reclamar manualmente." });
       }
     } catch (e: any) {
       console.error("[Privy] Error delegando wallet:", e);
       if (e.message && e.message.includes("Duplicate signer")) {
-        // El agente ya estaba autorizado
+        // El agente ya estaba autorizado, igual lo registramos en la base de datos
+        const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy');
+        if (embeddedWallet) {
+          await supabase
+            .from('ubi_subscriptions')
+            .upsert({ wallet_address: embeddedWallet.address, is_active: true });
+        }
         setIsAutoClaimEnabled(true);
-        toast({ title: "✅ Ya estabas Autorizado", description: "El Agente 8004 ya tenía permisos para reclamar por ti." });
+        toast({ title: "✅ Ya estabas Autorizado", description: "El Agente 8004 ya tenía permisos para reclamar por ti y fue sincronizado." });
       } else {
         setIsAutoClaimEnabled(!enabled);
         toast({ title: "❌ Permiso Cancelado", description: "El usuario rechazó la delegación al Agente.", variant: "destructive" });
