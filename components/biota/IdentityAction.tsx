@@ -68,6 +68,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   const { user } = usePrivy();
   const { address: activeAddress } = useAccount();
   const { toast } = useToast();
+  const { wallets } = useWallets();
 
   const handleCopy = (text: string, label: string) => {
     if (typeof window !== "undefined") {
@@ -80,7 +81,42 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   };
 
   // 1. Identificar Billetera A (Login - Dinámica)
-  const primaryAddress = activeAddress as `0x${string}`;
+  // Wagmi (activeAddress) captura billeteras externas. Privy (user.wallet.address) captura Google/Email.
+  const primaryAddress = (user?.wallet?.address || activeAddress) as `0x${string}`;
+
+  // 1.5 Registro Automático en Supabase (Arquitectura ReFi)
+  React.useEffect(() => {
+    if (primaryAddress) {
+      // Detectar con qué tipo de billetera inició sesión de forma ultra-segura
+      let walletType = 'web3'; // Por defecto asumimos que es externa (navegador/MiniPay)
+      
+      if (wallets && wallets.length > 0) {
+        const activeWallet = wallets.find(w => w.address?.toLowerCase() === primaryAddress.toLowerCase());
+        if (activeWallet?.walletClientType === 'privy') {
+          walletType = 'google';
+        }
+      }
+
+      const registerUser = async () => {
+        try {
+          const { error } = await supabase
+            .from('users')
+            .insert({ 
+              wallet_address: primaryAddress, 
+              rol: 'campesino',
+              tipo_billetera: walletType
+            });
+          
+          if (error && error.code !== '23505') {
+              console.error("[DB] Error registrando usuario:", error);
+          }
+        } catch(e) {
+          console.error("[DB] Excepción registrando usuario:", e);
+        }
+      };
+      registerUser();
+    }
+  }, [primaryAddress, wallets]);
 
   // 2. Consumir el Estado Global (WalletConnect y Superfluid)
   const {
@@ -124,7 +160,6 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
 
   // Toggle de Reclamo Automático (Agente 8004)
   const [isAutoClaimEnabled, setIsAutoClaimEnabled] = React.useState(false);
-  const { wallets } = useWallets();
   const { addSigners } = useSigners();
 
   const handleToggleAutoClaim = async (enabled: boolean) => {
