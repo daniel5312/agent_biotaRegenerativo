@@ -99,19 +99,28 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
 
       const registerUser = async () => {
         try {
+          // Detectar si el usuario entró como Sponsor o Productor desde el Home
+          let finalRole = 'productor';
+          if (typeof window !== 'undefined') {
+             const storedRole = localStorage.getItem("BIOTA_ROLE");
+             if (storedRole === "INVESTOR") finalRole = 'inversor';
+          }
+
           const { error } = await supabase
             .from('users')
             .insert({ 
               wallet_address: primaryAddress, 
-              rol: 'campesino',
+              rol: finalRole,
               tipo_billetera: walletType
             });
           
           if (error && error.code !== '23505') {
               console.error("[DB] Error registrando usuario:", error);
+              toast({ title: "Error Base de Datos", description: error.message, variant: "destructive" });
           }
-        } catch(e) {
+        } catch(e: any) {
           console.error("[DB] Excepción registrando usuario:", e);
+          toast({ title: "Error Código", description: e.message, variant: "destructive" });
         }
       };
       registerUser();
