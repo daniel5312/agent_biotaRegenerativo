@@ -20,9 +20,10 @@ import {
   HeartHandshake,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useConnection, useBalance } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 interface AppShellProps {
   children: ReactNode;
@@ -63,13 +64,55 @@ export function AppShell({
   userRole = "PRODUCER",
 }: AppShellProps) {
   const { theme, setTheme } = useTheme();
-  const { logout, authenticated } = usePrivy();
+  const { logout, authenticated, user } = usePrivy();
   const { address } = useConnection();
   const { data: celoBalance, refetch: refetchBalance } = useBalance({ address });
+  const { wallets } = useWallets();
   const [mounted, setMounted] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
   const { toast } = useToast();
   const isFunding = useRef(false);
+
+  // 1. Registro Automático en Supabase (Movido desde IdentityAction para que aplique a todas las pestañas)
+  const primaryAddress = (user?.wallet?.address || address) as `0x${string}`;
+  useEffect(() => {
+    if (primaryAddress) {
+      let walletType = 'web3';
+      if (wallets && wallets.length > 0) {
+        const activeWallet = wallets.find(w => w.address?.toLowerCase() === primaryAddress.toLowerCase());
+        if (activeWallet?.walletClientType === 'privy') {
+          walletType = 'google';
+        }
+      }
+
+      const registerUser = async () => {
+        try {
+          let finalRole = 'productor';
+          if (typeof window !== 'undefined') {
+             const storedRole = localStorage.getItem("BIOTA_ROLE");
+             if (storedRole === "INVESTOR") finalRole = 'inversor';
+          }
+
+          console.log("[AppShell] Ejecutando upsert para:", primaryAddress, "con rol:", finalRole);
+          const { error, data } = await supabase
+            .from('users')
+            .upsert({ 
+              wallet_address: primaryAddress, 
+              rol: finalRole,
+              tipo_billetera: walletType
+            }, { onConflict: 'wallet_address' })
+            .select();
+          
+          if (error) {
+              console.error("[DB] Error registrando usuario:", error);
+          }
+        } catch(e: any) {
+          console.error("[DB] Excepción registrando usuario:", e);
+        }
+      };
+      registerUser();
+    }
+  }, [primaryAddress, wallets]);
 
   // Auto-fondeo al conectarse
   useEffect(() => {

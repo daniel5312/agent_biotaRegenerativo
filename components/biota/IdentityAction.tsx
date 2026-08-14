@@ -84,48 +84,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   // Wagmi (activeAddress) captura billeteras externas. Privy (user.wallet.address) captura Google/Email.
   const primaryAddress = (user?.wallet?.address || activeAddress) as `0x${string}`;
 
-  // 1.5 Registro Automático en Supabase (Arquitectura ReFi)
-  React.useEffect(() => {
-    if (primaryAddress) {
-      // Detectar con qué tipo de billetera inició sesión de forma ultra-segura
-      let walletType = 'web3'; // Por defecto asumimos que es externa (navegador/MiniPay)
-      
-      if (wallets && wallets.length > 0) {
-        const activeWallet = wallets.find(w => w.address?.toLowerCase() === primaryAddress.toLowerCase());
-        if (activeWallet?.walletClientType === 'privy') {
-          walletType = 'google';
-        }
-      }
 
-      const registerUser = async () => {
-        try {
-          // Detectar si el usuario entró como Sponsor o Productor desde el Home
-          let finalRole = 'productor';
-          if (typeof window !== 'undefined') {
-             const storedRole = localStorage.getItem("BIOTA_ROLE");
-             if (storedRole === "INVESTOR") finalRole = 'inversor';
-          }
-
-          const { error } = await supabase
-            .from('users')
-            .insert({ 
-              wallet_address: primaryAddress, 
-              rol: finalRole,
-              tipo_billetera: walletType
-            });
-          
-          if (error && error.code !== '23505') {
-              console.error("[DB] Error registrando usuario:", error);
-              toast({ title: "Error Base de Datos", description: error.message, variant: "destructive" });
-          }
-        } catch(e: any) {
-          console.error("[DB] Excepción registrando usuario:", e);
-          toast({ title: "Error Código", description: e.message, variant: "destructive" });
-        }
-      };
-      registerUser();
-    }
-  }, [primaryAddress, wallets]);
 
   // 2. Consumir el Estado Global (WalletConnect y Superfluid)
   const {
