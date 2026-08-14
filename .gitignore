@@ -67,10 +67,10 @@ logs/
 # --- 6. ARCHIVOS DE PRUEBA OFF-CHAIN ---
 scratch/
 scripts/*.mjs
-*.js.localplaywright-debug.png
-playwright-report/
+*.js.local
 playwright-debug.png
 playwright-report/
+test-results/
 
 # Reglas privadas del agente IA
 .ai/
