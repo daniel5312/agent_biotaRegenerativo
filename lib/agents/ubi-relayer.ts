@@ -22,7 +22,7 @@ const privy = new PrivyClient(
 
 const publicClient = createPublicClient({
   chain: celo,
-  transport: http("https://forno.celo.org")
+  transport: http(process.env.NEXT_PUBLIC_RPC_URL || "https://forno.celo.org")
 });
 
 const UBISCHEME_ADDRESS = '0x43d72Ff17701B2DA814620735C39C620Ce0ea4A1';
