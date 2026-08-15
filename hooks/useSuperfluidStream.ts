@@ -113,6 +113,16 @@ export function useSuperfluidStream(
     hash: txHash,
   })
 
+  // ── Persistencia Visual (UI Optimista) ─────────────────────────────────────
+  const [optimisticActive, setOptimisticActive] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && RECEIVER && SENDER) {
+      const stored = localStorage.getItem(`biota_flow_${RECEIVER}_${SENDER}`)
+      if (stored === 'true') setOptimisticActive(true)
+    }
+  }, [RECEIVER, SENDER])
+
   // ── Datos Derivados ────────────────────────────────────────────────────────
   const [lastUpdated, flowRate, bufferAmount] = useMemo(() => {
     if (!flowData) return [0, 0n, 0n]
@@ -120,7 +130,22 @@ export function useSuperfluidStream(
     return [Number(updated), rate, buffer]
   }, [flowData])
 
-  const isActive = flowRate > 0n
+  const isActuallyActive = flowRate > 0n
+  // Mientras Wagmi carga, confiamos en la memoria del navegador. Cuando carga, usamos la verdad de la blockchain.
+  const isActive = loadingFlow ? optimisticActive : isActuallyActive
+
+  // Sincronizar la verdad de la blockchain con el navegador
+  useEffect(() => {
+    if (!loadingFlow && SENDER && RECEIVER) {
+      if (isActuallyActive) {
+        localStorage.setItem(`biota_flow_${RECEIVER}_${SENDER}`, 'true')
+        setOptimisticActive(true)
+      } else {
+        localStorage.removeItem(`biota_flow_${RECEIVER}_${SENDER}`)
+        setOptimisticActive(false)
+      }
+    }
+  }, [loadingFlow, isActuallyActive, SENDER, RECEIVER])
 
   const isStreamingToSomeoneElse = useMemo(() => {
     if (!accountFlowData) return false;

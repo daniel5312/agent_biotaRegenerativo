@@ -130,6 +130,16 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
   const [isAutoClaimEnabled, setIsAutoClaimEnabled] = React.useState(false);
   const { addSigners } = useSigners();
 
+  // Restaurar el estado visual instantáneamente al montar el componente (UI Optimista)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && primaryAddress) {
+      const stored = localStorage.getItem(`biota_autoclaim_${primaryAddress.toLowerCase()}`);
+      if (stored === 'true') {
+        setIsAutoClaimEnabled(true);
+      }
+    }
+  }, [primaryAddress]);
+
   const handleToggleAutoClaim = async (enabled: boolean) => {
     try {
       const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy');
@@ -165,6 +175,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
           console.error("Error guardando en Supabase:", dbError);
           toast({ title: "⚠️ Advertencia", description: "Delegado, pero falló el registro en DB.", variant: "destructive" });
         } else {
+          localStorage.setItem(`biota_autoclaim_${embeddedWallet.address.toLowerCase()}`, 'true');
           setIsAutoClaimEnabled(true);
           toast({ title: "✅ Automatización Lista", description: "El Agente 8004 reclamará el gas y el UBI por ti." });
         }
@@ -178,6 +189,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
           await supabase
             .from('ubi_subscriptions')
             .upsert({ wallet_address: embeddedWallet.address, is_active: false });
+          localStorage.removeItem(`biota_autoclaim_${embeddedWallet.address.toLowerCase()}`);
         }
 
         setIsAutoClaimEnabled(false);
@@ -192,6 +204,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
           await supabase
             .from('ubi_subscriptions')
             .upsert({ wallet_address: embeddedWallet.address, is_active: true });
+          localStorage.setItem(`biota_autoclaim_${embeddedWallet.address.toLowerCase()}`, 'true');
         }
         setIsAutoClaimEnabled(true);
         toast({ title: "✅ Ya estabas Autorizado", description: "El Agente 8004 ya tenía permisos para reclamar por ti y fue sincronizado." });
