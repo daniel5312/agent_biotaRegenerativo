@@ -8,7 +8,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 /**
  * @title BiotaCarbon
  * @author Biota Protocol (ReFi)
- * @notice Activo financiero (ERC-20) que tokeniza la captura de carbono (1 Token = 1 Tonelada).
+ * @notice Activo financiero (ERC-20) que tokeniza la captura de carbono (1 Token = 1 Kilo).
  * @dev Mantiene 18 decimales. Permite la quema (retirement) para compensación de huella.
  */
 contract BiotaCarbon is ERC20, ERC20Burnable, AccessControl {
@@ -29,7 +29,7 @@ contract BiotaCarbon is ERC20, ERC20Burnable, AccessControl {
      * @notice Mintea (crea) nuevos tokens de carbono para un productor.
      * @dev Solo puede ser ejecutado por el Agente 8004 (Backend de Biota) o el Admin (Tú).
      * @param to Dirección del productor/campesino.
-     * @param amount Cantidad a mintear (Recordar: 10^18 wei = 1 Tonelada).
+     * @param amount Cantidad a mintear (Recordar: 10^18 wei = 1 Kilo).
      */
     function mintCarbon(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
         _mint(to, amount);
