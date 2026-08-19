@@ -37,6 +37,9 @@ export const ADDRESSES = {
   BIOTA_UBI: (process.env.NEXT_PUBLIC_BIOTA_UBI || '0xE060D49fd545323A7602D7b005E0813594E57356') as Address,
   // [REFI] contrato rwa del café
   BIOTA_RWA: (process.env.NEXT_PUBLIC_BIOTA_RWA || '0xb86c5d814fb694b0f85f57fd799532543eb1a98c') as Address,
+  // [REFI] Orquestador de Carbono y Etapas (Nuevos UUPS)
+  BIOTA_CARBON: (process.env.NEXT_PUBLIC_BIOTA_CARBON_ADDRESS || '0xB537CFb2F3ef9821e68462C4C6FB3763Cd682B47') as Address,
+  BIOTA_STAGE: (process.env.NEXT_PUBLIC_BIOTA_STAGE_ADDRESS || '0x9c8ecEBA4E650fD46226aFcc6d64D2b8adA51cC2') as Address,
 
   /* === CELO SEPOLIA (FUTURE USE) ===
   BIOTA_PASSPORT_SEP: '0x...' as Address,
@@ -186,3 +189,30 @@ export interface CoffeeRWA {
   alturaMsnm: bigint;
   activoParaReclamo: boolean;
 }
+
+// [REFI] Minimal ABIs para el Doble Minteo (Agente 8004)
+export const BIOTA_CARBON_ABI = [
+  {
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' }
+    ],
+    name: 'mintCarbon',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  }
+] as const;
+
+export const BIOTA_STAGE_ABI = [
+  {
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: '_dataHash', type: 'bytes32' }
+    ],
+    name: 'mintStage',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  }
+] as const;
