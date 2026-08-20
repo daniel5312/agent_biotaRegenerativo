@@ -1,25 +1,26 @@
-import { PrivyClient } from '@privy-io/server-auth';
-import { createPublicClient, http, encodeFunctionData } from 'viem';
+import { createPublicClient, createWalletClient, http, encodeFunctionData, parseEther } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 import { celo } from 'viem/chains';
-import { ADDRESSES, BIOTA_CARBON_ABI, BIOTA_STAGE_ABI } from '../contracts';
+import { ADDRESSES, BIOTA_CARBON_ABI, BIOTA_STAGE_ABI, ERC20_ABI } from '../contracts';
 import { LabData, calculateBiologicalImpact, generateLabHash } from '../oracle';
+
 /**
- * 🏃 Sprint 1: Ticket-003 - Motor Relayer del Agente
+ * 🏃 Sprint 1: Ticket-003 - Motor Relayer del Agente (Refactor Nativo)
  * 
- * Este archivo se ejecuta SOLO en el servidor (Ej: Next.js API Routes / Cron Jobs).
- * Utiliza el PRIVY_APP_SECRET para autenticarse y utilizar las Session Keys delegadas.
+ * Este archivo se ejecuta SOLO en el servidor.
+ * Utiliza la AGENT_PRIVATE_KEY local para máxima velocidad y descentralización.
  */
 
-// Inicialización segura del cliente Privy
-const privy = new PrivyClient(
-  process.env.NEXT_PUBLIC_PRIVY_APP_ID || '',
-  process.env.PRIVY_APP_SECRET || '',
-  {
-    walletApi: {
-      authorizationPrivateKey: process.env.PRIVY_AUTHORIZATION_KEY || '',
-    },
-  }
+// Inicialización del Account usando la llave privada del Agente
+const account = privateKeyToAccount(
+  (process.env.AGENT_PRIVATE_KEY || '0x0000000000000000000000000000000000000000000000000000000000000000') as `0x${string}`
 );
+
+const walletClient = createWalletClient({
+  account,
+  chain: celo,
+  transport: http("https://forno.celo.org")
+});
 
 const publicClient = createPublicClient({
   chain: celo,
@@ -46,37 +47,17 @@ export async function agentExecuteDailyClaim(userAddress: string) {
     // En Celo, los fees suelen ser estables, pero usamos viem para ser precisos
     const { maxFeePerGas, maxPriorityFeePerGas } = await publicClient.estimateFeesPerGas();
 
-    console.log(`🔐 Solicitando firma delegada a Privy Server Wallets...`);
+    console.log(`🔐 Firmando y enviando transacción con Viem (Local)...`);
     
-    // 2. Ejecutar la firma usando la autorización delegada (TEE)
-    const response = await privy.walletApi.rpc({
-      address: userAddress,
-      chainType: 'ethereum',
-      method: 'eth_signTransaction',
-      params: {
-        transaction: {
-          to: UBISCHEME_ADDRESS as `0x${string}`,
-          value: "0x0",
-          data: txData as `0x${string}`,
-          chainId: 42220,
-          nonce: nonce,
-          gasLimit: '0x30d40', // 200,000 gas limit approx para GoodDollar
-          maxFeePerGas: `0x${maxFeePerGas.toString(16)}`,
-          maxPriorityFeePerGas: `0x${maxPriorityFeePerGas.toString(16)}`,
-        }
-      }
-    });
-
-    if ('error' in response) {
-      throw new Error(`Privy RPC Error: ${(response.error as any).message}`);
-    }
-
-    const signedTx = response.data.signedTransaction;
-    
-    console.log(`📡 Transmitiendo la transacción firmada a la red...`);
-    // 3. Nosotros transmitimos la transacción a la red que queramos (Celo o Anvil)
-    const txHash = await publicClient.sendRawTransaction({ 
-      serializedTransaction: signedTx as `0x${string}`
+    // 2. Ejecutar la firma de forma nativa
+    const txHash = await walletClient.sendTransaction({
+      to: UBISCHEME_ADDRESS as `0x${string}`,
+      value: 0n,
+      data: txData as `0x${string}`,
+      nonce: nonce,
+      gas: 200000n, // ~200k gas limit approx
+      maxFeePerGas,
+      maxPriorityFeePerGas,
     });
 
     console.log(`✅ ¡Éxito! El Agente 8004 completó el reclamo. Hash: ${txHash}`);
@@ -106,12 +87,52 @@ export async function agentExecuteDoubleMint(tbaAddress: `0x${string}`, labData:
     console.log(`- Carbono Total a Mintear: ${bioResult.carbonoTotalKilos} Kg`);
     console.log(`- Hash de Certificación: ${labHash}`);
 
-    // La dirección base del agente (quien firma la transacción)
-    // Extraída del Privy Auth Key o una llave privada del servidor configurada en .env
-    // Privy server no expone la dirección pública de la llave de autorización directamente,
-    // así que necesitamos que el Agente use una cuenta delegada o que asuma los fees.
-    // Asumiremos que process.env.AGENT_ADDRESS tiene la dirección pública del agente.
-    const agentAddress = (process.env.NEXT_PUBLIC_AGENT_ADDRESS || '0x699AD5EF840764db8CEe62569455bBE6081aA6b8') as `0x${string}`;
+    // [EVM] Buscamos la dirección del Agente.
+    // Viem extrae automáticamente la dirección pública desde la llave privada.
+    const agentAddress = account.address;
+
+    // =========================================================================
+    // 🧠 EL CEREBRO FINANCIERO (FALLBACK DE GAS CIP-64) - [CELOPEDIA]
+    // =========================================================================
+    // Le enseñamos al agente a revisar sus bolsillos antes de ir a pagar el peaje.
+    // Regla de Celopedia: Si no mandas 'feeCurrency', se paga en CELO.
+    // Si mandas 'feeCurrency' con el Adapter, se paga en esa stablecoin.
+    
+    let selectedFeeCurrency: `0x${string}` | undefined = undefined; // Por defecto: CELO
+
+    console.log(`🔎 [CELOPEDIA] Verificando liquidez del Agente para pagar el Gas...`);
+    const celoBalance = await publicClient.getBalance({ address: agentAddress });
+    
+    // Si tenemos menos de 0.001 CELO, entramos en pánico y usamos el Fallback.
+    if (celoBalance < parseEther("0.001")) {
+      console.log(`⚠️ CELO Nativo insuficiente. Activando Fallback a Stablecoins (CIP-64)...`);
+      
+      // Chequeamos si el agente tiene USDC (Mínimo 1 centavo: 10,000 wei de 6 decimales)
+      const usdcBalance = await publicClient.readContract({
+        address: ADDRESSES.USDC, abi: ERC20_ABI, functionName: 'balanceOf', args: [agentAddress]
+      }) as bigint;
+
+      if (usdcBalance > 10000n) {
+        console.log(`💸 Pagando el Gas en USDC (Adapter: ${ADDRESSES.USDC_ADAPTER})`);
+        selectedFeeCurrency = ADDRESSES.USDC_ADAPTER;
+      } else {
+        // Si no hay USDC, chequeamos USDT
+        const usdtBalance = await publicClient.readContract({
+          address: ADDRESSES.USDT, abi: ERC20_ABI, functionName: 'balanceOf', args: [agentAddress]
+        }) as bigint;
+
+        if (usdtBalance > 10000n) {
+          console.log(`💸 Pagando el Gas en USDT (Adapter: ${ADDRESSES.USDT_ADAPTER})`);
+          selectedFeeCurrency = ADDRESSES.USDT_ADAPTER;
+        } else {
+          console.warn(`🚨 ALERTA CRÍTICA: El Agente 8004 no tiene fondos para gas en CELO, USDC, ni USDT.`);
+          // Si llega aquí, se intentará enviar en CELO pero probablemente falle si está en cero.
+        }
+      }
+    } else {
+      console.log(`🟢 Saldo CELO saludable. Pagando Gas en nativo.`);
+    }
+    // =========================================================================
 
     const nonce = await publicClient.getTransactionCount({
       address: agentAddress,
@@ -132,67 +153,40 @@ export async function agentExecuteDoubleMint(tbaAddress: `0x${string}`, labData:
       args: [tbaAddress, bioResult.carbonoTotalWei]
     });
 
-    console.log(`🔐 Solicitando 2 firmas delegadas a Privy Server Wallets (TEE)...`);
+    console.log(`🔐 Firmando y enviando transacciones localmente con Viem...`);
 
-    // TRANSACCIÓN 1: BIOTA STAGE
-    const stageResponse = await privy.walletApi.rpc({
-      address: agentAddress,
-      chainType: 'ethereum',
-      method: 'eth_signTransaction',
-      params: {
-        transaction: {
-          to: ADDRESSES.BIOTA_STAGE,
-          value: "0x0",
-          data: txDataStage,
-          chainId: 42220,
-          nonce: nonce,
-          gasLimit: '0x493E0', // ~300k gas limit
-          maxFeePerGas: `0x${maxFeePerGas.toString(16)}`,
-          maxPriorityFeePerGas: `0x${maxPriorityFeePerGas.toString(16)}`,
-        }
-      }
+    // TRANSACCIÓN 1: BIOTA STAGE [REFI]
+    const stageTxHash = await walletClient.sendTransaction({
+      to: ADDRESSES.BIOTA_STAGE,
+      value: 0n,
+      data: txDataStage,
+      nonce: nonce,
+      gas: 300000n, // ~300k gas limit
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+      feeCurrency: selectedFeeCurrency // CIP-64 Gas Abstraction
     });
 
-    if ('error' in stageResponse) throw new Error(`Privy Error Stage: ${(stageResponse.error as any).message}`);
+    console.log(`✅ ¡Éxito! Stage Hash: ${stageTxHash}`);
 
-    // TRANSACCIÓN 2: BIOTA CARBON (Nonce + 1)
-    const carbonResponse = await privy.walletApi.rpc({
-      address: agentAddress,
-      chainType: 'ethereum',
-      method: 'eth_signTransaction',
-      params: {
-        transaction: {
-          to: ADDRESSES.BIOTA_CARBON,
-          value: "0x0",
-          data: txDataCarbon,
-          chainId: 42220,
-          nonce: nonce + 1,
-          gasLimit: '0x493E0', // ~300k gas limit
-          maxFeePerGas: `0x${maxFeePerGas.toString(16)}`,
-          maxPriorityFeePerGas: `0x${maxPriorityFeePerGas.toString(16)}`,
-        }
-      }
+    // TRANSACCIÓN 2: BIOTA CARBON (Nonce + 1) [REFI]
+    const carbonTxHash = await walletClient.sendTransaction({
+      to: ADDRESSES.BIOTA_CARBON,
+      value: 0n,
+      data: txDataCarbon,
+      nonce: nonce + 1, // Vital para orden en la blockchain
+      gas: 300000n,
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+      feeCurrency: selectedFeeCurrency // CIP-64 Gas Abstraction
     });
 
-    if ('error' in carbonResponse) throw new Error(`Privy Error Carbon: ${(carbonResponse.error as any).message}`);
-
-    // 3. TRANSMITIR A LA RED
-    console.log(`📡 Transmitiendo transacciones a Celo Mainnet...`);
-    const txHashStage = await publicClient.sendRawTransaction({ 
-      serializedTransaction: stageResponse.data.signedTransaction as `0x${string}`
-    });
-    
-    const txHashCarbon = await publicClient.sendRawTransaction({ 
-      serializedTransaction: carbonResponse.data.signedTransaction as `0x${string}`
-    });
-
-    console.log(`✅ ¡Éxito! Stage Hash: ${txHashStage}`);
-    console.log(`✅ ¡Éxito! Carbon Hash: ${txHashCarbon}`);
+    console.log(`✅ ¡Éxito! Carbon Hash: ${carbonTxHash}`);
 
     return { 
       success: true, 
-      stageTx: txHashStage, 
-      carbonTx: txHashCarbon,
+      stageTx: stageTxHash, 
+      carbonTx: carbonTxHash,
       kilos: bioResult.carbonoTotalKilos,
       hashCertificacion: labHash
     };
