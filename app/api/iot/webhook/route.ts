@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { executeSoilValidation } from '@/lib/agents/tools';
+import { agentExecuteDoubleMint } from '@/lib/agents/ubi-relayer';
 
 // [IOT-HARDWARE] Endpoint de ingesta de datos para sensores físicos LoRaWAN.
 export async function POST(req: Request) {
@@ -30,11 +31,42 @@ export async function POST(req: Request) {
       farmerAddress
     });
 
-    // 4. Respuesta al Gateway LoRaWAN
+    // 4. El Volante y el Motor: Si la IA aprueba, disparamos el Doble Minteo (ReFi) on-chain
+    // Hola Junior! Aquí conectamos el veredicto matemático de la IA con la máquina de imprimir dinero regenerativo.
+    let mintResult = null;
+    if (aiVerdict.verdict.status === "APROBADO") {
+      console.log(`🚀 [MOTOR-REFI] Veredicto APROBADO. Iniciando minteo on-chain para ${farmerAddress}...`);
+      
+      // Adaptamos la telemetría del sensor al formato que espera el contrato (LabData)
+      // Como esto es automatizado, aproximamos algunos valores biológicos que normalmente 
+      // vendrían de un laboratorio físico (Fase 1).
+      const labData = {
+        laboratorio: `Sensor IoT [${deviceId}]`,
+        fecha: new Date().toISOString(),
+        ubicacionGeografica: "Finca Conectada (IoT)",
+        areaM2: 10000, // Asumimos 1 hectárea por defecto (luego lo leeremos del BiotaPassport NFT)
+        materiaOrganicaPorcentaje: Number(materiaOrganica),
+        hongosPorcentaje: Number(biodiversidad) * 0.6, // Aproximación biológica desde el sensor
+        bacteriasPorcentaje: Number(biodiversidad) * 0.4,
+        ufc: 1e7, // Unidad base simulada
+        phSueloManual: Number(ph),
+        metodosAgricolas: "Monitoreo Automatizado LoRaWAN",
+        verificadoPor: "Agente Autónomo 8004"
+      };
+
+      // ¡Encendemos el motor! El Agente firma la transacción atómica (Stage + Carbon)
+      mintResult = await agentExecuteDoubleMint(farmerAddress as `0x${string}`, labData);
+      console.log(`✅ [MOTOR-REFI] Minteo exitoso. StageTx: ${mintResult.stageTx} | CarbonTx: ${mintResult.carbonTx}`);
+    }
+
+    // 5. Respuesta al Gateway LoRaWAN
     return NextResponse.json({
       success: true,
-      message: 'Telemetría procesada y analizada por el Oráculo IA',
-      veredicto: aiVerdict
+      message: mintResult 
+        ? 'Telemetría procesada y minteo regenerativo ejecutado on-chain.' 
+        : 'Telemetría procesada. Veredicto en observación, sin minteo.',
+      veredicto: aiVerdict,
+      mintReceipt: mintResult
     }, { status: 200 });
 
   } catch (error: any) {
