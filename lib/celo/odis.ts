@@ -52,7 +52,7 @@ export async function lookupMiniPayAddress(
   // WALLET_KEY indica que usamos la llave del Agente que está en el ContractKit.
   const authSigner: AuthSigner = {
     authenticationMethod: OdisUtils.Query.AuthenticationMethod.WALLET_KEY,
-    contractKit: kit,
+    contractKit: kit as any,
   };
 
   try {
