@@ -299,7 +299,13 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
   };
 
   const currentCurrencyConfig = CURRENCIES.find(c => c.id === selectedCurrency)!;
-  const tokenAddress = selectedCurrency === "CELO" ? undefined : (ADDRESSES[selectedCurrency as keyof typeof ADDRESSES] as `0x${string}`);
+  const tokenAddress = selectedCurrency === "CELO" || selectedCurrency === "USD" ? undefined : (ADDRESSES[selectedCurrency as keyof typeof ADDRESSES] as `0x${string}`);
+  
+  // [CELOPEDIA - CIP-64] Adaptadores para pagar el gas con stablecoins
+  const feeCurrencyAddress = 
+    selectedCurrency === "USDT" ? ADDRESSES.USDT_ADAPTER :
+    selectedCurrency === "cUSD" ? ADDRESSES.CUSD :
+    undefined;
   
   const amountToFund = parseUnits(supportAmount === "" ? "0" : supportAmount, currentCurrencyConfig.decimals);
 
@@ -354,7 +360,8 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
         abi: ERC20_ABI,
         functionName: "approve",
         args: [ADDRESSES.BIOTA_SPLITTER, amountToFund * 10n],
-      });
+        ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+      } as any);
       return;
     }
 
@@ -379,7 +386,8 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
           ADDRESSES.COLLECTIVE_MUJERES as `0x${string}`,
           ADDRESSES.BIOTA_SCROW as `0x${string}`,
         ],
-      });
+        ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+      } as any);
     }
   };
 
@@ -568,18 +576,36 @@ function SinglePaymentUI({ supportAmount, setSupportAmount, currentCurrencyConfi
     }
     setIsGeneratingAccount(true);
     
-    // [CELOPEDIA/BRIDGE] Simulamos la llamada a POST /v0/customers/<id>/virtual_accounts
-    // En producción, esto llama a la API que creamos en lib/celo/bridge.ts
-    setTimeout(() => {
+    // [CELOPEDIA/BRIDGE] Llamada a la API Real de tu servidor
+    fetch("/api/bridge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "ON_RAMP",
+        payload: { fullName: "Inversor Biota", email: "inversor@example.com" }
+      })
+    })
+    .then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error de API");
+      
+      // Si usas llave real, devuelve data.virtualAccount
+      setVirtualAccountData(data.virtualAccount);
+      toast({ title: "Cuenta B2B Generada", description: "Transfiere los fondos para inyectar liquidez." });
+    })
+    .catch((error) => {
+      console.error(error);
+      toast({ title: "API de Pruebas", description: "Como usas una llave de mentiras, simulamos la respuesta localmente.", variant: "destructive" });
+      
+      // Fallback visual mientras pones tu llave real
       setVirtualAccountData({
-        bank: "JPMorgan Chase",
+        bank: "JPMorgan Chase (Fallback)",
         routing: "021000021",
         account: "889922" + Math.floor(Math.random() * 10000),
         reference: "BTA-SPLIT-8004"
       });
-      setIsGeneratingAccount(false);
-      toast({ title: "Cuenta B2B Generada", description: "Transfiere los fondos para inyectar liquidez." });
-    }, 1500);
+    })
+    .finally(() => setIsGeneratingAccount(false));
   };
 
   return (

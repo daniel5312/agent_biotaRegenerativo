@@ -183,11 +183,17 @@ export function MercadoView() {
 
   // 3. Lógica de Allowance (Permisos de Gasto)
   const tokenAddress =
-    selectedCurrency === "CELO"
+    selectedCurrency === "CELO" || selectedCurrency === "USD"
       ? undefined
       : (ADDRESSES[
           selectedCurrency as keyof typeof ADDRESSES
         ] as `0x${string}`);
+
+  // [CELOPEDIA - CIP-64] Adaptadores para pagar el gas con stablecoins en lugar de CELO
+  const feeCurrencyAddress = 
+    selectedCurrency === "USDT" ? ADDRESSES.USDT_ADAPTER :
+    selectedCurrency === "cUSD" ? ADDRESSES.CUSD :
+    undefined;
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: tokenAddress,
@@ -243,7 +249,8 @@ export function MercadoView() {
         abi: ERC20_ABI,
         functionName: "approve",
         args: [ADDRESSES.BIOTA_SPLITTER, totalAmount * BigInt(10)], // Aprobamos 10x para evitar re-aprobación constante
-      });
+        ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+      } as any);
       return;
     }
 
@@ -265,7 +272,8 @@ export function MercadoView() {
             ADDRESSES.COLLECTIVE_MUJERES as `0x${string}`,
             ADDRESSES.BIOTA_SCROW as `0x${string}`,
           ],
-        });
+          ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+        } as any);
       }
     } catch (error) {
       console.error("Error en la transacción manual:", error);
@@ -292,7 +300,8 @@ export function MercadoView() {
           abi: ERC20_ABI,
           functionName: "transfer",
           args: [ADDRESSES.AGENT_TBA as `0x${string}`, totalAmount],
-        })
+          ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+        } as any)
       }
       setPaid(true)
       setSuccessTx({ hash, amount: (cartTotal * 0.001).toFixed(3), currency: selectedCurrency });
