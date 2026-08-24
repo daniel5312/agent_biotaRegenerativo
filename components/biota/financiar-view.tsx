@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   HeartHandshake, MapPin, Sprout, ShieldCheck, Coins, Zap, Sparkles, Wallet,
-  Loader2, TreePine, Droplets, ExternalLink, Euro, Clock, Building2
+  Loader2, TreePine, Droplets, ExternalLink, Euro, Clock, Building2, Leaf
 } from "lucide-react";
 import {
   useConnection, useWriteContract, useSendTransaction, useReadContract, useWaitForTransactionReceipt,
@@ -569,6 +569,11 @@ function SinglePaymentUI({ supportAmount, setSupportAmount, currentCurrencyConfi
   const [virtualAccountData, setVirtualAccountData] = useState<any>(null);
   const { toast } = useToast();
 
+  const parsedAmount = parseFloat(supportAmount) || 0;
+  // BCO2 Exchange Rate: 1 BCO2 = 0.10 USD/USDT
+  const isCarbonEligible = selectedCurrency === "USDT" || selectedCurrency === "USD" || selectedCurrency === "cUSD";
+  const carbonToReceive = (parsedAmount / 0.10).toFixed(1);
+
   const handleGenerateBridgeAccount = () => {
     if (parseFloat(supportAmount) <= 0) {
       toast({ title: "Ingresa un monto válido en USD", variant: "destructive" });
@@ -655,6 +660,27 @@ function SinglePaymentUI({ supportAmount, setSupportAmount, currentCurrencyConfi
           </Button>
         )}
       </div>
+
+      {isCarbonEligible && parsedAmount > 0 && (
+        <div className="mt-4 p-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl animate-in zoom-in-95 shadow-inner">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10px] uppercase font-black text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+              <Leaf className="w-3.5 h-3.5" /> Carbon Swap (B2B)
+            </span>
+            <span className="text-[9px] font-bold bg-white/50 dark:bg-black/30 px-1.5 py-0.5 rounded text-emerald-700 dark:text-emerald-500">
+              Tasa: $0.10 / Kilo
+            </span>
+          </div>
+          <div className="flex justify-between items-end">
+            <span className="text-[10px] text-slate-600 dark:text-slate-400 font-bold leading-tight max-w-[60%]">
+              Por tu inyección de liquidez, recibirás Certificados de Carbono:
+            </span>
+            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono drop-shadow-sm">
+              +{carbonToReceive} <span className="text-xs">BCO2</span>
+            </span>
+          </div>
+        </div>
+      )}
 
       {virtualAccountData && selectedCurrency === "USD" ? (
         <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-xl mt-3 border border-slate-200 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 shadow-inner">

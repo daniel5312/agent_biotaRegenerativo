@@ -34,6 +34,7 @@ import {
   ADDRESSES,
   ERC20_ABI,
   BIOTA_SPLITTER_ABI,
+  BIOTA_CARBON_ABI,
   formatCUSD,
 } from "@/lib/contracts";
 import { Button } from "@/components/ui/button";
@@ -135,6 +136,7 @@ const currencies = [
   { id: "USDT", label: "USDT", icon: ShieldCheck, color: "text-green-600" },
   { id: "SDCM", label: "SDCM", icon: Wallet, color: "text-purple-500" },
   { id: "USD", label: "USD (Banco)", icon: Building2, color: "text-stone-900 dark:text-white" },
+  { id: "BCO2", label: "BiotaCarbon", icon: Leaf, color: "text-green-400 font-black drop-shadow-md" },
 ];
 
 export function MercadoView() {
@@ -210,6 +212,15 @@ export function MercadoView() {
     if (isApproveSuccess) refetchAllowance();
   }, [isApproveSuccess, refetchAllowance]);
 
+  // [B2C] Leemos el saldo de BiotaCarbon (BCO2) del Sponsor/Usuario
+  const { data: bco2Balance } = useReadContract({
+    address: ADDRESSES.BIOTA_CARBON as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [address!],
+    query: { enabled: !!address },
+  });
+
   const isPaying =
     isTokenPaying ||
     isNativePaying ||
@@ -260,6 +271,14 @@ export function MercadoView() {
           to: ADDRESSES.DAPP_BIOTA as `0x${string}`,
           value: totalAmount,
         });
+      } else if (selectedCurrency === "BCO2") {
+        writeContractAsync({
+          address: ADDRESSES.BIOTA_CARBON as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "transfer",
+          args: [ADDRESSES.BIOTA_SCROW as `0x${string}`, totalAmount],
+          ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+        } as any);
       } else {
         writeSplitter({
           address: ADDRESSES.BIOTA_SPLITTER as `0x${string}`,

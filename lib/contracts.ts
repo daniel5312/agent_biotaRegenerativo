@@ -12,6 +12,8 @@ import { BIOTA_SCROW_ABI } from './abi/BiotaScrow'
 import { BIOTA_PASSPORT_ABI } from './abi/BiotaPassport'
 import { I_BIOTA_PASSPORT_ABI } from './abi/IBiotaPassport'
 import { CFA_V1_FORWARDER_ABI } from './abi/CFAv1Forwarder'
+import { BIOTA_CARBON_ABI } from './abi/BiotaCarbon'
+import { BIOTA_STAGE_ABI } from './abi/BiotaStage'
 
 // Re-exportar ABIs para que el resto de la app los encuentre aquí
 export {
@@ -23,6 +25,8 @@ export {
   BIOTA_PASSPORT_ABI,
   I_BIOTA_PASSPORT_ABI,
   CFA_V1_FORWARDER_ABI,
+  BIOTA_CARBON_ABI,
+  BIOTA_STAGE_ABI,
 }
 
 // 2. Detectar red actual (FORCED MAINNET)
@@ -194,28 +198,3 @@ export interface CoffeeRWA {
 }
 
 // [REFI] Minimal ABIs para el Doble Minteo (Agente 8004)
-export const BIOTA_CARBON_ABI = [
-  {
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' }
-    ],
-    name: 'mintCarbon',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  }
-] as const;
-
-export const BIOTA_STAGE_ABI = [
-  {
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: '_dataHash', type: 'bytes32' }
-    ],
-    name: 'mintStage',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  }
-] as const;
