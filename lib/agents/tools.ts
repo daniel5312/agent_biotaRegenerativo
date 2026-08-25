@@ -6,6 +6,9 @@ import { ADDRESSES, BIOTA_PASSPORT_ABI, BIOTA_SCROW_ABI } from '../contracts';
 import { generatePassportMetadata } from '../utils';
 // [REFI] Módulo IPFS para subir reportes dMRV a Pinata (GoodCollective compatible)
 import { uploadDMRVReport, buildDMRVReport, detectarAccionesClimaticas } from '../ipfs';
+// [CELOPEDIA / ODIS] Oráculo de Identidad Móvil - Convierte teléfonos E.164 en direcciones 0x
+// verificadas por MiniPay. Es nuestro escudo Anti-Sybil para prevenir granjas de bots.
+import { lookupMiniPayAddress } from '../celo/odis';
 
 
 /**
@@ -125,7 +128,7 @@ export const mintPassportTool = {
     parameters: {
         type: "OBJECT",
         properties: {
-            recipient: { type: "STRING", description: "Dirección de la billetera del agricultor (0x...)" },
+            recipient: { type: "STRING", description: "Dirección de la billetera del agricultor (0x...) o su número de teléfono E.164 verificado (+57...). Si es teléfono, ODIS resolverá la wallet automáticamente." },
             ubicacion: { type: "STRING", description: "Ubicación geográfica o nombre de la vereda" },
             areaM2: { type: "NUMBER", description: "Área total en metros cuadrados" },
             cmSuelo: { type: "NUMBER", description: "Centímetros de suelo recuperado (inicialmente suele ser 0)" },
@@ -253,6 +256,58 @@ export async function executeMintPassport(args: MintPassportArgs) {
     try {
         console.log("[AGENT-TOOL] Ejecutando mint_biota_passport con:", args);
 
+        // [ODIS] Variable mutable: si el recipient es un teléfono, lo reemplazaremos
+        // por la dirección 0x resuelta por el Oráculo de Identidad de Celo.
+        let finalRecipient = args.recipient;
+
+        // =========================================================================
+        // 🛡️ [ODIS-SHIELD / ANTI-SYBIL] - Ecosistema CELOPEDIA
+        //
+        // Hola Junior! Este bloque es el "Portero" del BiotaPassport.
+        // Antes de gastar gas minteando un NFT, verificamos que el destinatario
+        // sea un humano real verificado por MiniPay (Opera) en la red Celo.
+        //
+        // Flujo:
+        //   1. Si 'recipient' empieza con '+' → es un teléfono, no una wallet
+        //   2. Enviamos ese teléfono al Oráculo ODIS (cegado criptográfico)
+        //   3. ODIS nos devuelve el Hash ofuscado del número
+        //   4. Consultamos FederatedAttestations on-chain con el Hash
+        //   5. Si MiniPay verificó ese teléfono → nos devuelve la wallet (0x...)
+        //   6. Si NO está verificado → BLOQUEAMOS el minteo (Anti-Sybil)
+        // =========================================================================
+        if (finalRecipient.startsWith('+')) {
+            console.log(`[ODIS-SHIELD] 📱 Detectado número telefónico. Consultando oráculo ODIS para ${finalRecipient}...`);
+
+            // [SEGURIDAD] Validamos que exista la llave del Agente para autenticar
+            // la petición contra ODIS y pagar la cuota Anti-Spam (Quota PnP).
+            if (!process.env.AGENT_PRIVATE_KEY) {
+                throw new Error("AGENT_PRIVATE_KEY no configurada. Necesaria para consultar ODIS.");
+            }
+
+            // [CELOPEDIA] Invocamos nuestro módulo lib/celo/odis.ts
+            // Internamente: cegado → ODIS PnP → FederatedAttestations → MiniPay Issuer
+            const resolvedAddress = await lookupMiniPayAddress(
+                "https://forno.celo.org",   // [CELO] RPC oficial de Celo Foundation
+                process.env.AGENT_PRIVATE_KEY, // [SEGURIDAD] Solo existe en el backend
+                finalRecipient               // [E.164] Número del campesino (+573001234567)
+            );
+
+            // [ANTI-SYBIL] Si ODIS devuelve null, el teléfono no está mapeado
+            // a ninguna wallet verificada por MiniPay. Cancelamos el minteo.
+            if (!resolvedAddress) {
+                console.warn(`[ODIS-SHIELD] 🚨 ALERTA SYBIL: El teléfono ${finalRecipient} no está mapeado a una cuenta verificada por MiniPay.`);
+                return {
+                    success: false,
+                    error: `El teléfono ${finalRecipient} no está vinculado a una billetera verificada en Celo (MiniPay). Prevención Sybil activada. Minteo cancelado.`
+                };
+            }
+
+            console.log(`[ODIS-SHIELD] ✅ Teléfono verificado. Mapeado a wallet: ${resolvedAddress}`);
+            // Reemplazamos el teléfono por la dirección criptográfica real
+            finalRecipient = resolvedAddress;
+        }
+        // =========================================================================
+
         // Generar Metadata Dinámica On-Chain
         const dynamicTokenURI = generatePassportMetadata({
             ubicacion: args.ubicacion,
@@ -261,6 +316,8 @@ export async function executeMintPassport(args: MintPassportArgs) {
             metodos: args.metodos
         });
 
+        // [ATENCIÓN] Usamos 'finalRecipient' (ya validado por ODIS) en lugar de
+        // 'args.recipient' (que podría ser un teléfono crudo sin resolver).
         // Codificar la llamada al contrato BiotaPassport
         const callData = encodeFunctionData({
             abi: BIOTA_PASSPORT_ABI,

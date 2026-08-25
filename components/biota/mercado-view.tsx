@@ -20,7 +20,8 @@ import {
   Sparkles,
   ShieldCheck,
   Loader2,
-  Package
+  Package,
+  Building2
 } from "lucide-react";
 import {
   useConnection,
@@ -33,6 +34,7 @@ import {
   ADDRESSES,
   ERC20_ABI,
   BIOTA_SPLITTER_ABI,
+  BIOTA_CARBON_ABI,
   formatCUSD,
 } from "@/lib/contracts";
 import { Button } from "@/components/ui/button";
@@ -133,6 +135,8 @@ const currencies = [
   { id: "G$", label: "G$", icon: Sparkles, color: "text-blue-500" },
   { id: "USDT", label: "USDT", icon: ShieldCheck, color: "text-green-600" },
   { id: "SDCM", label: "SDCM", icon: Wallet, color: "text-purple-500" },
+  { id: "USD", label: "USD (Banco)", icon: Building2, color: "text-stone-900 dark:text-white" },
+  { id: "BCO2", label: "BiotaCarbon", icon: Leaf, color: "text-green-400 font-black drop-shadow-md" },
 ];
 
 export function MercadoView() {
@@ -143,6 +147,24 @@ export function MercadoView() {
   const [successTx, setSuccessTx] = useState<{ hash: string; amount: string; currency: string } | null>(null);
   // [refi] estado local para mostrar u ocultar el panel de metadata del nft rwa de un producto
   const [expandedNFT, setExpandedNFT] = useState<number | null>(null);
+
+  // [CELOPEDIA] Estado para el On-Ramp Fiat
+  const [isGeneratingAccount, setIsGeneratingAccount] = useState(false);
+  const [virtualAccountData, setVirtualAccountData] = useState<any>(null);
+
+  const handleGenerateBridgeAccount = () => {
+    setIsGeneratingAccount(true);
+    // [CELOPEDIA/BRIDGE] Simulamos POST /v0/customers/<id>/virtual_accounts para la Tienda
+    setTimeout(() => {
+      setVirtualAccountData({
+        bank: "JPMorgan Chase",
+        routing: "021000021",
+        account: "889922" + Math.floor(Math.random() * 10000),
+        reference: "BTA-TIENDA-" + cartCount
+      });
+      setIsGeneratingAccount(false);
+    }, 1500);
+  };
 
   // [erc-1155] cargamos los datos on-chain del cafe con id=1 (el café especial finca la nube)
   // si el contrato no está desplegado aún, el hook devuelve datos demo para el hackathon
@@ -163,11 +185,17 @@ export function MercadoView() {
 
   // 3. Lógica de Allowance (Permisos de Gasto)
   const tokenAddress =
-    selectedCurrency === "CELO"
+    selectedCurrency === "CELO" || selectedCurrency === "USD"
       ? undefined
       : (ADDRESSES[
           selectedCurrency as keyof typeof ADDRESSES
         ] as `0x${string}`);
+
+  // [CELOPEDIA - CIP-64] Adaptadores para pagar el gas con stablecoins en lugar de CELO
+  const feeCurrencyAddress = 
+    selectedCurrency === "USDT" ? ADDRESSES.USDT_ADAPTER :
+    selectedCurrency === "cUSD" ? ADDRESSES.CUSD :
+    undefined;
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: tokenAddress,
@@ -183,6 +211,15 @@ export function MercadoView() {
   useEffect(() => {
     if (isApproveSuccess) refetchAllowance();
   }, [isApproveSuccess, refetchAllowance]);
+
+  // [B2C] Leemos el saldo de BiotaCarbon (BCO2) del Sponsor/Usuario
+  const { data: bco2Balance } = useReadContract({
+    address: ADDRESSES.BIOTA_CARBON as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [address!],
+    query: { enabled: !!address },
+  });
 
   const isPaying =
     isTokenPaying ||
@@ -223,7 +260,8 @@ export function MercadoView() {
         abi: ERC20_ABI,
         functionName: "approve",
         args: [ADDRESSES.BIOTA_SPLITTER, totalAmount * BigInt(10)], // Aprobamos 10x para evitar re-aprobación constante
-      });
+        ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+      } as any);
       return;
     }
 
@@ -233,6 +271,14 @@ export function MercadoView() {
           to: ADDRESSES.DAPP_BIOTA as `0x${string}`,
           value: totalAmount,
         });
+      } else if (selectedCurrency === "BCO2") {
+        writeContractAsync({
+          address: ADDRESSES.BIOTA_CARBON as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "transfer",
+          args: [ADDRESSES.BIOTA_SCROW as `0x${string}`, totalAmount],
+          ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+        } as any);
       } else {
         writeSplitter({
           address: ADDRESSES.BIOTA_SPLITTER as `0x${string}`,
@@ -245,7 +291,8 @@ export function MercadoView() {
             ADDRESSES.COLLECTIVE_MUJERES as `0x${string}`,
             ADDRESSES.BIOTA_SCROW as `0x${string}`,
           ],
-        });
+          ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+        } as any);
       }
     } catch (error) {
       console.error("Error en la transacción manual:", error);
@@ -272,7 +319,8 @@ export function MercadoView() {
           abi: ERC20_ABI,
           functionName: "transfer",
           args: [ADDRESSES.AGENT_TBA as `0x${string}`, totalAmount],
-        })
+          ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {})
+        } as any)
       }
       setPaid(true)
       setSuccessTx({ hash, amount: (cartTotal * 0.001).toFixed(3), currency: selectedCurrency });
@@ -539,37 +587,64 @@ export function MercadoView() {
               </div>
 
               <div className="grid grid-cols-2 gap-2 mt-2">
-                <Button
-                  onClick={handleAction}
-                  disabled={isPaying || isAgentPaying || paid}
-                  className="w-full h-10 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold text-[10px]"
-                >
-                  {paid ? (
-                    <><Check className="w-3 h-3 mr-1" /> OK</>
-                  ) : isConfirmingApprove || isConfirmingPay ? (
-                    <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> ...</>
-                  ) : isApprovePending || isTokenPaying || isNativePaying ? (
-                    <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> ...</>
-                  ) : needsApproval ? (
-                    <><ShieldCheck className="w-3 h-3 mr-1" /> Aprobar {selectedCurrency}</>
-                  ) : (
-                    <><Wallet className="w-3 h-3 mr-1" /> Pago Manual</>
-                  )}
-                </Button>
-
-                <Button
-                  onClick={handleAgentPay}
-                  disabled={isPaying || isAgentPaying || paid}
-                  className="w-full h-10 bg-emerald-500 hover:bg-emerald-400 text-black font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)] text-[10px]"
-                >
-                  {paid ? (
-                    <><Check className="w-3 h-3 mr-1" /> OK</>
-                  ) : isAgentPaying ? (
-                    <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> ...</>
-                  ) : (
-                    <><Sparkles className="w-3 h-3 mr-1" /> Pagar Agente</>
-                  )}
-                </Button>
+                {selectedCurrency === "USD" ? (
+                  <div className="col-span-2">
+                    {virtualAccountData ? (
+                       <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-left animate-in fade-in">
+                         <p className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1 flex items-center gap-1">
+                           <Zap className="w-3 h-3" /> Puente Bridge/Celo Activo
+                         </p>
+                         <div className="flex justify-between items-center text-xs"><span className="text-slate-500">Banco:</span> <span className="font-bold">{virtualAccountData.bank}</span></div>
+                         <div className="flex justify-between items-center text-xs"><span className="text-slate-500">Ruta:</span> <span className="font-bold">{virtualAccountData.routing}</span></div>
+                         <div className="flex justify-between items-center text-xs"><span className="text-slate-500">Cuenta:</span> <span className="font-bold text-emerald-600 dark:text-emerald-400">{virtualAccountData.account}</span></div>
+                         <div className="flex justify-between items-center text-xs"><span className="text-slate-500">Ref:</span> <span className="font-bold">{virtualAccountData.reference}</span></div>
+                         <p className="text-[8px] text-slate-500 mt-2 leading-tight">*Al transferir USD a esta cuenta, recibirás los productos y el Productor recibirá Cripto en tiempo real.</p>
+                       </div>
+                    ) : (
+                      <Button
+                        onClick={handleGenerateBridgeAccount}
+                        disabled={isGeneratingAccount}
+                        className="w-full h-10 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-black text-white rounded-xl transition-all font-bold text-xs shadow-lg"
+                      >
+                        {isGeneratingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Building2 className="w-4 h-4 mr-1" /> Pagar con Banco (Fiat)</>}
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <Button
+                      onClick={handleAction}
+                      disabled={isPaying || isAgentPaying || paid}
+                      className="w-full h-10 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold text-[10px]"
+                    >
+                      {paid ? (
+                        <><Check className="w-3 h-3 mr-1" /> OK</>
+                      ) : isConfirmingApprove || isConfirmingPay ? (
+                        <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> ...</>
+                      ) : isApprovePending || isTokenPaying || isNativePaying ? (
+                        <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> ...</>
+                      ) : needsApproval ? (
+                        <><ShieldCheck className="w-3 h-3 mr-1" /> Aprobar {selectedCurrency}</>
+                      ) : (
+                        <><Wallet className="w-3 h-3 mr-1" /> Pago Manual</>
+                      )}
+                    </Button>
+    
+                    <Button
+                      onClick={handleAgentPay}
+                      disabled={isPaying || isAgentPaying || paid}
+                      className="w-full h-10 bg-emerald-500 hover:bg-emerald-400 text-black font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)] text-[10px]"
+                    >
+                      {paid ? (
+                        <><Check className="w-3 h-3 mr-1" /> OK</>
+                      ) : isAgentPaying ? (
+                        <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> ...</>
+                      ) : (
+                        <><Sparkles className="w-3 h-3 mr-1" /> Pagar Agente</>
+                      )}
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
