@@ -1,4 +1,11 @@
+/*
+ * Tailwind v4 does not discover JavaScript/TypeScript configuration files
+ * implicitly. Keep the legacy design tokens in tailwind.config.ts available
+ * to both the compiler and Tailwind CSS IntelliSense.
+ */
+@config "../tailwind.config.ts";
 @import "tailwindcss";
+@import "tw-animate-css";
 
 
 /* ============================================================================
@@ -515,4 +522,3 @@
 .transition-theme {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
-

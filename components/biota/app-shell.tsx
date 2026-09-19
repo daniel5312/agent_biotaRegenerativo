@@ -193,17 +193,17 @@ export function AppShell({
       {/* Mobile shell container */}
       <div className="relative w-full max-w-md min-h-screen sm:min-h-[812px] sm:max-h-[812px] flex flex-col shadow-2xl sm:rounded-[2.5rem] overflow-hidden border-0 sm:border border-emerald-300/50 dark:border-emerald-500/20 bg-emerald-50/80 dark:bg-transparent dark:glass leaf-pattern transition-theme">
         {/* Header */}
-        <header className="flex-shrink-0 relative z-20">
+        <header className="shrink-0 relative z-20">
           {/* Top gradient line */}
-          <div className="h-1 bg-gradient-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0]" />
+          <div className="h-1 bg-linear-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0]" />
 
-          <div className="px-4 pt-3 pb-2 bg-gradient-to-b from-emerald-100 dark:from-emerald-900/20 to-emerald-50/50 dark:to-transparent transition-theme">
+          <div className="px-4 pt-3 pb-2 bg-linear-to-b from-emerald-100 dark:from-emerald-900/20 to-emerald-50/50 dark:to-transparent transition-theme">
             <div className="flex items-center justify-between">
               {/* Brand */}
               <div className="flex items-center gap-2.5">
                 <div className="relative">
                   <div className="absolute inset-0 bg-emerald-400/30 dark:bg-emerald-400/40 rounded-xl blur-lg animate-pulse-dot" />
-                  <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-green-600 flex items-center justify-center shadow-lg overflow-hidden animate-leaf-sway">
+                  <div className="relative w-11 h-11 rounded-xl bg-linear-to-br from-emerald-400 via-emerald-500 to-green-600 flex items-center justify-center shadow-lg overflow-hidden animate-leaf-sway">
                     <Leaf className="w-5 h-5 text-white drop-shadow" />
                   </div>
                 </div>
@@ -299,7 +299,7 @@ export function AppShell({
             </div>
           </div>
 
-          <div className="h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
+          <div className="h-px bg-linear-to-r from-transparent via-emerald-400/40 to-transparent" />
         </header>
 
         {/* Main content */}
@@ -308,8 +308,8 @@ export function AppShell({
         </main>
 
         {/* Bottom Navigation */}
-        <nav className="flex-shrink-0 relative z-20">
-          <div className="h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
+        <nav className="shrink-0 relative z-20">
+          <div className="h-px bg-linear-to-r from-transparent via-emerald-400/40 to-transparent" />
 
           <div className="glass backdrop-blur-xl border-t-0 pb-safe bg-emerald-100/90 dark:bg-emerald-950/60 transition-theme">
             <div className="flex items-center justify-around px-2 py-2">

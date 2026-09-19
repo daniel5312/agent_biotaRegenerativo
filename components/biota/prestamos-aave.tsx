@@ -136,7 +136,7 @@ export function PrestamosAave() {
   };
 
   return (
-    <Card className="glass-card border-none bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white shadow-2xl relative overflow-hidden mt-3">
+    <Card className="glass-card border-none bg-linear-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white shadow-2xl relative overflow-hidden mt-3">
       <CardContent className="p-4 relative z-10 space-y-4">
         
         <div className="flex justify-between items-start">

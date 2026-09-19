@@ -389,7 +389,7 @@ export function MercadoView() {
               <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center transition-theme">
                 <ShoppingCart className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
               </div>
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full text-[10px] font-bold flex items-center justify-center text-white shadow-lg">
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-linear-to-r from-emerald-500 to-green-500 rounded-full text-[10px] font-bold flex items-center justify-center text-white shadow-lg">
                 {cartCount}
               </span>
             </div>
@@ -403,7 +403,7 @@ export function MercadoView() {
               key={curr.id}
               onClick={() => setSelectedCurrency(curr.id)}
               className={`
-                flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all text-[10px] font-bold
+                shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all text-[10px] font-bold
                 ${
                   selectedCurrency === curr.id
                     ? "bg-emerald-500 border-emerald-400 text-white shadow-md scale-105"
@@ -432,10 +432,10 @@ export function MercadoView() {
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <CardContent className="p-0">
-                <div className="h-24 relative overflow-hidden bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/20">
+                <div className="h-24 relative overflow-hidden bg-linear-to-br from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/20">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div
-                      className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${product.color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg`}
+                      className={`w-12 h-12 rounded-2xl bg-linear-to-br ${product.color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg`}
                     >
                       <ProductIcon className="w-6 h-6 text-white" />
                     </div>
@@ -557,7 +557,7 @@ export function MercadoView() {
       {cartCount > 0 && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[calc(448px-2rem)] z-40 animate-slide-up">
           <Card className="glass-card border-emerald-400/70 shadow-2xl overflow-hidden bg-emerald-100/95 dark:bg-emerald-900/80">
-            <div className="h-1 bg-gradient-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0]" />
+            <div className="h-1 bg-linear-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0]" />
             <CardContent className="p-3">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex flex-col">

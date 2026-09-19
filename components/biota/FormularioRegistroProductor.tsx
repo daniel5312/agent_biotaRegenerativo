@@ -196,7 +196,7 @@ export function FormularioRegistroProductor() {
   if (hasPassport) {
     return (
       <Card className="bg-emerald-900/20 border-emerald-500/30 overflow-hidden">
-        <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-400" />
+        <div className="h-1.5 bg-linear-to-r from-emerald-400 via-green-500 to-teal-400" />
         <CardContent className="p-8 text-center space-y-4">
           <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto animate-bounce">
             <CheckCircle2 className="w-10 h-10 text-emerald-500" />
@@ -215,7 +215,7 @@ export function FormularioRegistroProductor() {
   if (success) {
     return (
       <Card className="bg-emerald-900/20 border-emerald-500/30 overflow-hidden">
-        <div className="h-1.5 bg-gradient-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0] animate-shimmer" />
+        <div className="h-1.5 bg-linear-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0] animate-shimmer" />
         <CardContent className="p-8 text-center space-y-6">
           <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto">
             <Sprout className="w-12 h-12 text-emerald-500 animate-pulse" />
@@ -245,7 +245,7 @@ export function FormularioRegistroProductor() {
   return (
     <Card className="bg-[#0a0a0a] border-white/5 overflow-hidden shadow-2xl rounded-3xl">
       {/* ═══ HEADER CON BARRA DE PROGRESO ═══ */}
-      <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 p-6">
+      <div className="bg-linear-to-r from-emerald-600 via-green-600 to-teal-600 p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-xl font-black italic uppercase text-white leading-none flex items-center gap-2">
@@ -640,7 +640,7 @@ export function FormularioRegistroProductor() {
                 <Button
                   type="submit"
                   disabled={isMinting || !address}
-                  className="flex-1 bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:via-green-400 hover:to-teal-400 text-white rounded-xl h-12 font-black uppercase text-sm transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                  className="flex-1 bg-linear-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:via-green-400 hover:to-teal-400 text-white rounded-xl h-12 font-black uppercase text-sm transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
                 >
                   {isMinting ? (
                     <>

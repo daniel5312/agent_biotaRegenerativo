@@ -40,5 +40,14 @@ export const BIOTA_CARBON_ABI = [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+  },
+  {
+    inputs: [
+      { name: 'amount', type: 'uint256' }
+    ],
+    name: 'retireCarbon',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   }
 ] as const;

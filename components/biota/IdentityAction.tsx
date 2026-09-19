@@ -444,7 +444,7 @@ export function IdentityAction({ tokenId }: IdentityActionProps) {
         </div>
 
         <Card className="bg-stone-950 border-stone-800 shadow-2xl rounded-[2.5rem] overflow-hidden relative border-2">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-stone-700 to-transparent opacity-50" />
+          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-stone-700 to-transparent opacity-50" />
           <CardContent className="p-8 text-center space-y-6">
             {/* Saldo Estático de la GoodWallet */}
             <div className="flex flex-col items-center justify-center p-4 bg-stone-900 rounded-3xl border border-stone-800">

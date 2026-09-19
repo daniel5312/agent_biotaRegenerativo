@@ -255,7 +255,7 @@ export function MiniPayDashboard() {
         </div>
 
         <Card className="bg-stone-950 border-stone-800 shadow-2xl rounded-[2.5rem] overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-stone-700 to-transparent opacity-50" />
+          <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-stone-700 to-transparent opacity-50" />
           <CardContent className="p-8 text-center space-y-6">
             {/* El Reloj de Dinero */}
             <div className="space-y-2">
@@ -326,7 +326,7 @@ export function MiniPayDashboard() {
                 <Button
                   disabled={isClaiming}
                   onClick={handleClaim}
-                  className="w-full h-14 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl shadow-lg shadow-blue-500/30 flex items-center justify-between px-6 transition-all active:scale-95"
+                  className="w-full h-14 bg-linear-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-2xl shadow-lg shadow-blue-500/30 flex items-center justify-between px-6 transition-all active:scale-95"
                 >
                   <div className="flex items-center gap-2">
                     {isClaiming ? (
