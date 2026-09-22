@@ -43,7 +43,7 @@ export const BovedaPanel = () => {
   if (loading) return <div className="animate-pulse bg-white/5 h-32 rounded-3xl" />;
 
   return (
-    <div className="bg-gradient-to-br from-emerald-900/40 to-[#0a0a0a] border border-emerald-500/20 p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
+    <div className="bg-linear-to-br from-emerald-900/40 to-[#0a0a0a] border border-emerald-500/20 p-8 rounded-[40px] shadow-2xl relative overflow-hidden">
       <div className="absolute -top-10 -right-10 opacity-5">
         <Droplet size={200} />
       </div>

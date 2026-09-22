@@ -2,18 +2,41 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-  HeartHandshake, MapPin, Sprout, ShieldCheck, Coins, Zap, Sparkles, Wallet,
-  Loader2, TreePine, Droplets, ExternalLink, Euro, Clock
+  HeartHandshake,
+  MapPin,
+  Sprout,
+  ShieldCheck,
+  Coins,
+  Zap,
+  Sparkles,
+  Wallet,
+  Loader2,
+  TreePine,
+  Droplets,
+  ExternalLink,
+  Euro,
+  Clock,
+  Building2,
+  Leaf,
 } from "lucide-react";
 import {
-  useConnection, useWriteContract, useSendTransaction, useReadContract, useWaitForTransactionReceipt,
+  useConnection,
+  useWriteContract,
+  useSendTransaction,
+  useReadContract,
+  useWaitForTransactionReceipt,
 } from "wagmi";
 import { ADDRESSES, ERC20_ABI, BIOTA_SPLITTER_ABI } from "@/lib/contracts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseUnits, formatUnits } from "viem";
 import { useToast } from "@/hooks/use-toast";
@@ -53,7 +76,8 @@ const DEMO_PRODUCERS = [
     verified: true,
     wallet: "0x6178B5B1447B2E48E0283cd19f0D8eEF2e7C8C1E",
     impactScore: 88,
-    image: "https://images.unsplash.com/photo-1605000797499-95a51c5269ae?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    image:
+      "https://images.unsplash.com/photo-1605000797499-95a51c5269ae?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
   },
   {
     id: 3,
@@ -69,7 +93,8 @@ const DEMO_PRODUCERS = [
     verified: false,
     wallet: "0x9158C35f1a054F25f9D45EA47107D54a2ea25945",
     impactScore: 65,
-    image: "https://images.unsplash.com/photo-1589923188900-85dae523342b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+    image:
+      "https://images.unsplash.com/photo-1589923188900-85dae523342b?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
   },
   {
     id: 4,
@@ -85,35 +110,79 @@ const DEMO_PRODUCERS = [
     verified: true,
     wallet: "0x9bc43f955ce11948e4fD6EAC28d46875Fba9f5F9",
     impactScore: 98,
-    image: "https://images.unsplash.com/photo-1592419044706-39796d40f98c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
-  }
+    image:
+      "https://images.unsplash.com/photo-1592419044706-39796d40f98c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+  },
 ];
 
 const CURRENCIES = [
-  { id: "cUSD", label: "cUSD", icon: Coins, color: "text-emerald-500", decimals: 18 },
-  { id: "CELO", label: "CELO", icon: Zap, color: "text-yellow-500", decimals: 18 },
-  { id: "G$", label: "G$", icon: Sparkles, color: "text-blue-500", decimals: 18 },
-  { id: "USDT", label: "USDT", icon: ShieldCheck, color: "text-green-600", decimals: 6 },
-  { id: "COPM", label: "COPM", icon: Wallet, color: "text-purple-500", decimals: 18 },
-  { id: "EUR", label: "cEUR", icon: Euro, color: "text-blue-400", decimals: 18 },
+  {
+    id: "cUSD",
+    label: "cUSD",
+    icon: Coins,
+    color: "text-emerald-500",
+    decimals: 18,
+  },
+  {
+    id: "CELO",
+    label: "CELO",
+    icon: Zap,
+    color: "text-yellow-500",
+    decimals: 18,
+  },
+  {
+    id: "G$",
+    label: "G$",
+    icon: Sparkles,
+    color: "text-blue-500",
+    decimals: 18,
+  },
+  {
+    id: "USDT",
+    label: "USDT",
+    icon: ShieldCheck,
+    color: "text-green-600",
+    decimals: 6,
+  },
+  {
+    id: "COPM",
+    label: "COPM",
+    icon: Wallet,
+    color: "text-purple-500",
+    decimals: 18,
+  },
+  {
+    id: "EUR",
+    label: "cEUR",
+    icon: Euro,
+    color: "text-blue-400",
+    decimals: 18,
+  },
+  {
+    id: "USD",
+    label: "USD (Banco)",
+    icon: Building2,
+    color: "text-stone-900 dark:text-white",
+    decimals: 2,
+  },
 ];
 
 export function FinanciarView() {
   const [selectedCurrency, setSelectedCurrency] = useState("G$");
   const { hasPassport, loteData, tokenId, estadoBiologico } = useBiotaPass();
   const { address } = useConnection();
-  
+
   const allProducers = useMemo(() => {
     let list = [...DEMO_PRODUCERS];
-    
+
     // Inyectar productor dinámico si tiene pasaporte
     if (hasPassport && loteData && address && tokenId) {
       // Parsear ubicación (Finca:X|Vereda:Y|Municipio,Depto)
       const ubi = loteData.ubicacionGeografica || "";
       const fincaMatch = ubi.match(/Finca:([^|]+)/);
       const veredaMatch = ubi.match(/Vereda:([^|]+)/);
-      const muniMatch = ubi.split('|').pop();
-      
+      const muniMatch = ubi.split("|").pop();
+
       const miProductor = {
         id: 999, // ID único
         tokenId: tokenId.toString(),
@@ -128,11 +197,14 @@ export function FinanciarView() {
         verified: true,
         wallet: address,
         impactScore: 100, // Top score por ser el usuario
-        image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
+        image:
+          "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3",
       };
-      
+
       // Asegurarse de no inyectarlo si ya está en los dummies con la misma wallet
-      const isAlreadyInList = list.some(p => p.wallet.toLowerCase() === address.toLowerCase());
+      const isAlreadyInList = list.some(
+        (p) => p.wallet.toLowerCase() === address.toLowerCase(),
+      );
       if (!isAlreadyInList) {
         list = [miProductor, ...list];
       }
@@ -149,7 +221,8 @@ export function FinanciarView() {
           Financiar Productores
         </h1>
         <p className="text-[10px] text-emerald-700 dark:text-emerald-400/80 mt-1 font-semibold">
-          Conecta directamente con agricultores regenerativos. Tu apoyo va a su bóveda inteligente.
+          Conecta directamente con agricultores regenerativos. Tu apoyo va a su
+          bóveda inteligente.
         </p>
       </div>
 
@@ -160,7 +233,7 @@ export function FinanciarView() {
             key={curr.id}
             onClick={() => setSelectedCurrency(curr.id)}
             className={`
-              flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all text-xs font-bold
+              shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all text-xs font-bold
               ${
                 selectedCurrency === curr.id
                   ? "bg-emerald-500 border-emerald-400 text-black shadow-md scale-105"
@@ -179,38 +252,51 @@ export function FinanciarView() {
       {/* GRID DE PRODUCTORES */}
       <div className="grid grid-cols-2 gap-3">
         {allProducers.map((producer, index) => (
-          <ProducerCard key={producer.id} producer={producer} index={index} selectedCurrency={selectedCurrency} />
+          <ProducerCard
+            key={producer.id}
+            producer={producer}
+            index={index}
+            selectedCurrency={selectedCurrency}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function ProducerCard({ producer, index, selectedCurrency }: { producer: any, index: number, selectedCurrency: string }) {
+function ProducerCard({
+  producer,
+  index,
+  selectedCurrency,
+}: {
+  producer: any;
+  index: number;
+  selectedCurrency: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Card 
+        <Card
           className="glass-card overflow-hidden animate-slide-up group cursor-pointer hover:shadow-xl hover:border-emerald-400 transition-all bg-emerald-50/80 dark:bg-emerald-900/20"
           style={{ animationDelay: `${index * 50}ms` }}
         >
           <CardContent className="p-0">
             <div className="h-28 relative overflow-hidden">
-              <img 
-                src={producer.image} 
-                alt={producer.name} 
+              <img
+                src={producer.image}
+                alt={producer.name}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              
+              <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
+
               {producer.verified && (
                 <Badge className="absolute top-2 right-2 bg-emerald-500 text-black border-0 text-[8px] px-1.5 py-0.5">
                   <ShieldCheck className="w-2.5 h-2.5 mr-0.5" /> Verificado
                 </Badge>
               )}
-              
+
               <div className="absolute bottom-2 left-2 right-2">
                 <h3 className="text-white font-black text-sm leading-tight drop-shadow-md">
                   {producer.name}
@@ -227,10 +313,11 @@ function ProducerCard({ producer, index, selectedCurrency }: { producer: any, in
                   Token #{producer.tokenId}
                 </span>
                 <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
-                  <Sprout className="w-2.5 h-2.5" /> Score: {producer.impactScore}
+                  <Sprout className="w-2.5 h-2.5" /> Score:{" "}
+                  {producer.impactScore}
                 </span>
               </div>
-              <Button 
+              <Button
                 size="sm"
                 className="w-full h-7 bg-emerald-100 dark:bg-emerald-800/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold group-hover:bg-emerald-500 group-hover:text-black transition-colors"
               >
@@ -241,31 +328,65 @@ function ProducerCard({ producer, index, selectedCurrency }: { producer: any, in
         </Card>
       </DialogTrigger>
 
-      <FundingModalContent producer={producer} selectedCurrency={selectedCurrency} onClose={() => setIsOpen(false)} />
+      <FundingModalContent
+        producer={producer}
+        selectedCurrency={selectedCurrency}
+        onClose={() => setIsOpen(false)}
+      />
     </Dialog>
   );
 }
 
-function FundingModalContent({ producer, selectedCurrency, onClose }: { producer: any, selectedCurrency: string, onClose: () => void }) {
+function FundingModalContent({
+  producer,
+  selectedCurrency,
+  onClose,
+}: {
+  producer: any;
+  selectedCurrency: string;
+  onClose: () => void;
+}) {
   const { address } = useConnection();
   const { toast } = useToast();
   const { ubiAddress, ubiProvider, handleConnectUBI } = useUbiFlow();
-  
-  const [supportAmount, setSupportAmount] = useState("");
-  
-  // Wagmi Hooks para pagos (Pago Único)
-  const { mutate: writeSplitter, isPending: isTokenPaying, data: payHash } = useWriteContract();
-  const { sendTransaction, isPending: isNativePaying, data: nativeHash } = useSendTransaction();
-  const { mutate: writeApprove, isPending: isApprovePending, data: approveHash } = useWriteContract();
 
-  const { isLoading: isConfirmingApprove, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
-  const { isLoading: isConfirmingPay, isSuccess: isPaySuccess } = useWaitForTransactionReceipt({ hash: payHash || nativeHash });
+  const [supportAmount, setSupportAmount] = useState("");
+
+  // Wagmi Hooks para pagos (Pago Único)
+  const {
+    mutate: writeSplitter,
+    isPending: isTokenPaying,
+    data: payHash,
+  } = useWriteContract();
+  const {
+    sendTransaction,
+    isPending: isNativePaying,
+    data: nativeHash,
+  } = useSendTransaction();
+  const {
+    mutate: writeApprove,
+    isPending: isApprovePending,
+    data: approveHash,
+  } = useWriteContract();
+
+  const { isLoading: isConfirmingApprove, isSuccess: isApproveSuccess } =
+    useWaitForTransactionReceipt({ hash: approveHash });
+  const { isLoading: isConfirmingPay, isSuccess: isPaySuccess } =
+    useWaitForTransactionReceipt({ hash: payHash || nativeHash });
 
   // Superfluid Hooks (Goteo)
-  const { isActive: isStreamActive, startStream, stopStream, isPending: isStreamPending, flowRate, lastUpdated, isStreamingToSomeoneElse } = useSuperfluidStream(
-    producer.wallet as `0x${string}`, 
+  const {
+    isActive: isStreamActive,
+    startStream,
+    stopStream,
+    isPending: isStreamPending,
+    flowRate,
+    lastUpdated,
+    isStreamingToSomeoneElse,
+  } = useSuperfluidStream(
+    producer.wallet as `0x${string}`,
     ubiAddress || (address as `0x${string}`),
-    ubiProvider
+    ubiProvider,
   );
 
   const [isOptimisticActive, setIsOptimisticActive] = useState(false);
@@ -276,7 +397,9 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
 
   const handleStartStream = async () => {
     if (isStreamingToSomeoneElse) {
-      const confirmMultiple = window.confirm("⚠️ Ya tienes un goteo activo hacia otro productor.\n\nSi continúas, tendrás múltiples goteos consumiendo tu saldo simultáneamente.\n\n¿Estás seguro de que quieres abrir este nuevo goteo también?");
+      const confirmMultiple = window.confirm(
+        "⚠️ Ya tienes un goteo activo hacia otro productor.\n\nSi continúas, tendrás múltiples goteos consumiendo tu saldo simultáneamente.\n\n¿Estás seguro de que quieres abrir este nuevo goteo también?",
+      );
       if (!confirmMultiple) return;
     }
 
@@ -297,10 +420,28 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
     }
   };
 
-  const currentCurrencyConfig = CURRENCIES.find(c => c.id === selectedCurrency)!;
-  const tokenAddress = selectedCurrency === "CELO" ? undefined : (ADDRESSES[selectedCurrency as keyof typeof ADDRESSES] as `0x${string}`);
-  
-  const amountToFund = parseUnits(supportAmount === "" ? "0" : supportAmount, currentCurrencyConfig.decimals);
+  const currentCurrencyConfig = CURRENCIES.find(
+    (c) => c.id === selectedCurrency,
+  )!;
+  const tokenAddress =
+    selectedCurrency === "CELO" || selectedCurrency === "USD"
+      ? undefined
+      : (ADDRESSES[
+          selectedCurrency as keyof typeof ADDRESSES
+        ] as `0x${string}`);
+
+  // [CELOPEDIA - CIP-64] Adaptadores para pagar el gas con stablecoins
+  const feeCurrencyAddress =
+    selectedCurrency === "USDT"
+      ? ADDRESSES.USDT_ADAPTER
+      : selectedCurrency === "cUSD"
+        ? ADDRESSES.CUSD
+        : undefined;
+
+  const amountToFund = parseUnits(
+    supportAmount === "" ? "0" : supportAmount,
+    currentCurrencyConfig.decimals,
+  );
 
   // Obtener balance del productor para el cronómetro
   const { data: producerGdBalance } = useReadContract({
@@ -314,7 +455,8 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args: address && tokenAddress ? [address, ADDRESSES.BIOTA_SPLITTER] : undefined,
+    args:
+      address && tokenAddress ? [address, ADDRESSES.BIOTA_SPLITTER] : undefined,
     query: { enabled: !!address && !!tokenAddress },
   });
 
@@ -333,15 +475,22 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
     }
   }, [isPaySuccess, toast, onClose]);
 
-  const needsApproval = selectedCurrency !== "CELO" && (!allowance || (allowance as bigint) < amountToFund);
-  const isTransacting = isTokenPaying || isNativePaying || isApprovePending || isConfirmingApprove || isConfirmingPay;
+  const needsApproval =
+    selectedCurrency !== "CELO" &&
+    (!allowance || (allowance as bigint) < amountToFund);
+  const isTransacting =
+    isTokenPaying ||
+    isNativePaying ||
+    isApprovePending ||
+    isConfirmingApprove ||
+    isConfirmingPay;
 
   const handleSinglePayment = () => {
     if (!address) {
       toast({ title: "Billetera no conectada", variant: "destructive" });
       return;
     }
-    
+
     if (parseFloat(supportAmount) <= 0) {
       toast({ title: "Ingresa un monto válido", variant: "destructive" });
       return;
@@ -353,7 +502,8 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
         abi: ERC20_ABI,
         functionName: "approve",
         args: [ADDRESSES.BIOTA_SPLITTER, amountToFund * 10n],
-      });
+        ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {}),
+      } as any);
       return;
     }
 
@@ -378,7 +528,8 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
           ADDRESSES.COLLECTIVE_MUJERES as `0x${string}`,
           ADDRESSES.BIOTA_SCROW as `0x${string}`,
         ],
-      });
+        ...(feeCurrencyAddress ? { feeCurrency: feeCurrencyAddress } : {}),
+      } as any);
     }
   };
 
@@ -392,13 +543,13 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
   return (
     <DialogContent className="max-w-[90vw] sm:max-w-md w-full rounded-3xl bg-[#f8fafc] dark:bg-[#0a0a0a] border-emerald-200 dark:border-emerald-800 p-0 overflow-hidden">
       <div className="h-40 relative">
-        <img 
-          src={producer.image} 
-          alt={producer.name} 
+        <img
+          src={producer.image}
+          alt={producer.name}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#f8fafc] dark:from-[#0a0a0a] via-black/40 to-black/20" />
-        
+        <div className="absolute inset-0 bg-linear-to-t from-[#f8fafc] dark:from-[#0a0a0a] via-black/40 to-black/20" />
+
         <div className="absolute top-4 right-4 flex gap-2">
           <Badge className="bg-black/40 text-white backdrop-blur-md border-0 text-[10px] font-mono">
             NFT #{producer.tokenId}
@@ -410,7 +561,8 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
             {producer.name}
           </DialogTitle>
           <p className="text-emerald-700 dark:text-emerald-400 text-sm font-bold flex items-center gap-1 drop-shadow-md">
-            <MapPin className="w-3.5 h-3.5" /> {producer.municipio} • {producer.vereda}
+            <MapPin className="w-3.5 h-3.5" /> {producer.municipio} •{" "}
+            {producer.vereda}
           </p>
         </div>
       </div>
@@ -422,8 +574,10 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
               Área y Cultivo
             </span>
             <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-1.5 leading-tight">
-              <TreePine className="w-4 h-4 text-emerald-500" /> 
-              {producer.area} m²<br/>{producer.tipoCultivo}
+              <TreePine className="w-4 h-4 text-emerald-500" />
+              {producer.area} m²
+              <br />
+              {producer.tipoCultivo}
             </span>
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-800/50">
@@ -431,7 +585,7 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
               Estado Biológico
             </span>
             <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-1.5 leading-tight">
-              <Droplets className="w-4 h-4 text-blue-500" /> 
+              <Droplets className="w-4 h-4 text-blue-500" />
               {producer.estadoBiologico}
             </span>
           </div>
@@ -441,11 +595,19 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <div>
-              <p className="text-[10px] font-black uppercase text-blue-800 dark:text-blue-400">Trazabilidad TBA</p>
-              <p className="text-[9px] font-mono text-blue-600/70 dark:text-blue-300/70">{producer.wallet.slice(0, 12)}...</p>
+              <p className="text-[10px] font-black uppercase text-blue-800 dark:text-blue-400">
+                Trazabilidad TBA
+              </p>
+              <p className="text-[9px] font-mono text-blue-600/70 dark:text-blue-300/70">
+                {producer.wallet.slice(0, 12)}...
+              </p>
             </div>
           </div>
-          <a href={`https://celoscan.io/address/${producer.wallet}`} target="_blank" rel="noreferrer">
+          <a
+            href={`https://celoscan.io/address/${producer.wallet}`}
+            target="_blank"
+            rel="noreferrer"
+          >
             <ExternalLink className="w-4 h-4 text-blue-500 hover:text-blue-700" />
           </a>
         </div>
@@ -454,16 +616,22 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
           {selectedCurrency === "G$" ? (
             <Tabs defaultValue="unico" className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-white/5 p-1 rounded-xl mb-4">
-                <TabsTrigger value="unico" className="rounded-lg text-xs font-bold data-[state=active]:bg-emerald-500 data-[state=active]:text-white">
+                <TabsTrigger
+                  value="unico"
+                  className="rounded-lg text-xs font-bold data-[state=active]:bg-emerald-500 data-[state=active]:text-white"
+                >
                   Pago Único
                 </TabsTrigger>
-                <TabsTrigger value="goteo" className="rounded-lg text-xs font-bold data-[state=active]:bg-blue-500 data-[state=active]:text-white flex items-center gap-1">
+                <TabsTrigger
+                  value="goteo"
+                  className="rounded-lg text-xs font-bold data-[state=active]:bg-blue-500 data-[state=active]:text-white flex items-center gap-1"
+                >
                   <Droplets className="w-3 h-3" /> Goteo UBI
                 </TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="unico" className="space-y-3">
-                <SinglePaymentUI 
+                <SinglePaymentUI
                   supportAmount={supportAmount}
                   setSupportAmount={setSupportAmount}
                   currentCurrencyConfig={currentCurrencyConfig}
@@ -473,15 +641,18 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
                   selectedCurrency={selectedCurrency}
                 />
               </TabsContent>
-              
+
               <TabsContent value="goteo" className="space-y-4">
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-center relative overflow-hidden">
                   <Droplets className="w-8 h-8 mx-auto text-blue-500 mb-2 animate-bounce" />
-                  <h4 className="text-sm font-black text-blue-900 dark:text-blue-300">Apoya con tu UBI Diario</h4>
+                  <h4 className="text-sm font-black text-blue-900 dark:text-blue-300">
+                    Apoya con tu UBI Diario
+                  </h4>
                   <p className="text-xs text-blue-700 dark:text-blue-400 mt-1 mb-3">
-                    Redirige un goteo de Superfluid de 2,000 G$ mensuales directamente a la billetera inteligente de este productor.
+                    Redirige un goteo de Superfluid de 2,000 G$ mensuales
+                    directamente a la billetera inteligente de este productor.
                   </p>
-                  
+
                   {ubiAddress && (
                     <div className="mt-3 pt-3 border-t border-blue-200/50 dark:border-blue-800/50">
                       <p className="text-[10px] font-black uppercase text-blue-800 dark:text-blue-400 mb-1">
@@ -495,10 +666,12 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
 
                   {isOptimisticActive && (
                     <div className="mt-4 bg-stone-900 rounded-xl p-3 shadow-inner">
-                       <StreamingBalance 
-                        baseBalance={(producerGdBalance as bigint) || 0n} 
+                      <StreamingBalance
+                        baseBalance={(producerGdBalance as bigint) || 0n}
                         flowRate={flowRate || BigInt("771604938271604")} // 2000 G$ por mes fallback
-                        lastUpdateTimestamp={lastUpdated || Math.floor(Date.now() / 1000)}
+                        lastUpdateTimestamp={
+                          lastUpdated || Math.floor(Date.now() / 1000)
+                        }
                       />
                       <div className="flex items-center justify-center gap-1.5 mt-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -510,43 +683,56 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
                   )}
                 </div>
                 {!ubiAddress ? (
-                  <Button 
+                  <Button
                     onClick={handleConnectUBI}
                     className="w-full h-12 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     Conectar GoodWallet (WalletConnect)
                   </Button>
                 ) : isOptimisticActive ? (
-                  <Button 
+                  <Button
                     onClick={handleStopStream}
                     disabled={isStreamPending}
                     variant="destructive"
                     className="w-full h-12 rounded-xl font-bold transition-all shadow-lg shadow-red-500/20"
                   >
-                    {isStreamPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <><Clock className="w-5 h-5 mr-2" /> Detener Goteo de G$</>}
+                    {isStreamPending ? (
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    ) : (
+                      <>
+                        <Clock className="w-5 h-5 mr-2" /> Detener Goteo de G$
+                      </>
+                    )}
                   </Button>
                 ) : (
-                  <Button 
+                  <Button
                     onClick={handleStartStream}
                     disabled={isStreamPending}
                     className="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all font-bold"
                   >
-                    {isStreamPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <><Droplets className="w-5 h-5 mr-2" /> Redirigir Goteo a Productor</>}
+                    {isStreamPending ? (
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    ) : (
+                      <>
+                        <Droplets className="w-5 h-5 mr-2" /> Redirigir Goteo a
+                        Productor
+                      </>
+                    )}
                   </Button>
                 )}
               </TabsContent>
             </Tabs>
           ) : (
             <div className="space-y-3">
-               <SinglePaymentUI 
-                  supportAmount={supportAmount}
-                  setSupportAmount={setSupportAmount}
-                  currentCurrencyConfig={currentCurrencyConfig}
-                  isTransacting={isTransacting}
-                  needsApproval={needsApproval}
-                  handleSinglePayment={handleSinglePayment}
-                  selectedCurrency={selectedCurrency}
-                />
+              <SinglePaymentUI
+                supportAmount={supportAmount}
+                setSupportAmount={setSupportAmount}
+                currentCurrencyConfig={currentCurrencyConfig}
+                isTransacting={isTransacting}
+                needsApproval={needsApproval}
+                handleSinglePayment={handleSinglePayment}
+                selectedCurrency={selectedCurrency}
+              />
             </div>
           )}
         </div>
@@ -555,7 +741,77 @@ function FundingModalContent({ producer, selectedCurrency, onClose }: { producer
   );
 }
 
-function SinglePaymentUI({ supportAmount, setSupportAmount, currentCurrencyConfig, isTransacting, needsApproval, handleSinglePayment, selectedCurrency }: any) {
+function SinglePaymentUI({
+  supportAmount,
+  setSupportAmount,
+  currentCurrencyConfig,
+  isTransacting,
+  needsApproval,
+  handleSinglePayment,
+  selectedCurrency,
+}: any) {
+  const [isGeneratingAccount, setIsGeneratingAccount] = useState(false);
+  const [virtualAccountData, setVirtualAccountData] = useState<any>(null);
+  const { toast } = useToast();
+
+  const parsedAmount = parseFloat(supportAmount) || 0;
+  // BCO2 Exchange Rate: 1 BCO2 = 0.10 USD/USDT
+  const isCarbonEligible =
+    selectedCurrency === "USDT" ||
+    selectedCurrency === "USD" ||
+    selectedCurrency === "cUSD";
+  const carbonToReceive = (parsedAmount / 0.1).toFixed(1);
+
+  const handleGenerateBridgeAccount = () => {
+    if (parseFloat(supportAmount) <= 0) {
+      toast({
+        title: "Ingresa un monto válido en USD",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsGeneratingAccount(true);
+
+    // [CELOPEDIA/BRIDGE] Llamada a la API Real de tu servidor
+    fetch("/api/bridge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "ON_RAMP",
+        payload: { fullName: "Inversor Biota", email: "inversor@example.com" },
+      }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error de API");
+
+        // Si usas llave real, devuelve data.virtualAccount
+        setVirtualAccountData(data.virtualAccount);
+        toast({
+          title: "Cuenta B2B Generada",
+          description: "Transfiere los fondos para inyectar liquidez.",
+        });
+      })
+      .catch((error) => {
+        console.error(error);
+        toast({
+          title: "API de Pruebas",
+          description:
+            "Como usas una llave de mentiras, simulamos la respuesta localmente.",
+          variant: "destructive",
+        });
+
+        // Fallback visual mientras pones tu llave real
+        setVirtualAccountData({
+          bank: "JPMorgan Chase (Fallback)",
+          routing: "021000021",
+          account: "889922" + Math.floor(Math.random() * 10000),
+          reference: "BTA-SPLIT-8004",
+        });
+      })
+      .finally(() => setIsGeneratingAccount(false));
+  };
+
   return (
     <>
       <div className="flex items-center justify-between">
@@ -566,35 +822,124 @@ function SinglePaymentUI({ supportAmount, setSupportAmount, currentCurrencyConfi
           Usando {selectedCurrency}
         </span>
       </div>
-      
+
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Input 
+          <Input
             type="number"
             placeholder="Ej. 50"
             value={supportAmount}
             onChange={(e) => setSupportAmount(e.target.value)}
             className="h-12 bg-white dark:bg-[#111] border-emerald-200 dark:border-emerald-800 rounded-xl text-lg font-mono pl-10"
           />
-          <currentCurrencyConfig.icon className={`absolute left-3 top-3.5 w-5 h-5 ${currentCurrencyConfig.color}`} />
+          <currentCurrencyConfig.icon
+            className={`absolute left-3 top-3.5 w-5 h-5 ${currentCurrencyConfig.color}`}
+          />
         </div>
-        <Button 
-          onClick={handleSinglePayment}
-          disabled={isTransacting}
-          className="h-12 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-[0_0_20px_rgba(5,150,105,0.4)] transition-all font-bold text-sm"
-        >
-          {isTransacting ? (
-            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> ...</>
-          ) : needsApproval ? (
-            <><ShieldCheck className="w-5 h-5 mr-2" /> Aprobar</>
-          ) : (
-            <><Zap className="w-5 h-5 mr-2" /> Enviar</>
-          )}
-        </Button>
+
+        {selectedCurrency === "USD" ? (
+          <Button
+            onClick={handleGenerateBridgeAccount}
+            disabled={isGeneratingAccount}
+            className="h-12 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-black text-white rounded-xl transition-all font-bold text-xs shadow-lg"
+          >
+            {isGeneratingAccount ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <Building2 className="w-4 h-4 mr-1" /> Pagar B2B
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSinglePayment}
+            disabled={isTransacting}
+            className="h-12 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-[0_0_20px_rgba(5,150,105,0.4)] transition-all font-bold text-sm"
+          >
+            {isTransacting ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" /> ...
+              </>
+            ) : needsApproval ? (
+              <>
+                <ShieldCheck className="w-5 h-5 mr-2" /> Aprobar
+              </>
+            ) : (
+              <>
+                <Zap className="w-5 h-5 mr-2" /> Enviar
+              </>
+            )}
+          </Button>
+        )}
       </div>
-      <p className="text-[9px] text-center text-slate-500 dark:text-slate-400 font-medium">
-        El 100% de esta transacción es inmutable y rastreable en Celo Network.
-      </p>
+
+      {isCarbonEligible && parsedAmount > 0 && (
+        <div className="mt-4 p-3 bg-linear-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-xl animate-in zoom-in-95 shadow-inner">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-[10px] uppercase font-black text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+              <Leaf className="w-3.5 h-3.5" /> Carbon Swap (B2B)
+            </span>
+            <span className="text-[9px] font-bold bg-white/50 dark:bg-black/30 px-1.5 py-0.5 rounded text-emerald-700 dark:text-emerald-500">
+              Tasa: $0.10 / Kilo
+            </span>
+          </div>
+          <div className="flex justify-between items-end">
+            <span className="text-[10px] text-slate-600 dark:text-slate-400 font-bold leading-tight max-w-[60%]">
+              Por tu inyección de liquidez, recibirás Certificados de Carbono:
+            </span>
+            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono drop-shadow-sm">
+              +{carbonToReceive} <span className="text-xs">BCO2</span>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {virtualAccountData && selectedCurrency === "USD" ? (
+        <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-xl mt-3 border border-slate-200 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 shadow-inner">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="text-[10px] font-black uppercase text-slate-500">
+              Riel Bridge/Celo Activo
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs flex justify-between">
+              <span className="text-slate-500">Banco Receptor:</span>{" "}
+              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                {virtualAccountData.bank}
+              </span>
+            </p>
+            <p className="text-xs flex justify-between">
+              <span className="text-slate-500">Routing (ABA):</span>{" "}
+              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                {virtualAccountData.routing}
+              </span>
+            </p>
+            <p className="text-xs flex justify-between">
+              <span className="text-slate-500">Account No:</span>{" "}
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-1 rounded">
+                {virtualAccountData.account}
+              </span>
+            </p>
+            <p className="text-xs flex justify-between">
+              <span className="text-slate-500">Referencia:</span>{" "}
+              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                {virtualAccountData.reference}
+              </span>
+            </p>
+          </div>
+          <p className="text-[9px] text-slate-400 mt-4 leading-tight border-t border-slate-200 dark:border-slate-800 pt-3">
+            *Al enviar <b>{supportAmount || "0"} USD</b> a esta cuenta,
+            Stripe/Bridge depositará <b>{supportAmount || "0"} USDT</b>{" "}
+            directamente en el contrato BiotaSplitter (Red Celo Mainnet).
+          </p>
+        </div>
+      ) : (
+        <p className="text-[9px] text-center text-slate-500 dark:text-slate-400 font-medium mt-2">
+          El 100% de esta transacción es inmutable y rastreable en Celo Network.
+        </p>
+      )}
     </>
-  )
+  );
 }

@@ -34,7 +34,7 @@ export function MiniPayHeader() {
     <header className="relative z-50 w-full px-4 pt-4 pb-2 bg-emerald-50/80 dark:bg-[#021a0e]/80 backdrop-blur-md border-b border-emerald-200/30 dark:border-emerald-500/10">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg">
+          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg">
             <Leaf className="w-4 h-4 text-white" />
           </div>
           <div>

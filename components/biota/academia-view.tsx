@@ -107,7 +107,7 @@ export function AcademiaView() {
                 <div className="flex gap-3 p-3">
                   {/* Icon */}
                   <div className={`
-                    w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${course.color} shadow-md
+                    w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-linear-to-br ${course.color} shadow-md
                     ${isCompleted ? "glow-sm" : ""}
                   `}>
                     {isCompleted ? (
@@ -125,7 +125,7 @@ export function AcademiaView() {
                       <h3 className="text-xs font-bold text-emerald-950 dark:text-white leading-tight line-clamp-2 transition-theme">
                         {course.title}
                       </h3>
-                      <ChevronRight className="w-4 h-4 text-emerald-500 flex-shrink-0 group-hover:text-emerald-600 transition-colors" />
+                      <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0 group-hover:text-emerald-600 transition-colors" />
                     </div>
 
                     <div className="flex items-center gap-2 mb-2">
@@ -153,7 +153,7 @@ export function AcademiaView() {
                       </div>
                       <div className="h-2 bg-emerald-100 dark:bg-emerald-900/40 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full bg-gradient-to-r ${course.color} rounded-full transition-all`}
+                          className={`h-full bg-linear-to-r ${course.color} rounded-full transition-all`}
                           style={{ width: `${course.progress}%` }}
                         />
                       </div>
@@ -172,7 +172,7 @@ export function AcademiaView() {
                         w-full h-9 text-xs font-bold
                         ${nftClaimed 
                           ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-600/40" 
-                          : "bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white cyber-btn"
+                          : "bg-linear-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white cyber-btn"
                         }
                       `}
                     >

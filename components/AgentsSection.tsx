@@ -66,9 +66,9 @@ export default function AgentsSection() {
             onClick={() => sendMessage(agent.prompt, agent.id)}
             className="group relative min-w-[140px] snap-center text-left focus:outline-none"
           >
-            <div className={`absolute inset-0 bg-gradient-to-br ${agent.color} opacity-20 blur-xl group-hover:opacity-40 transition-opacity`} />
+            <div className={`absolute inset-0 bg-linear-to-br ${agent.color} opacity-20 blur-xl group-hover:opacity-40 transition-opacity`} />
             <div className="relative bg-white dark:bg-zinc-900 border border-emerald-500/10 rounded-[2rem] p-5 shadow-xl flex flex-col items-center gap-3 transition-all duration-300 group-hover:-translate-y-2 group-hover:border-emerald-500/40 group-active:scale-95">
-              <div className={`p-3 rounded-2xl bg-gradient-to-br ${agent.color} text-white shadow-lg shadow-emerald-500/20`}>
+              <div className={`p-3 rounded-2xl bg-linear-to-br ${agent.color} text-white shadow-lg shadow-emerald-500/20`}>
                 <agent.icon size={24} />
               </div>
               <div className="text-center">

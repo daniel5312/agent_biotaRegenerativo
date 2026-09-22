@@ -5,6 +5,7 @@ import {
   Coins,
   CreditCard,
   Camera,
+  Video,
   Droplets,
   TreePine,
   Send,
@@ -63,6 +64,11 @@ export function ImpactoView() {
   // [VISION IA] Estado y Referencia para la imagen
   const [imageBase64, setImageBase64] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null)
+  const [evidenceDescription, setEvidenceDescription] = useState("")
+  const [evidenceActivity, setEvidenceActivity] = useState("Preparación del suelo")
+  const [isUploadingEvidence, setIsUploadingEvidence] = useState(false)
+  const [savedEvidence, setSavedEvidence] = useState<{ media_url: string; content_hash: string; status: string } | null>(null)
 
   // [ROLES] Determinar si es inversor
   const [userRole, setUserRole] = useState<"PRODUCER" | "INVESTOR" | null>(null);
@@ -131,13 +137,46 @@ export function ImpactoView() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const base64String = await compressImage(file);
-      setImageBase64(base64String)
+      setEvidenceFile(file)
+      if (file.type.startsWith("image/")) {
+        const base64String = await compressImage(file);
+        setImageBase64(base64String)
+      } else {
+        setImageBase64(null)
+      }
+    }
+  }
+
+  const handleEvidenceUpload = async () => {
+    if (!address || !evidenceFile || !evidenceDescription.trim()) return
+
+    setIsUploadingEvidence(true)
+    setSavedEvidence(null)
+    try {
+      const formData = new FormData()
+      formData.append("file", evidenceFile)
+      formData.append("wallet", address)
+      formData.append("activity", evidenceActivity)
+      formData.append("description", evidenceDescription.trim())
+      if (tokenId) formData.append("passportTokenId", tokenId.toString())
+
+      const response = await fetch("/api/evidencias", { method: "POST", body: formData })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "No se pudo guardar la evidencia")
+
+      setSavedEvidence(data.evidence)
+      setEvidenceDescription("")
+      setEvidenceFile(null)
+    } catch (error) {
+      console.error("Error guardando evidencia:", error)
+      window.alert(error instanceof Error ? error.message : "No se pudo guardar la evidencia")
+    } finally {
+      setIsUploadingEvidence(false)
     }
   }
 
   const toggleAction = (actionId: string) => {
-    if (actionId === "photo") {
+    if (actionId === "photo" || actionId === "video") {
       fileInputRef.current?.click()
     }
     setSelectedActions(prev => 
@@ -216,7 +255,8 @@ export function ImpactoView() {
   };
 
   const actions = [
-    { id: "photo", icon: Camera, label: "Foto Cromatografía", reward: "+2.5 G$", color: "from-cyan-500 to-teal-500" },
+    { id: "photo", icon: Camera, label: "Foto del proceso", reward: "Evidencia", color: "from-cyan-500 to-teal-500" },
+    { id: "video", icon: Video, label: "Video del trabajo", reward: "Evidencia", color: "from-violet-500 to-indigo-500" },
     { id: "ph", icon: Droplets, label: "Ingresar pH", reward: "+5.0 G$", color: "from-blue-500 to-cyan-500" },
     { id: "trees", icon: TreePine, label: "Registrar Arboles", reward: "+12.0 G$", color: "from-emerald-500 to-green-500" },
   ]
@@ -262,15 +302,15 @@ export function ImpactoView() {
       <div className="space-y-3 animate-slide-up">
         {/* Producer Card */}
         <Card className="glass-card overflow-hidden">
-          <div className="h-1.5 bg-gradient-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0]" />
+          <div className="h-1.5 bg-linear-to-r from-[#FCFF52] via-emerald-400 to-[#00B0A0]" />
 
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
               <div className="relative">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 via-green-500 to-teal-500 flex items-center justify-center shadow-lg glow-sm animate-float">
+                <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-emerald-400 via-green-500 to-teal-500 flex items-center justify-center shadow-lg glow-sm animate-float">
                   <Sprout className="w-7 h-7 text-white" />
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center border-2 border-white dark:border-emerald-950 shadow-md">
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-linear-to-br from-yellow-400 to-amber-500 flex items-center justify-center border-2 border-white dark:border-emerald-950 shadow-md">
                   <BadgeCheck className="w-3 h-3 text-white" />
                 </div>
               </div>
@@ -299,7 +339,7 @@ export function ImpactoView() {
             {/* BiotaPass Badge & Identity */}
             <div className="flex flex-wrap items-center gap-2 mt-3">
               {hasPassport ? (
-                <Badge className="bg-gradient-to-r from-emerald-500/20 to-teal-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-500/25 px-2.5 py-1 transition-theme">
+                <Badge className="bg-linear-to-r from-emerald-500/20 to-teal-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-500/25 px-2.5 py-1 transition-theme">
                   <Sparkles className="w-3 h-3 mr-1 text-yellow-500" />
                   BiotaPass: #{tokenId?.toString()}
                 </Badge>
@@ -341,7 +381,7 @@ export function ImpactoView() {
           <Card className="glass-card metric-card overflow-hidden">
             <CardContent className="p-3 space-y-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md">
+                <div className="w-8 h-8 rounded-lg bg-linear-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md">
                   <Coins className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-[9px] text-emerald-800 dark:text-emerald-400/80 uppercase tracking-wider font-bold transition-theme">
@@ -377,7 +417,7 @@ export function ImpactoView() {
           <Card className="glass-card metric-card overflow-hidden">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-md">
+                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-md">
                   <CreditCard className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-[9px] text-blue-800 dark:text-emerald-400/80 uppercase tracking-wider font-bold transition-theme">
@@ -412,7 +452,7 @@ export function ImpactoView() {
           REGENERATION ORACLE
           ================================================================ */}
       <Card className="glass-card overflow-hidden animate-slide-up delay-75">
-        <div className="h-1 bg-gradient-to-r from-cyan-400 via-emerald-400 to-green-400 animate-shimmer" />
+        <div className="h-1 bg-linear-to-r from-cyan-400 via-emerald-400 to-green-400 animate-shimmer" />
 
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center justify-between">
@@ -428,13 +468,60 @@ export function ImpactoView() {
             </span>
           </div>
 
-          <input 
+          <input
             type="file" 
-            accept="image/*" 
+            accept="image/*,video/mp4,video/webm,video/quicktime"
             ref={fileInputRef} 
             onChange={handleImageUpload} 
             className="hidden" 
           />
+
+          <div className="space-y-2 rounded-xl border border-emerald-300 dark:border-emerald-700/50 bg-white/60 dark:bg-emerald-950/20 p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={evidenceActivity}
+                onChange={(event) => setEvidenceActivity(event.target.value)}
+                className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-black/20 px-2 py-2 text-[10px] font-bold text-emerald-900 dark:text-emerald-200"
+              >
+                <option>Preparación del suelo</option>
+                <option>Siembra o trasplante</option>
+                <option>Compostaje</option>
+                <option>Mantenimiento del cultivo</option>
+                <option>Reforestación</option>
+                <option>Cosecha</option>
+              </select>
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="h-auto text-[10px] font-bold">
+                {evidenceFile ? "Cambiar archivo" : "Adjuntar foto/video"}
+              </Button>
+            </div>
+            <Input
+              value={evidenceDescription}
+              onChange={(event) => setEvidenceDescription(event.target.value)}
+              placeholder="Describe qué trabajo realizó el productor y cuándo"
+              className="text-xs bg-white dark:bg-black/20"
+            />
+            {evidenceFile && (
+              <p className="text-[9px] text-emerald-700 dark:text-emerald-300 truncate">
+                Archivo listo: {evidenceFile.name} ({Math.round(evidenceFile.size / 1024)} KB)
+              </p>
+            )}
+            <Button
+              type="button"
+              onClick={handleEvidenceUpload}
+              disabled={!address || !evidenceFile || !evidenceDescription.trim() || isUploadingEvidence}
+              className="w-full h-9 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+            >
+              {isUploadingEvidence ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+              {isUploadingEvidence ? "Guardando evidencia..." : "Guardar evidencia para revisión"}
+            </Button>
+            {savedEvidence && (
+              <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/20 p-2 text-[9px]">
+                <p className="font-black text-amber-800 dark:text-amber-300">Evidencia registrada: pendiente de revisión</p>
+                <p className="font-mono text-stone-600 dark:text-stone-400 break-all">{savedEvidence.content_hash}</p>
+                <a href={savedEvidence.media_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Abrir archivo</a>
+              </div>
+            )}
+          </div>
 
           {/* Action Buttons */}
           <div className="grid grid-cols-3 gap-2">
@@ -449,7 +536,7 @@ export function ImpactoView() {
                     relative flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all duration-300 touch-active border
                     ${
                       isSelected
-                        ? `bg-gradient-to-br ${action.color} border-white/30 shadow-lg`
+                        ? `bg-linear-to-br ${action.color} border-white/30 shadow-lg`
                         : "bg-white dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-600/30 hover:border-emerald-500 shadow-sm"
                     }
                   `}
@@ -496,7 +583,7 @@ export function ImpactoView() {
               ${submitted 
                 ? "bg-green-500 hover:bg-green-500" 
                 : selectedActions.length > 0
-                  ? "bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:via-green-400 hover:to-teal-400 glow-md"
+                  ? "bg-linear-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-400 hover:via-green-400 hover:to-teal-400 glow-md"
                   : "bg-gray-200 dark:bg-emerald-900/30 text-gray-500 dark:text-emerald-600"
               }
             `}
@@ -525,7 +612,7 @@ export function ImpactoView() {
           MICRO-LENDING POOL
           ================================================================ */}
       <Card className="glass-card overflow-hidden animate-slide-up delay-150">
-        <div className="h-1 bg-gradient-to-r from-[#1C7EF0] via-[#00B0A0] to-emerald-400" />
+        <div className="h-1 bg-linear-to-r from-[#1C7EF0] via-[#00B0A0] to-emerald-400" />
 
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -544,9 +631,9 @@ export function ImpactoView() {
           </div>
 
           {/* Pool Display */}
-          <div className="bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-3 border border-blue-300 dark:border-blue-500/25 shadow-sm transition-theme">
+          <div className="bg-linear-to-br from-blue-100 to-cyan-100 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-3 border border-blue-300 dark:border-blue-500/25 shadow-sm transition-theme">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg animate-float">
+              <div className="w-12 h-12 rounded-xl bg-linear-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg animate-float">
                 <Wallet className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -591,7 +678,7 @@ export function ImpactoView() {
                 parseInt(creditAmount) < 1000 ||
                 requestingCredit
               }
-              className="w-full h-11 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white font-bold cyber-btn"
+              className="w-full h-11 bg-linear-to-r from-blue-500 to-cyan-500 hover:from-blue-400 hover:to-cyan-400 text-white font-bold cyber-btn"
             >
               {requestingCredit ? (
                 <>
@@ -622,7 +709,7 @@ export function ImpactoView() {
           ACTIVITY TIMELINE
           ================================================================ */}
       <Card className="glass-card overflow-hidden animate-slide-up delay-225">
-        <div className="h-1 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400" />
+        <div className="h-1 bg-linear-to-r from-emerald-400 via-green-400 to-teal-400" />
 
         <CardContent className="p-4">
           <h2 className="text-sm font-bold text-emerald-950 dark:text-white mb-3 flex items-center gap-2 transition-theme">
@@ -652,7 +739,7 @@ export function ImpactoView() {
                       />
                     </div>
                     {index < timeline.length - 1 && (
-                      <div className="w-0.5 h-8 bg-gradient-to-b from-emerald-300 dark:from-emerald-600 to-transparent mt-1" />
+                      <div className="w-0.5 h-8 bg-linear-to-b from-emerald-300 dark:from-emerald-600 to-transparent mt-1" />
                     )}
                   </div>
 

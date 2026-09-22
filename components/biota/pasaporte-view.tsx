@@ -1,4 +1,5 @@
 "use client";
+import { FichaTecnica } from "@/components/biota/FichaTecnica";
 
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -38,6 +39,7 @@ import { ADDRESSES, BIOTA_PASSPORT_ABI, ERC20_ABI } from "@/lib/contracts";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
 import { useToast } from "@/hooks/use-toast";
 import { PrestamosAave } from "@/components/biota/prestamos-aave";
+import { RetiroFiat } from "@/components/biota/retiro-fiat";
 
 export function PasaporteView() {
   const { address } = useAccount();
@@ -387,6 +389,11 @@ export function PasaporteView() {
             </Button>
           </Card>
 
+          {/* 3. FICHA TECNICA (NUEVO) */}
+          <div className="pt-2">
+            <FichaTecnica />
+          </div>
+
           {/* 3. FINANZAS / PATROCINIO (SPONSOR - AAVE) - Siempre visible en Pasaporte */}
           <div className="pt-2">
             <PrestamosAave />
@@ -431,7 +438,12 @@ export function PasaporteView() {
                 </div>
               </div>
 
-              {/* 3. FINANZAS / PATROCINIO (SPONSOR - AAVE) */}
+              {/* 3. RETIRO FIAT (OFF-RAMP PARA EL CAMPESINO) */}
+              <div className="pt-2">
+                <RetiroFiat />
+              </div>
+
+              {/* 4. FINANZAS / PATROCINIO (SPONSOR - AAVE) */}
               <div className="pt-2">
                 <PrestamosAave />
               </div>

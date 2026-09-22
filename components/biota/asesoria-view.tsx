@@ -423,7 +423,7 @@ export function AsesoriaView() {
                   relative min-w-[100px] snap-center flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300 border touch-active
                   ${locked ? 'opacity-60 grayscale cursor-not-allowed bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800' : 
                     isSelected 
-                      ? `bg-gradient-to-br ${agent.color} border-white/30 shadow-lg glow-sm` 
+                      ? `bg-linear-to-br ${agent.color} border-white/30 shadow-lg glow-sm`
                       : "bg-white dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-600/30"
                   }
                 `}
@@ -436,7 +436,7 @@ export function AsesoriaView() {
                 <div className={`
                   w-10 h-10 rounded-xl flex items-center justify-center shadow-md
                   ${locked ? "bg-stone-300 dark:bg-stone-800 text-stone-500" :
-                    isSelected ? "bg-white/20" : `bg-gradient-to-br ${agent.color} text-white`
+                    isSelected ? "bg-white/20" : `bg-linear-to-br ${agent.color} text-white`
                   }
                 `}>
                   <Icon className="w-5 h-5" />
@@ -463,7 +463,7 @@ export function AsesoriaView() {
         {/* Chat Header */}
         <div className="px-4 py-3 border-b border-emerald-200 dark:border-emerald-500/20 bg-white/40 dark:bg-emerald-950/40 flex items-center justify-between transition-theme">
           <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${selectedAgent.color} flex items-center justify-center shadow-md`}>
+            <div className={`w-8 h-8 rounded-lg bg-linear-to-br ${selectedAgent.color} flex items-center justify-center shadow-md`}>
               {React.createElement(selectedAgent.icon, { className: "w-4 h-4 text-white" })}
             </div>
             <div>
@@ -566,9 +566,9 @@ export function AsesoriaView() {
                 >
                   <div className={`flex gap-2 max-w-[85%] ${isBot ? "flex-row" : "flex-row-reverse"}`}>
                     <div className={`
-                      w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center shadow-sm
+                      w-7 h-7 rounded-lg shrink-0 flex items-center justify-center shadow-sm
                       ${isBot 
-                        ? `bg-gradient-to-br ${selectedAgent.color} text-white` 
+                        ? `bg-linear-to-br ${selectedAgent.color} text-white`
                         : "bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600"
                       }
                     `}>

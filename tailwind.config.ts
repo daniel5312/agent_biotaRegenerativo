@@ -58,7 +58,8 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tw-animate-css")],
+  // tw-animate-css es CSS-first en Tailwind v4; se importa desde globals.css.
+  plugins: [],
 };
 
 export default config;

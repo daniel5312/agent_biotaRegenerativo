@@ -13,6 +13,8 @@
     "test:mainnet": "NEXT_PUBLIC_RPC_URL=https://forno.celo.org playwright test"
   },
   "dependencies": {
+    "@celo/contractkit": "^11.0.0",
+    "@celo/identity": "^5.1.2",
     "@chaoschain/sdk": "^0.3.0",
     "@goodsdks/identity-sdk": "^1.0.5",
     "@google/genai": "^1.52.0",

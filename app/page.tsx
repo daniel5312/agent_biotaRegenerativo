@@ -75,7 +75,7 @@ function LandingPage() {
       </div>
 
       {/* NAVBAR */}
-      <nav className="fixed top-0 w-full z-[100] bg-[#030712]/80 backdrop-blur-xl border-b border-white/5">
+      <nav className="fixed top-0 w-full z-100 bg-[#030712]/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
           <div
             className="flex items-center gap-2 cursor-pointer group"
@@ -107,7 +107,7 @@ function LandingPage() {
             </div>
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-[1.1] text-white">
               REGENERACIÓN <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-500 to-amber-500 italic">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-emerald-400 via-emerald-500 to-amber-500 italic">
                 IMPULSADA POR IA.
               </span>
             </h1>
@@ -134,13 +134,13 @@ function LandingPage() {
 
           {/* TERMINAL LOG SIMULATOR */}
           <div className="flex-1 w-full max-w-lg lg:max-w-none relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-amber-500/5 blur-2xl rounded-full" />
+            <div className="absolute inset-0 bg-linear-to-br from-emerald-500/10 to-amber-500/5 blur-2xl rounded-full" />
             <div className="bg-[#0a0a0a] border border-white/10 rounded-lg p-6 relative shadow-2xl overflow-hidden font-mono text-sm">
               <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-4">
                 <Terminal size={16} className="text-stone-500" />
                 <span className="text-stone-500 text-xs">biota-agent-core.exe</span>
               </div>
-              <div className="space-y-3 min-h-[160px]">
+              <div className="space-y-3 min-h-40">
                 {logs.slice(0, logIndex + 1).slice(-5).map((log, i) => (
                   <div key={i} className={`flex gap-2 ${i === Math.min(logIndex, 4) ? 'text-emerald-400' : 'text-stone-600'}`}>
                     <span className="opacity-50">{">"}</span>
@@ -157,7 +157,7 @@ function LandingPage() {
 
         {/* BIOTASCROW PROMO SECTION */}
         <section className="mb-32">
-          <div className="bg-gradient-to-br from-[#0a0a0a] to-[#030712] border border-emerald-500/20 rounded-[2rem] p-10 lg:p-16 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+          <div className="bg-linear-to-br from-[#0a0a0a] to-[#030712] border border-emerald-500/20 rounded-4xl p-10 lg:p-16 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
               <BrainCircuit size={200} className="text-emerald-500" />
             </div>
@@ -225,7 +225,7 @@ function LandingPage() {
             <p className="text-stone-500 uppercase tracking-widest text-xs font-bold">Arquitectura Web3 Invisible</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/[0.02] transition-colors">
+            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/2 transition-colors">
               <Zap size={24} className="text-emerald-400 mb-6" />
               <h3 className="text-lg font-black text-white mb-3">Celo Mainnet</h3>
               <p className="text-stone-400 text-sm leading-relaxed">
@@ -233,7 +233,7 @@ function LandingPage() {
               </p>
             </div>
             
-            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/[0.02] transition-colors">
+            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/2 transition-colors">
               <Coins size={24} className="text-blue-400 mb-6" />
               <h3 className="text-lg font-black text-white mb-3">GoodDollar UBI</h3>
               <p className="text-stone-400 text-sm leading-relaxed">
@@ -241,7 +241,7 @@ function LandingPage() {
               </p>
             </div>
 
-            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/[0.02] transition-colors">
+            <div className="bg-[#0a0a0a] p-8 rounded-2xl border border-white/5 hover:bg-white/2 transition-colors">
               <Database size={24} className="text-amber-400 mb-6" />
               <h3 className="text-lg font-black text-white mb-3">Opera MiniPay</h3>
               <p className="text-stone-400 text-sm leading-relaxed">
