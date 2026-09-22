@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Plus, Sprout, ClipboardList, Hammer, FlaskConical } from "lucide-react";
+import { ModalReceta } from "@/components/biota/ModalReceta";
 import { useToast } from "@/hooks/use-toast";
 
 // Types
@@ -15,9 +16,10 @@ type Production = { id: string; nombre_proceso: string; cultivo_producto: string
 export function FichaTecnica() {
   const { address } = useAccount();
   const { toast } = useToast();
+  const [activeModalProd, setActiveModalProd] = useState<string | null>(null);// [State] Controla qué ID de producción tiene el ModalReceta abierto
   const [productions, setProductions] = useState<Production[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Forms state
   const [showNewProd, setShowNewProd] = useState(false);
   const [newProdName, setNewProdName] = useState("");
@@ -72,6 +74,7 @@ export function FichaTecnica() {
         <Button size="sm" onClick={() => setShowNewProd(!showNewProd)} className="bg-emerald-500 text-black font-black">
           <Plus className="w-4 h-4 mr-1" /> Nueva
         </Button>
+
       </div>
 
       {showNewProd && (
@@ -116,6 +119,15 @@ export function FichaTecnica() {
           ))}
         </div>
       )}
+      {/* [ReFi/UI] Renderiza el Modal solo si hay un ID activo seleccionado */}
+      {activeModalProd && (
+        <ModalReceta
+          isOpen={!!activeModalProd}
+          productionId={activeModalProd}
+          onCloseAction={() => setActiveModalProd(null)}
+        />
+      )}
+
     </div>
   );
 }
