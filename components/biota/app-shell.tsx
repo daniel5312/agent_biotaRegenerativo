@@ -19,6 +19,7 @@ import {
   Copy,
   HeartHandshake,
 } from "lucide-react";
+import { GlobalHeader } from "@/components/biota/GlobalHeader";
 import { useTheme } from "next-themes";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useConnection, useBalance } from "wagmi";
@@ -303,6 +304,7 @@ export function AppShell({
         </header>
 
         {/* Main content */}
+        <GlobalHeader />
         <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar relative z-20">
           {children}
         </main>

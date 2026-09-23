@@ -1,1 +1,6 @@
-{}
+{
+    "workbench.editor.autoLockGroups": {
+        "antigravity.artifactEditor": true,
+        "jetski.settingsEditor": true
+    }
+}

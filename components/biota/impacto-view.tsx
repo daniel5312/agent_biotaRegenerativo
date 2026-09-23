@@ -36,6 +36,7 @@ import { usePoA } from "@/hooks/usePoA"
 import { IdentityAction } from "@/components/biota/IdentityAction"
 import { compressImage } from "@/lib/utils"
 import { BovedaInversor } from "@/components/biota/boveda-inversor"
+import { FichaTecnica } from "@/components/biota/FichaTecnica"
 
 export function ImpactoView() {
   const { address } = useConnection();

@@ -1,5 +1,5 @@
 "use client";
-import { FichaTecnica } from "@/components/biota/FichaTecnica";
+
 
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -388,11 +388,6 @@ export function PasaporteView() {
               <Sparkles className="w-4 h-4 text-emerald-500" /> Ir al Diagnóstico para Avanzar
             </Button>
           </Card>
-
-          {/* 3. FICHA TECNICA (NUEVO) */}
-          <div className="pt-2">
-            <FichaTecnica />
-          </div>
 
           {/* 3. FINANZAS / PATROCINIO (SPONSOR - AAVE) - Siempre visible en Pasaporte */}
           <div className="pt-2">
