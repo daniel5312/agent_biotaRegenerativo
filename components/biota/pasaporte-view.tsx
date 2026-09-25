@@ -1,26 +1,18 @@
 "use client";
 
-
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  Coins,
-  CircleDollarSign,
-  CreditCard,
-  ExternalLink,
-  Camera,
-  Droplets,
   TreePine,
-  ShoppingCart,
   Loader2,
   Sparkles,
   Zap,
   Sprout,
   MapPin,
-  ShieldCheck,
-  AlertCircle,
-  Wallet,
-  Send,
   CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Copy,
+  Plus
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,27 +22,45 @@ import {
   useAccount,
   useWriteContract,
   useReadContract,
-  useReadContracts,
-  useBalance,
 } from "wagmi";
-import { usePrivy } from "@privy-io/react-auth";
-import { formatUnits } from "viem";
-import { ADDRESSES, BIOTA_PASSPORT_ABI, ERC20_ABI } from "@/lib/contracts";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { supabase } from "@/lib/supabase";
+import { ADDRESSES, BIOTA_PASSPORT_ABI } from "@/lib/contracts";
 import { useBiotaPass } from "@/hooks/useBiotaPass";
 import { useToast } from "@/hooks/use-toast";
-import { PrestamosAave } from "@/components/biota/prestamos-aave";
-import { RetiroFiat } from "@/components/biota/retiro-fiat";
+import { useGoodDollarIdentity } from "@/hooks/useGoodDollarIdentity";
+import { useUBIClaim } from "@/hooks/useUBIClaim";
+import { useUbiFlow } from "@/context/UbiFlowContext";
+import { StreamingBalance } from "./StreamingBalance";
+import { useSuperfluidStream } from "@/hooks/useSuperfluidStream";
+import { useMultiTokenBalances } from "@/hooks/useMultiTokenBalances";
 
 export function PasaporteView() {
   const { address } = useAccount();
-  const { authenticated } = usePrivy();
+  const { authenticated, user } = usePrivy();
+  const { wallets } = useWallets();
   const { mintPassport, isMinting, tokenId, estadoBiologico } = useBiotaPass();
-  const { writeContractAsync } = useWriteContract();
   const { toast } = useToast();
 
+  const primaryAddress = (user?.wallet?.address || address) as `0x${string}`;
+  const identity = useGoodDollarIdentity(primaryAddress);
+
+  const { ubiAddress, ubiProvider, disconnectUBI } = useUbiFlow();
+  const stream = useSuperfluidStream(ubiAddress || primaryAddress);
+  const { balances: ubiBalances } = useMultiTokenBalances(ubiAddress || undefined);
+
+  // Hook UBI
+  const {
+    entitlementFormatted,
+    canClaim,
+    isLoading: loadingClaim,
+    refetchEntitlement,
+  } = useUBIClaim(
+    ubiAddress || (identity.whitelistedRoot as `0x${string}`),
+    identity.whitelistedRoot
+  );
 
   const [paymentMethod, setPaymentMethod] = useState<"G$" | "CELO">("CELO");
-  const [activeTab, setActiveTab] = useState<"pasaporte" | "billetera">("pasaporte");
   const [nombreProductor, setNombreProductor] = useState("");
   const [telefono, setTelefono] = useState("");
   const [finca, setFinca] = useState("");
@@ -58,61 +68,25 @@ export function PasaporteView() {
   const [municipio, setMunicipio] = useState("");
   const [area, setArea] = useState(1000);
   const [medidaTipo, setMedidaTipo] = useState<"m2" | "ha">("m2");
-  const [selectedActions, setSelectedActions] = useState<string[]>([]);
 
-  const { data: celoRes } = useBalance({
-    address: address as `0x${string}`,
-    query: { enabled: !!address },
-  });
-  const { data: balancesRaw } = useReadContracts({
-    contracts: [
-      { address: ADDRESSES.G$, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
-      { address: ADDRESSES.CUSD, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
-      { address: ADDRESSES.USDT, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
-      { address: ADDRESSES.USDC, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
-      { address: ADDRESSES.COPM, abi: ERC20_ABI, functionName: "balanceOf", args: address ? [address] : undefined },
-    ],
-    query: { enabled: !!address }
-  });
+  const [isAutoClaimEnabled, setIsAutoClaimEnabled] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const { data: passportRaw } = useReadContract({
     chainId: 42220,
     address: ADDRESSES.BIOTA_PASSPORT,
     abi: BIOTA_PASSPORT_ABI,
     functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
+    args: primaryAddress ? [primaryAddress] : undefined,
+    query: { enabled: !!primaryAddress },
   });
 
   const effectiveHasPassport = useMemo(() => {
-    if (typeof window !== "undefined" && localStorage.getItem('BIOTA_DEBUG') === 'true') {
-      return true; // Bypass visual para pruebas de Playwright
-    }
+    if (typeof window !== "undefined" && localStorage.getItem('BIOTA_DEBUG') === 'true') return true;
     return !!tokenId || (passportRaw ? BigInt(passportRaw.toString()) > 0n : false);
   }, [passportRaw, tokenId]);
-
-  const celoBalanceNum = celoRes ? Number(formatUnits(celoRes.value, 18)) : 0;
-  const gdBalanceNum = balancesRaw?.[0]?.status === "success" ? Number(formatUnits(balancesRaw[0].result as bigint, 18)) : 0;
-  const cusdBalanceNum = balancesRaw?.[1]?.status === "success" ? Number(formatUnits(balancesRaw[1].result as bigint, 18)) : 0;
-  const usdtBalanceNum = balancesRaw?.[2]?.status === "success" ? Number(formatUnits(balancesRaw[2].result as bigint, 6)) : 0;
-  const usdcBalanceNum = balancesRaw?.[3]?.status === "success" ? Number(formatUnits(balancesRaw[3].result as bigint, 6)) : 0;
-  const copmBalanceNum = balancesRaw?.[4]?.status === "success" ? Number(formatUnits(balancesRaw[4].result as bigint, 18)) : 0;
-
-  const totalUsdEstimated = 
-    (celoBalanceNum * 0.60) + 
-    (gdBalanceNum * 0.00003) + 
-    cusdBalanceNum + 
-    usdtBalanceNum + 
-    usdcBalanceNum + 
-    (copmBalanceNum * 0.00024);
-
-  const toggleAction = (id: string) =>
-    setSelectedActions((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id],
-    );
-
-  const [isFauceting, setIsFauceting] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("biota_farm_data");
@@ -120,9 +94,7 @@ export function PasaporteView() {
       try {
         const data = JSON.parse(stored);
         if (data.nombreProductor) setNombreProductor(data.nombreProductor);
-        if (data.telefono) setTelefono(data.telefono);
         if (data.finca) setFinca(data.finca);
-        if (data.vereda) setVereda(data.vereda);
         if (data.municipio) setMunicipio(data.municipio);
         if (data.area) setArea(data.area);
         if (data.medidaTipo) setMedidaTipo(data.medidaTipo);
@@ -131,319 +103,289 @@ export function PasaporteView() {
     setIsLoaded(true);
   }, []);
 
-  // Auto-guardado en cada cambio para evitar pérdida de datos si navegan manualmente
+  useEffect(() => {
+    if (typeof window !== 'undefined' && primaryAddress) {
+      const stored = localStorage.getItem(`biota_autoclaim_${primaryAddress.toLowerCase()}`);
+      if (stored === 'true') setIsAutoClaimEnabled(true);
+    }
+  }, [primaryAddress]);
+
   useEffect(() => {
     if (!isLoaded) return;
-    const farmData = {
-      nombreProductor,
-      telefono,
-      finca,
-      vereda,
-      municipio,
-      area,
-      medidaTipo
-    };
+    const farmData = { nombreProductor, telefono, finca, vereda, municipio, area, medidaTipo };
     localStorage.setItem("biota_farm_data", JSON.stringify(farmData));
   }, [nombreProductor, telefono, finca, vereda, municipio, area, medidaTipo, isLoaded]);
 
-  const handleMintWithFaucet = async () => {
-    try {
-      // 1. Verificamos si tiene saldo CELO para el gas. Si tiene muy poco, le enviamos un Faucet automático.
-      if (celoBalanceNum < 0.1) {
-        setIsFauceting(true);
-        // Aquí llamaremos al Webhook de Fondeo (Paso 2)
-        const res = await fetch("/api/faucet", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address }),
-        });
-        if (!res.ok) throw new Error("Fallo en el Fondeo automático");
-        // Pausa breve para esperar que la tx de gas pase en la red
-        await new Promise(r => setTimeout(r, 3000));
-      }
-
-      // 2. Ejecutar Minteo del Pasaporte
-      const areaCalculada = medidaTipo === "ha" ? BigInt(area) * 10000n : BigInt(area);
-      
-      mintPassport({
-        tokenURI: "ipfs://biota",
-        ubicacionGeografica: finca,
-        areaM2: areaCalculada,
-        cmSueloRecuperado: 0n,
-        estadoBiologico: "Iniciado",
-        hashAnalisisLab: "0x",
-        ingredientesHash: nombreProductor,
-        metodosAgricolas: "Regenerativo",
-      }, "CELO");
-    } catch (err) {
-      console.error("Error en minteo patrocinado:", err);
-    } finally {
-      setIsFauceting(false);
+  // Contador de Claim UBI
+  useEffect(() => {
+    if (!canClaim) {
+      const getMs = () => {
+        const now = new Date();
+        const nextCycle = new Date(now);
+        nextCycle.setUTCHours(12, 0, 0, 0);
+        if (now.getTime() >= nextCycle.getTime()) nextCycle.setUTCDate(nextCycle.getUTCDate() + 1);
+        return nextCycle.getTime() - now.getTime();
+      };
+      setTimeLeft(getMs());
+      const interval = setInterval(() => {
+        const remaining = getMs();
+        if (remaining <= 0) refetchEntitlement();
+        setTimeLeft(remaining);
+      }, 1000);
+      return () => clearInterval(interval);
     }
-  };
+  }, [canClaim, refetchEntitlement]);
+
+  const handleClaimUBI = useCallback(async () => {
+    if (!ubiAddress || !ubiProvider) {
+      toast({ title: "❌ GoodWallet no conectada", variant: "destructive" });
+      return;
+    }
+    try {
+      setIsClaiming(true);
+      toast({ title: "🌱 Reclamando UBI...", description: "Firma en tu GoodWallet." });
+      const txHash = await ubiProvider.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: ubiAddress,
+          to: "0x43d72Ff17701B2DA814620735C39C620Ce0ea4A1",
+          data: "0x4e71d92d",
+          chainId: "0xa4ec",
+        }],
+      });
+      toast({ title: "🎉 Reclamo Confirmado", description: "En minutos se reflejarán tus tokens." });
+      setTimeout(() => refetchEntitlement(), 5000);
+    } catch (error: any) {
+      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsClaiming(false);
+    }
+  }, [ubiAddress, ubiProvider, refetchEntitlement, toast]);
 
   const handleSaveAndStart = async () => {
     if (!finca || !nombreProductor) {
-      toast({ title: "Datos Incompletos", description: "Por favor llena al menos el nombre de la Finca y el Productor.", variant: "destructive" });
+      toast({ title: "Datos Incompletos", variant: "destructive" });
       return;
     }
-
-    const farmData = {
-      nombreProductor,
-      telefono,
-      finca,
-      vereda,
-      municipio,
-      area,
-      medidaTipo
-    };
-    localStorage.setItem("biota_farm_data", JSON.stringify(farmData));
-    localStorage.setItem("biota_onboarding_step", "1"); 
-    
-    if (!address) {
-      toast({ title: "Conecta tu billetera", description: "Necesitas tu billetera para recibir el Sello de Entrada.", variant: "destructive" });
-      return;
-    }
-
     if (!tokenId) {
-      // Mintear el Sello de Entrada
       const areaCalculada = medidaTipo === "ha" ? BigInt(area) * 10000n : BigInt(area);
       await mintPassport({
-        tokenURI: "ipfs://biota",
-        ubicacionGeografica: finca,
-        areaM2: areaCalculada,
-        cmSueloRecuperado: 0n,
-        estadoBiologico: "Iniciado",
-        hashAnalisisLab: "0x",
-        ingredientesHash: nombreProductor,
-        metodosAgricolas: "Regenerativo",
+        tokenURI: "ipfs://biota", ubicacionGeografica: finca,
+        areaM2: areaCalculada, cmSueloRecuperado: 0n, estadoBiologico: "Iniciado",
+        hashAnalisisLab: "0x", ingredientesHash: nombreProductor, metodosAgricolas: "Regenerativo",
       }, paymentMethod);
-      // Nota: La redirección a 'asesoria' ocurrirá automáticamente en useBiotaPass.ts cuando se confirme el minteo on-chain
     } else {
-      // Si ya tiene pasaporte, simplemente avanza
       window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'asesoria' }));
     }
   };
 
+  const handleToggleAutoClaim = async (enabled: boolean) => {
+    try {
+      const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy');
+      if (enabled && embeddedWallet) {
+        toast({ title: "⏳ Autorizando Agente..." });
+        
+        // Simulación de interacción privy signers para TEE request:
+        const { error } = await supabase.from('ubi_subscriptions').upsert({ wallet_address: embeddedWallet.address, is_active: true });
+        
+        if (!error) {
+          localStorage.setItem(`biota_autoclaim_${embeddedWallet.address.toLowerCase()}`, 'true');
+          setIsAutoClaimEnabled(true);
+          toast({ title: "✅ Automatización Lista", description: "El Agente reclamará diario por ti." });
+        }
+      } else if (!enabled) {
+        if (embeddedWallet) {
+          await supabase.from('ubi_subscriptions').upsert({ wallet_address: embeddedWallet.address, is_active: false });
+          localStorage.removeItem(`biota_autoclaim_${embeddedWallet.address.toLowerCase()}`);
+        }
+        setIsAutoClaimEnabled(false);
+        toast({ title: "🛑 Automatización Detenida" });
+      }
+    } catch (e: any) {
+      setIsAutoClaimEnabled(!enabled);
+    }
+  };
+
+  const formatHoursMinutes = (ms: number) => {
+    if (ms <= 0) return "¡Ciclo Listo!";
+    const totalMins = Math.floor(ms / 60000);
+    const hrs = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return `${hrs}h ${m}m restantes`;
+  };
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-4 pb-20">
+    <div className="space-y-6 max-w-4xl mx-auto p-4 pb-24">
+      
       {!effectiveHasPassport ? (
-        // === VISTA PRE-MINTEO (FORMULARIO) ===
+        // === VISTA FORMULARIO ===
         <div className="space-y-6 animate-in fade-in duration-500">
-          <h1 className="text-4xl font-black text-white italic uppercase">
-            Registro Biota
-          </h1>
+          <h1 className="text-4xl font-black text-white italic uppercase">Registro Biota</h1>
           <Card className="bg-white/5 border-white/10 p-8 rounded-3xl space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-stone-500">Nombre Productor</label>
-                <Input onChange={(e) => setNombreProductor(e.target.value)} value={nombreProductor} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. Juan Pérez" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-stone-500">Teléfono</label>
-                <Input onChange={(e) => setTelefono(e.target.value)} value={telefono} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. 310..." type="tel" />
-              </div>
-              <div className="md:col-span-2 space-y-1">
-                <label className="text-[10px] font-black uppercase text-stone-500">Nombre del Predio (Finca)</label>
-                <Input onChange={(e) => setFinca(e.target.value)} value={finca} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. El Edén" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-stone-500">Municipio - Vereda</label>
-                <Input onChange={(e) => setMunicipio(e.target.value)} value={municipio} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. Marinilla - La Peña" />
-              </div>
+              <div className="space-y-1"><label className="text-[10px] font-black uppercase text-stone-500">Nombre Productor</label><Input onChange={(e) => setNombreProductor(e.target.value)} value={nombreProductor} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. Juan Pérez" /></div>
+              <div className="md:col-span-2 space-y-1"><label className="text-[10px] font-black uppercase text-stone-500">Nombre de Finca</label><Input onChange={(e) => setFinca(e.target.value)} value={finca} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. El Edén" /></div>
+              <div className="space-y-1"><label className="text-[10px] font-black uppercase text-stone-500">Municipio</label><Input onChange={(e) => setMunicipio(e.target.value)} value={municipio} className="bg-black/40 border-white/10 h-12 rounded-2xl" placeholder="Ej. Marinilla - La Peña" /></div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase text-stone-500">Medida</label>
                 <div className="flex gap-2">
-                  <Input onChange={(e) => setArea(Number(e.target.value))} value={area} className="bg-black/40 border-white/10 h-12 rounded-2xl flex-1" type="number" placeholder="Ej. 50" />
+                  <Input onChange={(e) => setArea(Number(e.target.value))} value={area} className="bg-black/40 border-white/10 h-12 rounded-2xl flex-1" type="number" />
                   <select value={medidaTipo} onChange={(e) => setMedidaTipo(e.target.value as "m2" | "ha")} className="bg-black/40 border-white/10 h-12 rounded-2xl text-white px-3 outline-none focus:ring-2 focus:ring-emerald-500">
-                    <option value="m2">m²</option>
-                    <option value="ha">Ha</option>
+                    <option value="m2">m²</option><option value="ha">Ha</option>
                   </select>
                 </div>
               </div>
             </div>
-
-            <div className="space-y-4 pt-4 border-t border-white/5">
-              <Button
-                onClick={handleSaveAndStart}
-                disabled={!finca || !nombreProductor || !telefono || isMinting}
-                className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded-2xl transition-all shadow-lg shadow-emerald-500/20"
-              >
-                {isMinting ? (
-                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Creando Sello...</>
-                ) : (
-                  <><Sparkles className="w-5 h-5 mr-2" /> Obtener Sello de Entrada</>
-                )}
+            <div className="pt-4 border-t border-white/5">
+              <Button onClick={handleSaveAndStart} disabled={!finca || !nombreProductor || isMinting} className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase rounded-2xl transition-all shadow-lg shadow-emerald-500/20">
+                {isMinting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Creando Sello...</> : <><Sparkles className="w-5 h-5 mr-2" /> Obtener Sello de Entrada</>}
               </Button>
             </div>
           </Card>
         </div>
       ) : (
-        // === VISTA POST-MINTEO (DASHBOARD) ===
-        <div className="space-y-6 animate-in fade-in duration-500">
-          <div className="flex justify-between items-center">
-            <h1 className="text-4xl font-black text-white italic uppercase">
-              Mi Finca
-            </h1>
-            <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
-              <button 
-                onClick={() => setActiveTab("pasaporte")}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "pasaporte" ? "bg-emerald-500 text-black shadow-lg" : "text-stone-400 hover:text-white"}`}
-              >
-                Pasaporte
-              </button>
-              <button 
-                onClick={() => setActiveTab("billetera")}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === "billetera" ? "bg-emerald-500 text-black shadow-lg" : "text-stone-400 hover:text-white"}`}
-              >
-                Billetera
-              </button>
-            </div>
-          </div>
 
-          {activeTab === "pasaporte" ? (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              {/* 1. IDENTIDAD Y NFT */}
-          <Card className="glass-card bg-emerald-500/5 border-emerald-500/20 p-6 rounded-3xl">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-emerald-500/30 relative shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                  <img 
-                    src="/logo.png" 
-                    alt="NFT Pasaporte" 
-                    className="w-full h-full object-cover"
-                    onError={(e) => (e.target as HTMLImageElement).src = "https://teal-tired-jay-275.mypinata.cloud/ipfs/QmeFhX3XG7U2mD5R4fRj4vR8e8kE3W7P4yJ3N2mE8T8b5K"}
-                  />
-                  <div className="absolute bottom-0 left-0 w-full bg-black/60 backdrop-blur-sm text-[10px] text-center font-mono py-1 text-emerald-400">
-                    ID #{tokenId ? tokenId.toString() : "001"}
-                  </div>
+        // === VISTA POST-MINTEO ===
+        <div className="space-y-6 animate-in fade-in duration-500">
+          <h1 className="text-4xl font-black text-white italic uppercase">Mi Perfil</h1>
+
+          {/* 1. IDENTIDAD Y NFT PASAPORTE */}
+          <Card className="glass-card bg-emerald-500/5 border-emerald-500/20 p-6 rounded-3xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4">
+              <Badge variant="outline" className="border-emerald-500 text-emerald-400 bg-emerald-950/50 uppercase tracking-widest text-[9px] font-black shadow-[0_0_10px_rgba(16,185,129,0.2)]">NFT Activo</Badge>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-emerald-500/30 relative shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                <img src="/logo.png" alt="Pasaporte" className="w-full h-full object-cover" onError={(e) => (e.target as HTMLImageElement).src = "https://teal-tired-jay-275.mypinata.cloud/ipfs/QmeFhX3XG7U2mD5R4fRj4vR8e8kE3W7P4yJ3N2mE8T8b5K"} />
+                <div className="absolute bottom-0 left-0 w-full bg-black/60 text-[10px] text-center font-mono py-1 text-emerald-400">
+                  ID #{tokenId ? tokenId.toString() : "001"}
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs font-black text-stone-500 uppercase flex items-center gap-1 mb-1">
-                    Productor <CheckCircle2 size={12} className="text-emerald-500" />
-                  </p>
-                  <p className="text-2xl font-black text-white font-mono leading-none">
-                    {nombreProductor || "Verificado"}
-                  </p>
-                  <p className="text-sm text-emerald-400 mt-2 font-mono flex items-center gap-1">
-                    <MapPin size={12} /> {finca || "Finca Biota"}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {municipio && <Badge className="bg-white/10 text-stone-300 border-none font-mono text-[9px]">{municipio}</Badge>}
-                    {vereda && <Badge className="bg-white/10 text-stone-300 border-none font-mono text-[9px]">{vereda}</Badge>}
-                    {area > 0 && <Badge className="bg-emerald-500/20 text-emerald-400 border-none font-mono text-[9px]">{area} {medidaTipo}</Badge>}
-                  </div>
-                </div>
+              </div>
+              <div className="flex-1 mt-3">
+                <p className="text-xs font-black text-stone-500 uppercase flex items-center gap-1 mb-1">
+                  Productor <CheckCircle2 size={12} className="text-emerald-500" />
+                </p>
+                <p className="text-2xl font-black text-white font-mono leading-none">{nombreProductor || "Verificado"}</p>
+                <p className="text-sm text-emerald-400 mt-2 font-mono flex items-center gap-1"><MapPin size={12} /> {finca || "Finca Biota"}</p>
               </div>
             </div>
           </Card>
 
-          {/* 2. PROGRESO REGENERATIVO (SELLOS) */}
-          <Card className="bg-white/5 border-white/10 p-6 rounded-3xl space-y-4">
-            <h3 className="text-xs font-black uppercase text-emerald-500 flex items-center gap-2">
-              <Sprout className="w-4 h-4" /> Progreso Regenerativo
-            </h3>
-            
-            <div className="relative pt-4 pb-2">
-              <div className="absolute top-10 left-[10%] right-[10%] h-1 bg-stone-800 rounded-full z-0" />
-              <div className="absolute top-10 left-[10%] w-[30%] h-1 bg-emerald-500 rounded-full z-0 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-
-              <div className="grid grid-cols-4 gap-2 relative z-10">
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 border-black ${estadoBiologico === "Iniciado" || estadoBiologico === "Transición" || estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "bg-emerald-500 shadow-lg shadow-emerald-500/40" : "bg-emerald-500"}`}>
-                    <span className="text-black font-black text-lg">1</span>
-                  </div>
-                  <span className="text-[9px] font-black uppercase text-emerald-500">Iniciación</span>
-                  <span className="text-[8px] text-stone-400">Sello de Entrada</span>
-                </div>
-                
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${estadoBiologico === "Transición" || estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "bg-emerald-500 text-black border-black shadow-lg shadow-emerald-500/40" : "bg-stone-800 text-stone-400 border-stone-700 opacity-60"}`}>
-                    <span className="font-black text-lg">2</span>
-                  </div>
-                  <span className={`text-[9px] font-black uppercase ${estadoBiologico === "Transición" || estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "text-emerald-500" : "text-stone-500"}`}>Transición</span>
-                  <span className="text-[8px] text-stone-600">En proceso...</span>
-                </div>
-
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "bg-emerald-500 text-black border-black shadow-lg shadow-emerald-500/40" : "bg-stone-800 text-stone-400 border-stone-700 opacity-40"}`}>
-                    <span className="font-black text-lg">3</span>
-                  </div>
-                  <span className={`text-[9px] font-black uppercase ${estadoBiologico === "Sostenibilidad" || estadoBiologico === "Certificación" ? "text-emerald-500" : "text-stone-600"}`}>Sostenibilidad</span>
-                </div>
-
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${estadoBiologico === "Certificación" ? "bg-emerald-500 text-black border-black shadow-lg shadow-emerald-500/40" : "bg-stone-800 text-stone-400 border-stone-700 opacity-40"}`}>
-                    <span className="font-black text-lg">4</span>
-                  </div>
-                  <span className={`text-[9px] font-black uppercase ${estadoBiologico === "Certificación" ? "text-emerald-500" : "text-stone-600"}`}>Certificación Total</span>
-                </div>
+          {/* 2. UBI Y GOTEO (WALLET B) */}
+          <section className="space-y-4 pt-2">
+            <div className="flex justify-between items-center bg-stone-900 border border-blue-500/20 p-2 rounded-2xl">
+              <div className="flex items-center gap-2">
+                 <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex flex-col items-center justify-center text-blue-500"><Zap size={14} /></div>
+                 <div>
+                   <h3 className="text-[10px] font-black uppercase text-stone-300">Wallet Conectada (UBI)</h3>
+                   {ubiAddress ? (
+                     <p className="text-[10px] font-mono text-blue-400">{ubiAddress.slice(0, 6)}...{ubiAddress.slice(-4)}</p>
+                   ) : (
+                     <p className="text-[9px] text-stone-500">Valora / MiniPay</p>
+                   )}
+                 </div>
               </div>
+              {!ubiAddress ? (
+                <Button size="sm" onClick={() => {}} className="bg-blue-600 hover:bg-blue-500 h-8 rounded-xl text-[10px] font-black uppercase tracking-widest"><Copy size={12} className="mr-1" /> Conectar</Button>
+              ) : (
+                <div role="button" onClick={disconnectUBI} className="text-[9px] px-2 text-stone-500 uppercase font-bold hover:text-white cursor-pointer">Salir</div>
+              )}
+            </div>
+
+            {ubiAddress && (
+              <Card className="bg-stone-950 border-stone-800 rounded-3xl overflow-hidden relative">
+                <CardContent className="p-6 text-center space-y-6">
+                  {/* Streaming Balance Visual */}
+                  <div className="relative pt-4">
+                    <StreamingBalance
+                      baseBalance={ubiBalances?.gd || 0n}
+                      flowRate={stream.flowRate}
+                      lastUpdateTimestamp={stream.lastUpdated}
+                    />
+                    <div className="flex items-center justify-center gap-1.5 mt-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${stream.isActive ? "bg-emerald-500 animate-pulse" : "bg-stone-500"}`} />
+                      <span className="text-[9px] font-black uppercase text-stone-400 tracking-widest">{stream.isActive ? "Renta Básica Goteando" : "Goteo Detenido"}</span>
+                    </div>
+                  </div>
+
+                  {/* Acciones del UBI */}
+                  <div className="space-y-3 pt-6 border-t border-stone-800">
+                    <div className="flex justify-between items-center px-1 mb-2">
+                       <span className="text-[10px] uppercase font-black text-stone-400">Disponible UBI Diario</span>
+                       <div role="button" onClick={() => refetchEntitlement()} className="p-1 hover:bg-stone-800 rounded"><RefreshCw size={14} className={`text-stone-500 ${loadingClaim ? 'animate-spin': ''}`} /></div>
+                    </div>
+                    
+                    {!identity.hasValidIdentity ? (
+                      <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/20 text-amber-500 flex gap-3 text-left">
+                         <AlertCircle size={20} className="shrink-0" />
+                         <span className="text-[10px] font-bold">Verifica tu identidad facial en la DApp de GoodDollar para acceder al UBI.</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Button 
+                          onClick={handleClaimUBI}
+                          disabled={!canClaim || isClaiming || isAutoClaimEnabled}
+                          className="w-full h-14 rounded-2xl bg-white text-black hover:bg-stone-200 font-black uppercase tracking-widest shadow-lg transition-all"
+                        >
+                          {isClaiming ? <Loader2 className="animate-spin" /> : canClaim ? `Reclamar Manual (+${entitlementFormatted} G$)` : `Esperar: ${formatHoursMinutes(timeLeft)}`}
+                        </Button>
+                        
+                        {!isAutoClaimEnabled ? (
+                          <Button onClick={() => handleToggleAutoClaim(true)} className="w-full h-12 rounded-xl bg-blue-600/20 hover:bg-blue-600 border border-blue-600/30 text-blue-400 hover:text-white font-black uppercase tracking-widest transition-all">
+                            <Zap className="mr-2" size={14} /> Reclamar Automático
+                          </Button>
+                        ) : (
+                          <div role="button" onClick={() => handleToggleAutoClaim(false)} className="w-full h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black uppercase tracking-widest flex justify-center items-center cursor-pointer group">
+                            <Zap className="mr-2 animate-pulse group-hover:hidden" size={14} />
+                            <span className="group-hover:hidden">Auto Reclamo Activo</span>
+                            <span className="hidden group-hover:block text-[10px]">Desactivar Bot</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </section>
+
+          {/* 3. CERTIFICACIONES (NFTs Hijos) */}
+          <section className="space-y-4 pt-4">
+            <div className="flex justify-between items-end">
+              <h3 className="text-xl font-black text-white uppercase italic">Certificaciones</h3>
+              <span className="bg-stone-800 text-stone-400 px-2 py-0.5 rounded text-[9px] uppercase font-bold">NFTs de Impacto</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-emerald-500/10 border-2 border-emerald-500/30 rounded-2xl p-4 flex flex-col items-center text-center gap-2">
+                 <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center"><CheckCircle2 className="text-emerald-400" /></div>
+                 <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Sello Biota Inicial</h4>
+                 <p className="text-[9px] text-stone-400 font-medium leading-tight">Otorgado al crear tu perfil forestal.</p>
+              </div>
+
+              {[
+                { name: "Transición", locked: estadoBiologico !== "Transición" && estadoBiologico !== "Sostenibilidad" && estadoBiologico !== "Certificación" },
+                { name: "Sostenible", locked: estadoBiologico !== "Sostenibilidad" && estadoBiologico !== "Certificación" },
+                { name: "Orgánico Dmrv", locked: estadoBiologico !== "Certificación" },
+              ].map((cert) => (
+                <div key={cert.name} className={`border-2 rounded-2xl p-4 flex flex-col items-center text-center gap-2 ${cert.locked ? 'bg-stone-900/50 border-stone-800' : 'bg-green-500/10 border-green-500/30'}`}>
+                   <div className={`w-12 h-12 rounded-full flex items-center justify-center ${cert.locked ? 'bg-stone-800 text-stone-600' : 'bg-green-500/20 text-green-400'}`}>
+                     {cert.locked ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+                   </div>
+                   <h4 className={`text-[10px] font-black uppercase tracking-widest ${cert.locked ? 'text-stone-500' : 'text-green-400'}`}>{cert.name}</h4>
+                   {cert.locked && <span className="text-[8px] bg-stone-800 text-stone-400 px-2 py-0.5 rounded-full">Bloqueado</span>}
+                </div>
+              ))}
             </div>
 
             <Button 
-              className="w-full bg-stone-800 hover:bg-stone-700 text-white font-black h-12 rounded-2xl flex items-center justify-center gap-2 mt-4"
-              onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'asesoria' }))}
+               onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'impacto' }))}
+               className="w-full mt-2 h-14 bg-stone-800 hover:bg-stone-700 text-white shadow-lg border-t border-stone-700 rounded-2xl font-black uppercase tracking-widest"
             >
-              <Sparkles className="w-4 h-4 text-emerald-500" /> Ir al Diagnóstico para Avanzar
+               <Plus className="mr-2" size={16} /> Aplicar a Certificaciones DMRV
             </Button>
-          </Card>
+          </section>
 
-          {/* 3. FINANZAS / PATROCINIO (SPONSOR - AAVE) - Siempre visible en Pasaporte */}
-          <div className="pt-2">
-            <PrestamosAave />
-          </div>
-        </div>
-      ) : (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              {/* SALDOS (NUEVO DISEÑO CON ESTIMADO USD) */}
-              <div className="bg-black/20 rounded-3xl p-6 border border-white/5 space-y-4">
-                <div className="flex flex-col items-center justify-center space-y-1">
-                  <p className="text-[10px] uppercase font-black text-stone-400">Patrimonio Total Estimado</p>
-                  <h2 className="text-4xl font-black font-mono text-emerald-400">
-                    ${totalUsdEstimated.toFixed(2)} <span className="text-sm text-stone-500">USD</span>
-                  </h2>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/5">
-                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
-                    <p className="text-[9px] uppercase font-black text-stone-400">CELO</p>
-                    <p className="text-xs font-mono font-black text-emerald-400">{celoBalanceNum.toFixed(2)}</p>
-                  </div>
-                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
-                    <p className="text-[9px] uppercase font-black text-stone-400">cUSD</p>
-                    <p className="text-xs font-mono font-black text-emerald-400">{cusdBalanceNum.toFixed(2)}</p>
-                  </div>
-                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
-                    <p className="text-[9px] uppercase font-black text-stone-400">COPm</p>
-                    <p className="text-xs font-mono font-black text-emerald-400">{copmBalanceNum.toFixed(0)}</p>
-                  </div>
-                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
-                    <p className="text-[9px] uppercase font-black text-stone-400">USDT</p>
-                    <p className="text-xs font-mono font-black text-emerald-400">{usdtBalanceNum.toFixed(2)}</p>
-                  </div>
-                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
-                    <p className="text-[9px] uppercase font-black text-stone-400">USDC</p>
-                    <p className="text-xs font-mono font-black text-emerald-400">{usdcBalanceNum.toFixed(2)}</p>
-                  </div>
-                  <div className="glass-card bg-emerald-500/5 border-emerald-500/20 p-2 rounded-2xl flex flex-col items-center text-center">
-                    <p className="text-[9px] uppercase font-black text-stone-400">G$</p>
-                    <p className="text-xs font-mono font-black text-emerald-400">{gdBalanceNum.toFixed(0)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. RETIRO FIAT (OFF-RAMP PARA EL CAMPESINO) */}
-              <div className="pt-2">
-                <RetiroFiat />
-              </div>
-
-              {/* 4. FINANZAS / PATROCINIO (SPONSOR - AAVE) */}
-              <div className="pt-2">
-                <PrestamosAave />
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
