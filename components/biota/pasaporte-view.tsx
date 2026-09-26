@@ -9,8 +9,10 @@ import {
   Sprout,
   MapPin,
   CheckCircle2,
+  ShieldCheck,
   AlertCircle,
   RefreshCw,
+  Clock,
   Copy,
   Plus
 } from "lucide-react";
@@ -32,6 +34,7 @@ import { useGoodDollarIdentity } from "@/hooks/useGoodDollarIdentity";
 import { useUBIClaim } from "@/hooks/useUBIClaim";
 import { useUbiFlow } from "@/context/UbiFlowContext";
 import { StreamingBalance } from "./StreamingBalance";
+import { IdentityAction } from "./IdentityAction";
 import { useSuperfluidStream } from "@/hooks/useSuperfluidStream";
 import { useMultiTokenBalances } from "@/hooks/useMultiTokenBalances";
 
@@ -141,6 +144,7 @@ export function PasaporteView() {
       toast({ title: "❌ GoodWallet no conectada", variant: "destructive" });
       return;
     }
+    
     try {
       setIsClaiming(true);
       toast({ title: "🌱 Reclamando UBI...", description: "Firma en tu GoodWallet." });
@@ -271,83 +275,10 @@ export function PasaporteView() {
             </div>
           </Card>
 
-          {/* 2. UBI Y GOTEO (WALLET B) */}
-          <section className="space-y-4 pt-2">
-            <div className="flex justify-between items-center bg-stone-900 border border-blue-500/20 p-2 rounded-2xl">
-              <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex flex-col items-center justify-center text-blue-500"><Zap size={14} /></div>
-                 <div>
-                   <h3 className="text-[10px] font-black uppercase text-stone-300">Wallet Conectada (UBI)</h3>
-                   {ubiAddress ? (
-                     <p className="text-[10px] font-mono text-blue-400">{ubiAddress.slice(0, 6)}...{ubiAddress.slice(-4)}</p>
-                   ) : (
-                     <p className="text-[9px] text-stone-500">Valora / MiniPay</p>
-                   )}
-                 </div>
-              </div>
-              {!ubiAddress ? (
-                <Button size="sm" onClick={() => {}} className="bg-blue-600 hover:bg-blue-500 h-8 rounded-xl text-[10px] font-black uppercase tracking-widest"><Copy size={12} className="mr-1" /> Conectar</Button>
-              ) : (
-                <div role="button" onClick={disconnectUBI} className="text-[9px] px-2 text-stone-500 uppercase font-bold hover:text-white cursor-pointer">Salir</div>
-              )}
-            </div>
-
-            {ubiAddress && (
-              <Card className="bg-stone-950 border-stone-800 rounded-3xl overflow-hidden relative">
-                <CardContent className="p-6 text-center space-y-6">
-                  {/* Streaming Balance Visual */}
-                  <div className="relative pt-4">
-                    <StreamingBalance
-                      baseBalance={ubiBalances?.gd || 0n}
-                      flowRate={stream.flowRate}
-                      lastUpdateTimestamp={stream.lastUpdated}
-                    />
-                    <div className="flex items-center justify-center gap-1.5 mt-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${stream.isActive ? "bg-emerald-500 animate-pulse" : "bg-stone-500"}`} />
-                      <span className="text-[9px] font-black uppercase text-stone-400 tracking-widest">{stream.isActive ? "Renta Básica Goteando" : "Goteo Detenido"}</span>
-                    </div>
-                  </div>
-
-                  {/* Acciones del UBI */}
-                  <div className="space-y-3 pt-6 border-t border-stone-800">
-                    <div className="flex justify-between items-center px-1 mb-2">
-                       <span className="text-[10px] uppercase font-black text-stone-400">Disponible UBI Diario</span>
-                       <div role="button" onClick={() => refetchEntitlement()} className="p-1 hover:bg-stone-800 rounded"><RefreshCw size={14} className={`text-stone-500 ${loadingClaim ? 'animate-spin': ''}`} /></div>
-                    </div>
-                    
-                    {!identity.hasValidIdentity ? (
-                      <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/20 text-amber-500 flex gap-3 text-left">
-                         <AlertCircle size={20} className="shrink-0" />
-                         <span className="text-[10px] font-bold">Verifica tu identidad facial en la DApp de GoodDollar para acceder al UBI.</span>
-                      </div>
-                    ) : (
-                      <>
-                        <Button 
-                          onClick={handleClaimUBI}
-                          disabled={!canClaim || isClaiming || isAutoClaimEnabled}
-                          className="w-full h-14 rounded-2xl bg-white text-black hover:bg-stone-200 font-black uppercase tracking-widest shadow-lg transition-all"
-                        >
-                          {isClaiming ? <Loader2 className="animate-spin" /> : canClaim ? `Reclamar Manual (+${entitlementFormatted} G$)` : `Esperar: ${formatHoursMinutes(timeLeft)}`}
-                        </Button>
-                        
-                        {!isAutoClaimEnabled ? (
-                          <Button onClick={() => handleToggleAutoClaim(true)} className="w-full h-12 rounded-xl bg-blue-600/20 hover:bg-blue-600 border border-blue-600/30 text-blue-400 hover:text-white font-black uppercase tracking-widest transition-all">
-                            <Zap className="mr-2" size={14} /> Reclamar Automático
-                          </Button>
-                        ) : (
-                          <div role="button" onClick={() => handleToggleAutoClaim(false)} className="w-full h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black uppercase tracking-widest flex justify-center items-center cursor-pointer group">
-                            <Zap className="mr-2 animate-pulse group-hover:hidden" size={14} />
-                            <span className="group-hover:hidden">Auto Reclamo Activo</span>
-                            <span className="hidden group-hover:block text-[10px]">Desactivar Bot</span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </section>
+          {/* 2. UBI Y GOTEO (Componente Idéntico al Principal) */}
+          <div className="w-full">
+            <IdentityAction tokenId={tokenId ? BigInt(tokenId) : undefined} />
+          </div>
 
           {/* 3. CERTIFICACIONES (NFTs Hijos) */}
           <section className="space-y-4 pt-4">
