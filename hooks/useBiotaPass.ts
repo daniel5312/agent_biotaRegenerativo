@@ -117,7 +117,7 @@ export function useBiotaPass(): BiotaPassState {
             address: ADDRESSES.BIOTA_PASSPORT as `0x${string}`,
             event: parseAbiItem('event PassportMinted(uint256 indexed tokenId, address indexed producer, string ubicacion, bool pagadoConCelo)'),
             args: { producer: address },
-            fromBlock: 0n,
+            fromBlock: BigInt(await publicClient.getBlockNumber()) - 4900n,
             toBlock: 'latest'
           })
           if (logs.length > 0) {
