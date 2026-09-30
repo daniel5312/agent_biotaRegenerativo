@@ -91,7 +91,7 @@ export function GlobalHeader() {
         <div className="flex justify-between items-center px-1">
           <div className="flex items-center gap-1.5 bg-black/40 p-0.5 rounded-lg border border-white/5">
              <button onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'pasaporte' }))} className="px-2 py-1 text-[9px] uppercase font-bold rounded transition-all bg-emerald-500/20 text-emerald-400">PasaP</button>
-             <button onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'ahorro' }))} className="px-2 py-1 text-[9px] uppercase font-bold rounded transition-all text-stone-500 hover:text-white">Bille</button>
+             <button onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'impacto' }))} className="px-2 py-1 text-[9px] uppercase font-bold rounded transition-all text-stone-500 hover:text-white">Bille</button>
           </div>
           {primaryAddress && (
             <div onClick={() => handleCopy(primaryAddress)} className="flex items-center gap-1 cursor-pointer hover:text-emerald-400 transition-colors bg-black/20 px-2 py-1 rounded border border-stone-800">

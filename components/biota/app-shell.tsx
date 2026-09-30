@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useState, useEffect, useRef } from "react";
 import type { TabId } from "@/app/page";
-import {
+import { BadgeCheck, 
   Leaf,
   ShoppingBag,
   GraduationCap,
@@ -42,15 +42,15 @@ const tabs: {
   roles: ("PRODUCER" | "INVESTOR")[];
 }[] = [
   { id: "pasaporte", labelEs: "Pasaporte", labelEn: "Passport", icon: Sprout, roles: ["PRODUCER"] },
-  { id: "billetera", labelEs: "Billetera", labelEn: "Wallet", icon: Wallet, roles: ["INVESTOR"] },
-  { id: "apoyar", labelEs: "Apoyar", labelEn: "Support", icon: HeartHandshake, roles: ["PRODUCER", "INVESTOR"] },
-  { id: "impacto", labelEs: "Finanzas", labelEn: "DeFi", icon: Leaf, roles: ["PRODUCER", "INVESTOR"] },
+  { id: "certificaciones", labelEs: "Certificar", labelEn: "Verify", icon: BadgeCheck, roles: ["PRODUCER"] },
+  { id: "apoyar", labelEs: "Apoyar", labelEn: "Support", icon: HeartHandshake, roles: ["INVESTOR"] },
+  { id: "impacto", labelEs: "Impacto", labelEn: "Impact", icon: Leaf, roles: ["PRODUCER", "INVESTOR"] },
   { id: "mercado", labelEs: "Tienda", labelEn: "Market", icon: ShoppingBag, roles: ["PRODUCER", "INVESTOR"] },
   { id: "seguridad", labelEs: "Vigil", labelEn: "Vigil", icon: Shield, roles: ["PRODUCER", "INVESTOR"] },
   {
     id: "academia",
-    labelEs: "Escuela",
-    labelEn: "School",
+    labelEs: "Academia",
+    labelEn: "Academy",
     icon: GraduationCap,
     roles: ["PRODUCER"],
   },
@@ -97,13 +97,13 @@ export function AppShell({
           console.log("[AppShell] Ejecutando upsert para:", primaryAddress, "con rol:", finalRole);
           const { error, data } = await supabase
             .from('users')
-            .upsert({ 
-              wallet_address: primaryAddress, 
+            .upsert({
+              wallet_address: primaryAddress,
               rol: finalRole,
               tipo_billetera: walletType
             }, { onConflict: 'wallet_address' })
             .select();
-          
+
           if (error) {
               console.error("[DB] Error registrando usuario:", error);
           }
@@ -119,8 +119,8 @@ export function AppShell({
   useEffect(() => {
     const autoFund = async () => {
       // 0.05 CELO threshold
-      const MIN_BALANCE = 50000000000000000n; 
-      
+      const MIN_BALANCE = 50000000000000000n;
+
       if (authenticated && address && celoBalance && !isFunding.current) {
         if (celoBalance.value < MIN_BALANCE) {
           isFunding.current = true;
@@ -186,13 +186,13 @@ export function AppShell({
     <div className="min-h-screen flex items-center justify-center p-0 sm:p-4 transition-theme">
       {/* Ambient glow - only in dark mode */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden dark:block hidden">
-        <div className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[120px] animate-pulse-dot" />
-        <div className="absolute bottom-1/4 right-0 w-[350px] h-[350px] bg-green-500/8 rounded-full blur-[100px] animate-pulse-dot delay-300" />
-        <div className="absolute top-1/2 left-0 w-[300px] h-[300px] bg-teal-500/6 rounded-full blur-[80px] animate-pulse-dot delay-150" />
+        <div className="absolute top-0 left-1/4 w-400px h-400px bg-emerald-500/10 rounded-full blur-[120px] animate-pulse-dot" />
+        <div className="absolute bottom-1/4 right-0 w-350px h-350px bg-green-500/8 rounded-full blur-[100px] animate-pulse-dot delay-300" />
+        <div className="absolute top-1/2 left-0 w-300px h-300px bg-teal-500/6 rounded-full blur-[80px] animate-pulse-dot delay-150" />
       </div>
 
       {/* Mobile shell container */}
-      <div className="relative w-full max-w-md min-h-screen sm:min-h-[812px] sm:max-h-[812px] flex flex-col shadow-2xl sm:rounded-[2.5rem] overflow-hidden border-0 sm:border border-emerald-300/50 dark:border-emerald-500/20 bg-emerald-50/80 dark:bg-transparent dark:glass leaf-pattern transition-theme">
+      <div className="relative w-full max-w-md min-h-screen sm:min-h-812px sm:max-h-812px] flex flex-col shadow-2xl sm:rounded-[2.5rem] overflow-hidden border-0 sm:border border-emerald-300/50 dark:border-emerald-500/20 bg-emerald-50/80 dark:bg-transparent dark:glass leaf-pattern transition-theme">
         {/* Header */}
         <header className="shrink-0 relative z-20">
           {/* Top gradient line */}
@@ -249,7 +249,7 @@ export function AppShell({
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-lg"></span>
                     </span>
-                    <button 
+                    <button
                       onClick={handleCopy}
                       className="flex items-center gap-1 hover:text-emerald-500 transition-colors"
                       title="Copiar dirección"
@@ -305,7 +305,7 @@ export function AppShell({
 
         {/* Main content */}
         <GlobalHeader />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar relative z-20">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar relative z-20 pb-24">
           {children}
         </main>
 
@@ -314,7 +314,7 @@ export function AppShell({
           <div className="h-px bg-linear-to-r from-transparent via-emerald-400/40 to-transparent" />
 
           <div className="glass backdrop-blur-xl border-t-0 pb-safe bg-emerald-100/90 dark:bg-emerald-950/60 transition-theme">
-            <div className="flex items-center justify-around px-2 py-2">
+            <div className="flex items-center justify-between overflow-x-auto no-scrollbar px-3 py-2 w-full gap-2">
               {tabs
                 .filter(tab => !userRole || tab.roles.includes(userRole))
                 .map((tab) => {

@@ -13,6 +13,7 @@ import { PasaporteView } from "@/components/biota/pasaporte-view"
 import { MercadoView } from "@/components/biota/mercado-view"
 import { AcademiaView } from "@/components/biota/academia-view"
 import { AsesoriaView } from "@/components/biota/asesoria-view"
+import { CertificacionesView } from "@/components/biota/certificaciones-view"
 import { ImpactoView } from "@/components/biota/impacto-view"
 import { SecurityView } from "@/components/biota/security-view"
 import { BilleteraInversor } from "@/components/biota/billetera-inversor"
@@ -21,7 +22,7 @@ import { FinanciarView } from "@/components/biota/financiar-view"
 // SI QUIERES USAR BIOTAPROTOCOL COMO INTERFAZ DESCOMENTA ESTO
 // import BiotaProtocol from "@/components/biotaProtocol"
 
-export type TabId = "pasaporte" | "mercado" | "academia" | "asesoria" | "impacto" | "seguridad" | "billetera" | "apoyar"
+export type TabId = "pasaporte" | "certificaciones" | "mercado" | "academia" | "asesoria" | "impacto" | "seguridad" | "billetera" | "apoyar"
 
 function LandingPage() {
   const { login, ready, authenticated } = usePrivy();
@@ -356,6 +357,7 @@ export default function Page() {
           {activeTab === "pasaporte" && <PasaporteView />}
           {activeTab === "impacto" && <ImpactoView />}
           {activeTab === "mercado" && <MercadoView />}
+          {activeTab === "certificaciones" && <CertificacionesView />}
           {activeTab === "academia" && <AcademiaView />}
           {activeTab === "asesoria" && <AsesoriaView />}
           {activeTab === "seguridad" && <SecurityView />}
