@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
@@ -25,7 +25,7 @@ export function FichaTecnica() {
   const [newProdName, setNewProdName] = useState("");
   const [newProdCrop, setNewProdCrop] = useState("");
 
-  const fetchProductions = async () => {
+  const fetchProductions = useCallback(async () => {
     if (!address) return;
     setLoading(true);
     const { data, error } = await supabase
@@ -36,15 +36,15 @@ export function FichaTecnica() {
 
     if (!error && data) setProductions(data);
     setLoading(false);
-  };
+  }, [address]);
 
   useEffect(() => {
     fetchProductions();
-  }, [address]);
+  }, [address, fetchProductions]);
 
   const handleCreateProduction = async () => {
     if (!address || !newProdName) return;
-    const { data, error } = await supabase.from("production_records").insert({
+    const { error } = await supabase.from("production_records").insert({
       wallet_address: address,
       nombre_proceso: newProdName,
       cultivo_producto: newProdCrop,

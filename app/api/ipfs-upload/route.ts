@@ -1,6 +1,6 @@
 // app/api/ipfs-upload/route.ts
 import { NextResponse } from "next/server";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import FormData from "form-data";
 
 export async function POST(request: Request) {
@@ -56,8 +56,15 @@ export async function POST(request: Request) {
       ipfsUri: `ipfs://${cid}`
     }, { status: 200 });
 
-  } catch (error: any) {
-    console.error("[Pinata API Multipart] Error interno de subida:", error?.response?.data || error.message);
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      console.error("[Pinata API Multipart] Error interno de subida:", error.response?.data || error.message);
+    } else if (error instanceof Error) {
+      console.error("[Pinata API Multipart] Error interno de subida:", error.message);
+    } else {
+      console.error("[Pinata API Multipart] Error desconocido:", error);
+    }
+    
     return NextResponse.json(
       { error: "Falló la operación PIN hacia el protocolo IPFS." },
       { status: 500 }

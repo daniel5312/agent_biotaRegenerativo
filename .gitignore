@@ -76,3 +76,5 @@ test-results/
 .ai/
 biotaflow-sdk/auth/private.pem
 biotaflow-sdk/.docs/
+biotaflow-sdk/auth/private-emisor.pem
+biotaflow-sdk/auth/public-emisor.pem

@@ -49,7 +49,8 @@ export function ModalReceta({
         try {
           const base64String = await compressImage(file);
           setImageBase64(base64String);
-        } catch (e) {
+        } catch (error) {
+          console.error("Compression error:", error);
           toast({ title: "Error", description: "No se pudo procesar la imagen", variant: "destructive" });
         }
       } else if (file.type.startsWith("video/")) {
@@ -158,8 +159,12 @@ export function ModalReceta({
       // Limpiar y cerrar
       setNombreReceta(""); setObjetivo(""); setInsumos([]); setImageBase64(null); setEvidenceFile(null);
       onCloseAction();
-    } catch (e: any) {
-      toast({ title: "Error Guardando", description: e.message, variant: "destructive" });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast({ title: "Error Guardando", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Error Guardando", description: "Ocurrió un error inesperado.", variant: "destructive" });
+      }
     } finally {
       setIsAnalyzing(false);
     }

@@ -8,7 +8,6 @@ import { BadgeCheck,
   ShoppingBag,
   GraduationCap,
   Users,
-  Wifi,
   Sprout,
   Sun,
   Moon,
@@ -61,7 +60,7 @@ export function AppShell({
   children,
   activeTab,
   onTabChange,
-  isMiniPay = true,
+  // isMiniPay is deliberately ignored here to satisfy ESLint while keeping the prop in the interface for future use
   userRole = "PRODUCER",
 }: AppShellProps) {
   const { theme, setTheme } = useTheme();
@@ -95,7 +94,7 @@ export function AppShell({
           }
 
           console.log("[AppShell] Ejecutando upsert para:", primaryAddress, "con rol:", finalRole);
-          const { error, data } = await supabase
+          const { error } = await supabase
             .from('users')
             .upsert({
               wallet_address: primaryAddress,
@@ -107,8 +106,12 @@ export function AppShell({
           if (error) {
               console.error("[DB] Error registrando usuario:", error);
           }
-        } catch(e: any) {
-          console.error("[DB] Excepción registrando usuario:", e);
+        } catch(e: unknown) {
+          if (e instanceof Error) {
+            console.error("[DB] Excepción registrando usuario:", e.message);
+          } else {
+            console.error("[DB] Excepción registrando usuario:", e);
+          }
         }
       };
       registerUser();
