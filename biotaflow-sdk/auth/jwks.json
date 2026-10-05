@@ -1,0 +1,11 @@
+{
+  "keys": [
+    {
+      "kid": "biotaflow-key-1",
+      "alg": "EdDSA",
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "Z5IKv782oog54ovUikWtR6JSFWlwJDwuHMZfLsfilzc"
+    }
+  ]
+}

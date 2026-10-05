@@ -74,3 +74,5 @@ test-results/
 
 # Reglas privadas del agente IA
 .ai/
+biotaflow-sdk/auth/private.pem
+biotaflow-sdk/.docs/
