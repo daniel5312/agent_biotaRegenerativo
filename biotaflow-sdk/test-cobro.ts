@@ -1,41 +1,80 @@
 import { BiotaFlowClient } from './core/BiotaFlowClient';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as readline from 'readline';
 
-// 1. Leemos la llave privada secreta que generaste
-const privateKeyPath = path.resolve(process.cwd(), './biotaflow-sdk/auth/private.pem');
-const privateKeyString = fs.readFileSync(privateKeyPath, 'utf8');
+// --- CONFIGURACIÓN DE TUS LLAVES ---
+const privateKeyReceptor = fs.readFileSync(path.resolve(process.cwd(), './biotaflow-sdk/auth/private-emisor.pem'), 'utf8');
+const privateKeyDonante = fs.readFileSync(path.resolve(process.cwd(), './biotaflow-sdk/auth/private.pem'), 'utf8');
 
-// 2. Instanciamos tu SDK como si fueras a usarlo en tu servidor Next.js
-const client = new BiotaFlowClient({
-  // En Open Payments, para crear un recibo EN TU BILLETERA, usas TU URL como origen
-  walletAddressUrl: 'https://ilp.interledger-test.dev/225f757', // Tu URL de Rafiki
-  privateKey: privateKeyString,
-  keyId: '88f97526-9b67-4703-9807-ddfeb16a7b21' // <-- ¡EL UUID REAL DE RAFIKI!
-});
+// --- TUS DIRECCIONES DE RAFIKI ---
+const URL_RECEPTOR_COLOMBIA = 'https://ilp.interledger-test.dev/pagos-entrada';    
+const URL_DONANTE_EUROPA = 'https://ilp.interledger-test.dev/225f757';        
 
-async function runTest() {
-  console.log("🚀 Iniciando prueba de la Red Interledger...");
-  
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const askQuestion = (query: string): Promise<string> => new Promise(resolve => rl.question(query, resolve));
+
+async function runFullPaymentFlow() {
+  console.log("===========================================");
+  console.log("🚀 SPRINT 6: PRUEBA DE VOLUMEN (150,000 COP)");
+  console.log("===========================================\n");
+
   try {
-    // 3. Vamos a crear una factura/recibo por 5.00 EUR
-    const invoiceUrl = await client.createChargeInvoice(
-      'https://ilp.interledger-test.dev/225f757', // Tu URL de Rafiki
-      {
-        value: '500',       // 500 centavos = 5.00
-        assetCode: 'EUR',   // Moneda de tu cuenta de Rafiki
-        assetScale: 2       // 2 decimales
-      }
+    console.log("--- 1. FACTURACIÓN (Cuenta Productor COP) ---");
+    const clientReceptor = new BiotaFlowClient({
+      walletAddressUrl: URL_RECEPTOR_COLOMBIA,
+      privateKey: privateKeyReceptor,
+      keyId: '29fbde3d-82b9-42ce-bc76-c0516c6a019c' 
+    });
+
+    // Subimos la apuesta a 150,000 COP (Ciento cincuenta mil pesos)
+    const invoice = await clientReceptor.createChargeInvoice(URL_RECEPTOR_COLOMBIA, {
+      value: '15000000',       // 150,000.00 COP
+      assetCode: 'COP',   
+      assetScale: 2       
+    });
+    console.log("✅ Factura generada con éxito.\n");
+
+
+    console.log("--- 2. EL DONANTE PREPARA LOS FONDOS (Cuenta EUR) ---");
+    const clientDonante = new BiotaFlowClient({
+      walletAddressUrl: URL_DONANTE_EUROPA,
+      privateKey: privateKeyDonante,
+      keyId: '88f97526-9b67-4703-9807-ddfeb16a7b21'
+    });
+
+    console.log(`🔐 [GNAP] Solicitando cotización y permiso INTERACTIVO de usuario...`);
+    const quote = await clientDonante.createQuoteForPayment(invoice.invoiceUrl);
+    const interactiveGrant = await clientDonante.requestInteractivePaymentGrant(quote, 'http://localhost:3000/success');
+
+    console.log("\n===========================================");
+    console.log("🛑 ACCIÓN REQUERIDA (SIMULANDO FRONTEND)");
+    console.log(`👉 ${interactiveGrant.interactionUrl}`);
+    console.log("===========================================\n");
+
+    const interactRef = await askQuestion("🔑 Pega aquí el código 'interact_ref' que salió en la URL: ");
+    rl.close();
+
+    if (!interactRef) throw new Error("Abortado por el usuario.");
+
+    console.log("\n--- 3. EJECUCIÓN (Moviendo el dinero) ---");
+    const finalAccessToken = await clientDonante.finalizeInteractiveGrant(
+      interactiveGrant.continueUri, 
+      interactiveGrant.continueToken, 
+      interactRef
     );
 
-    console.log("🎉 ¡ÉXITO! Recibo creado y listo para ser pagado.");
-    console.log("Puedes ver el JSON oficial de este recibo abriendo esta URL en tu navegador:");
-    console.log(invoiceUrl);
+    const transactionId = await clientDonante.executePayment(quote.id, finalAccessToken);
+    
+    console.log(`\n======================================================`);
+    console.log(`🏆 ¡PAGO EJECUTADO CON ÉXITO EN LA RED INTERLEDGER! 🏆`);
+    console.log(`======================================================`);
+    console.log(`URL de la Transacción: ${transactionId}`);
 
   } catch (error) {
-    console.error("🔥 Error en la prueba:", error);
+    console.error("🔥 Error crítico en el flujo:", error);
+    rl.close();
   }
 }
 
-// Ejecutar
-runTest();
+runFullPaymentFlow();
